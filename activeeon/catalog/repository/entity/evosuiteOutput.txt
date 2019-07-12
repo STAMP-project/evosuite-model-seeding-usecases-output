@@ -1,0 +1,944 @@
+* EvoSuite 1.0.7-SNAPSHOT
+* Analyzing classpath (generating inheritance tree)
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4/4.5.2/cf3ef1fe31e5128928e43015005ebb6ef371717e/antlr4-4.5.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tika/tika-core/1.18/69556697de96cf0b22df846e970dafd29866eee0/tika-core-1.18.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/commons-fileupload/commons-fileupload/1.3.1/c621b54583719ac0310404463d6d99db27e1052c/commons-fileupload-1.3.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-lang3/3.5/6c6c702c89bfff3cd9e80b04d668c5e190d588c6/commons-lang3-3.5.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.7.9/a4c0b14c7dd85bdf4d25da074e90a10fa4b9b88b/jackson-databind-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.7.9/9b530cec4fd2eb841ab8e79f19fc7cf0ec487b2/jackson-core-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.7.9/eb356e825cb73da42f7c902a3fe0276fe32b26c8/jackson-annotations-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-joda/2.7.9/70dfb14af41377c83566c0a5512b1c021426a559/jackson-datatype-joda-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-jsr310/2.7.9/7ff35069e48d134cd53fadf2fcb5ce2e5f09007e/jackson-datatype-jsr310-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.datatype/jackson-datatype-jdk8/2.7.9/18b8f409e2a1c89a0498bbd9b3044bcd32fece83/jackson-datatype-jdk8-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.jaxrs/jackson-jaxrs-base/2.7.9/36a528abef27cb905e719901130e8e73ec440c08/jackson-jaxrs-base-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.jaxrs/jackson-jaxrs-json-provider/2.7.9/c19f114d316031203e277f3cc2f6b9671c3e1dd6/jackson-jaxrs-json-provider-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.module/jackson-module-jaxb-annotations/2.7.9/f6f681a609a0dbc38f1984b47a92f8815a7f73e6/jackson-module-jaxb-annotations-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.dataformat/jackson-dataformat-cbor/2.7.9/11b3a0779272ed5b2c0815995d1bb2355495f5/jackson-dataformat-cbor-2.7.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.mysema.querydsl/querydsl-jpa/3.7.1/f0414a0cee1edd5bd72be526a21b52c867df6fdc/querydsl-jpa-3.7.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-data-jpa/1.3.3.RELEASE/c1f8f3102650e54259d69c519b45b64fbf5cd25b/spring-boot-starter-data-jpa-1.3.3.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.hibernate/hibernate-entitymanager/5.1.16.Final/c2319cff49713a36e9122e524951834247d4d6b5/hibernate-entitymanager-5.1.16.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.hibernate/hibernate-core/5.1.16.Final/7a87444230a21ad2201e96bfa2711766a502f0cc/hibernate-core-5.1.16.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-log4j2/1.3.3.RELEASE/15e198561b130fa82d98ef36775bcb61aeaac461/spring-boot-starter-log4j2-1.3.3.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-web/1.3.3.RELEASE/f1ee2657f50844d8682b30a1f40aebff3ad60cce/spring-boot-starter-web-1.3.3.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-web/2.7/6c6cec01d95913355ceb79e47573bd84bbfbf60e/log4j-web-2.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.hateoas/spring-hateoas/0.19.0.RELEASE/77b3b15c301d2517356b76304a2670df33ef2e2c/spring-hateoas-0.19.0.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty/jetty-servlets/9.2.14.v20151106/a75c78a0ee544073457ca5ee9db20fdc6ed55225/jetty-servlets-9.2.14.v20151106.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-spring-web/2.6.1/6478ed7e49755b652aac907d42a735349056a6a/springfox-spring-web-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-swagger2/2.6.1/73c3a70ec0b10b61c8eb9ef1659131cd78dbbd82/springfox-swagger2-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-swagger-ui/2.6.1/4c854c86c91ab36c86fc1a63571a0614c2ea9ab2/springfox-swagger-ui-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.graphql-java/graphql-java/3.0.0/654cd4914dd26f232596b5aa69d4308900ef20c0/graphql-java-3.0.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.16.16/245b50f714bf89ed7659266ace12f9e509d13551/lombok-1.16.16.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jgrapht/jgrapht-core/1.3.0/6016302c38461de596aeee4dfd2347fd93d5349d/jgrapht-core-1.3.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jgrapht/jgrapht-ext/1.3.0/265cf35532d2a78046f756fb9f44a39330836ed0/jgrapht-ext-1.3.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.zeroturnaround/zt-zip/1.11/add8fface4c1936787eb4bffe4ea944a13467d53/zt-zip-1.11.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.github.ben-manes.caffeine/caffeine/2.5.2/1c01cf2bbfe3bbd26512a0bb79f843ff705301c/caffeine-2.5.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.github.dhorions/boxable/1.5/a736dc650f8eb37a7eec890dc6c8cfef466f9e25/boxable-1.5.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-tomcat/1.3.3.RELEASE/541468d85cc2c94d2b538b0fa07c018847bb9b78/spring-boot-starter-tomcat-1.3.3.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive_grid_cloud_portal/rest-client/10.1.0-SNAPSHOT/e7c1414138f6f657ce2f5a15a53a0b8bc6f17e44/rest-client-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive/scheduler-api/10.1.0-SNAPSHOT/74a6b9f291182689bcbfe2e0069da885dea0ad8b/scheduler-api-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/mysql/mysql-connector-java/8.0.13/28015319e44ff50a8fee655e725fefc4990abeb1/mysql-connector-java-8.0.13.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.postgresql/postgresql/42.0.0/938ede0cdf862cc4eaba5023a86254783af1d261/postgresql-42.0.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.microsoft.sqlserver/mssql-jdbc/7.1.2.jre8-preview/bed0c1676ca684af590f2cb6237abb1541fe2e4c/mssql-jdbc-7.1.2.jre8-preview.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.google.truth/truth/0.30/9d591b5a66eda81f0b88cf1c748ab8853d99b18b/truth-0.30.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/junit/junit/4.12/2973d150c0dc1fefe998f834810d68f278ea58ec/junit-4.12.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/nl.jqno.equalsverifier/equalsverifier/1.7.7/a5cc3e303304cfdb69d178a31dfecc5003b0761c/equalsverifier-1.7.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.mockito/mockito-core/1.10.19/e8546f5bef4e061d8dd73895b4e8f40e3fe6effe/mockito-core-1.10.19.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/commons-io/commons-io/2.5/2852e6e05fbb95076fc091f6d1780f1f8fe35e0f/commons-io-2.5.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/joda-time/joda-time/2.8.2/d27c24204c5e507b16fec01006b3d0f1ec42aed4/joda-time-2.8.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.mysema.querydsl/querydsl-core/3.7.1/4dc982fd273c9a119c593761a27e30fd0a1db756/querydsl-core-3.7.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/1.7.21/139535a69a4239db087de9bab0bee568bf8e0b70/slf4j-api-1.7.21.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter/1.3.5.RELEASE/188c658fabbce0d1ccc1ae18a1cf58f566208c78/spring-boot-starter-1.3.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-aop/1.3.5.RELEASE/478a50b44faab2ada75583637b9f6e789809d069/spring-boot-starter-aop-1.3.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-starter-jdbc/1.3.5.RELEASE/b427aa14a4f3a2fba114bcbb60eae6f83ee86706/spring-boot-starter-jdbc-1.3.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/javax.transaction/javax.transaction-api/1.2/d81aff979d603edd90dcd8db2abc1f4ce6479e3e/javax.transaction-api-1.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.data/spring-data-jpa/1.9.4.RELEASE/80b83510e67aa085b7d91d2d096d90133ec995de/spring-data-jpa-1.9.4.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-aspects/4.2.6.RELEASE/7ed7b15e95eedd551ac979bd8c295256d96cf2ff/spring-aspects-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.logging/jboss-logging/3.3.0.Final/3616bb87707910296e2c195dc016287080bba5af/jboss-logging-3.3.0.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/dom4j/dom4j/1.6.1/5d3ccc056b6f056dbf0dddfdf43894b9065a8f94/dom4j-1.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.hibernate.common/hibernate-commons-annotations/5.0.1.Final/71e1cff3fcb20d3b3af4f3363c3ddb24d33c6879/hibernate-commons-annotations-5.0.1.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.hibernate.javax.persistence/hibernate-jpa-2.1-api/1.0.0.Final/5e731d961297e5a07290bfaf3db1fbc8bbbf405a/hibernate-jpa-2.1-api-1.0.0.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.javassist/javassist/3.18.1-GA/d9a09f7732226af26bf99f19e2cffe0ae219db5b/javassist-3.18.1-GA.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.geronimo.specs/geronimo-jta_1.1_spec/1.1.1/aabab3165b8ea936b9360abbf448459c0d04a5a4/geronimo-jta_1.1_spec-1.1.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/antlr/antlr/2.7.7/83cd2cd674a217ade95a4bb83a8a14f351f48bd0/antlr-2.7.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss/jandex/2.0.3.Final/bfc4d6257dbff7a33a357f0de116be6ff951d849/jandex-2.0.3.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-slf4j-impl/2.4.1/1153bec315f388b2635c25cf97105ae9dce61b58/log4j-slf4j-impl-2.4.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-api/2.4.1/594e5643c9267ac1e91960a6b7315cf368c9ea02/log4j-api-2.4.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.logging.log4j/log4j-core/2.4.1/a5334910f90944575147fd1c1aef9f407c24db99/log4j-core-2.4.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.slf4j/jcl-over-slf4j/1.7.21/331b564a3a42f002a0004b039c1c430da89062cd/jcl-over-slf4j-1.7.21.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.slf4j/jul-to-slf4j/1.7.21/2f22c882ffa479d1e9ff4eb0e8e2c29f2a0871ed/jul-to-slf4j-1.7.21.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-web/4.2.5.RELEASE/49cd2430884b77172aa81e3fc33ef668ea1dab30/spring-web-4.2.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-webmvc/4.2.6.RELEASE/7c7ea475d33287e0e3a92e98ccbe0ad6a0dbb9ca/spring-webmvc-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-aop/4.2.6.RELEASE/5efbfccb19efda2956b8977561bf4da6b15b0d0e/spring-aop-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-beans/4.2.6.RELEASE/d4a319fb4d949fb6313f45c929947b9b4e26283e/spring-beans-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-context/4.2.6.RELEASE/bbf3c8526fe37bb341507f28db17882d4348dbca/spring-context-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-core/4.2.6.RELEASE/a1c6ef01f18888f51fc5054c65ef4787b7cf0a1e/spring-core-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty/jetty-continuation/9.2.16.v20160414/323906b532d0c95fc1179f6a0e9261931f8964b/jetty-continuation-9.2.16.v20160414.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty/jetty-http/9.2.16.v20160414/5ce0c06170f0c75d1070b61fbe08a828b036bd9f/jetty-http-9.2.16.v20160414.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty/jetty-util/9.2.16.v20160414/e0accd393d4f2db45d39ebe14265301408b29fb6/jetty-util-9.2.16.v20160414.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.eclipse.jetty/jetty-io/9.2.16.v20160414/21b9bd4a4d9e497e5089d351e9256c885563888b/jetty-io-9.2.16.v20160414.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/21.0/3a3d111be1be1b745edfa7d91678a12d7ed38709/guava-21.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.plugin/spring-plugin-core/1.2.0.RELEASE/f380e7760032e7d929184f8ad8a33716b75c0657/spring-plugin-core-1.2.0.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.plugin/spring-plugin-metadata/1.2.0.RELEASE/97223fc496b6cab31602eedbd4202aa4fff0d44f/spring-plugin-metadata-1.2.0.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-spi/2.6.1/972ae720c6a9a5f31be2744972b435cc39166174/springfox-spi-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.swagger/swagger-annotations/1.5.13/72433c890a61a876d22063e269be421c810a1a8d/swagger-annotations-1.5.13.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.swagger/swagger-models/1.5.10/da29e4f4f7cff80b1ef134b0f3805013be443e58/swagger-models-1.5.10.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-schema/2.6.1/b4d837ed7dc726a59504d2e6587e162e071a8965/springfox-schema-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-swagger-common/2.6.1/47befb039a0a1f0cdaab74d2777fa9eb6b01f8db/springfox-swagger-common-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.mapstruct/mapstruct/1.0.0.Final/794bb2c7d3dd69211deb22857d92fb4c5361be3f/mapstruct-1.0.0.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.antlr/antlr4-runtime/4.5.1/7d7288bbe0599b32b844971f270ed001a661357/antlr4-runtime-4.5.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jheaps/jheaps/0.9/4e6b0f0221875d9ae36ccbaa84fab1145ef8ac5d/jheaps-0.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.tinyjee.jgraphx/jgraphx/3.4.1.3/a62939cbd5af2dff663e91d061b3e4edc7b8df85/jgraphx-3.4.1.3.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.pdfbox/pdfbox/2.0.0/c46498f7a734616d0b81e4ea99fd751a17dc34fd/pdfbox-2.0.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-csv/1.2/bfb42d67ff2e16c78c3c322f4fb7c73fbed1965c/commons-csv-1.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jsoup/jsoup/1.9.2/5e3bda828a80c7a21dfbe2308d1755759c2fd7b4/jsoup-1.9.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat.embed/tomcat-embed-core/8.0.33/4e7f547fbb2c364cb5e02a58790c5fb89e31efed/tomcat-embed-core-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat.embed/tomcat-embed-el/8.0.33/31423f2d493cf1f7cf5f0082c9f94640e93b8c1b/tomcat-embed-el-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat.embed/tomcat-embed-logging-juli/8.0.33/66bc309e0227c1ba2cf4417182d0b1583003d24b/tomcat-embed-logging-juli-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat.embed/tomcat-embed-websocket/8.0.33/be1f95e5d9ae00f9bc6138441d29cfe5c7c60256/tomcat-embed-websocket-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/log4j/log4j/1.2.17/5af35056b4d257e4b64b9e8069c0746e8b08629f/log4j-1.2.17.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/log4j/apache-log4j-extras/1.2.17/85863614d82185d7e51fe21c00aa9117a523a8b6/apache-log4j-extras-1.2.17.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/commons-cli/commons-cli/1.3.1/1303efbc4b181e5a58bf2e967dc156a3132b97c0/commons-cli-1.3.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/jline/jline/2.14.2/2c743e5de407be1d69b69849afeae49db635e0f6/jline-2.14.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpclient/4.5.3/d1577ae15f01ef5438c5afc62162457c00a34713/httpclient-4.5.3.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpmime/4.5.3/889fd6d061bb63b99dd5c6aba35a555ae863de52/httpmime-4.5.3.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.atmosphere/wasync/2.1.2/3086ec4e46b494a4cd60e7c57309ab3ea97f6f45/wasync-2.1.2.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive/common-api/10.1.0-SNAPSHOT/558699360689567333efdd8e5928afb573c696dd/common-api-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive/common-http/10.1.0-SNAPSHOT/d36683a2ec7d072db96a1cc23e623ac7fe1df1f2/common-http-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive_grid_cloud_portal/rest-api/10.1.0-SNAPSHOT/b96cb7ad9d76e2dc5682f6c65c5cf4cded8b8836/rest-api-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-log4j12/1.7.21/7238b064d1aba20da2ac03217d700d91e02460fa/slf4j-log4j12-1.7.21.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/xerces/xercesImpl/2.11.0/9bb329db1cfc4e22462c9d6b43a8432f5850e92c/xercesImpl-2.11.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.objectweb.proactive/programming-extension-dataspaces-common/10.1.0-SNAPSHOT/eb4152bcf90ccae4efb6d9b36c154a6059608760/programming-extension-dataspaces-common-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/it.sauronsoftware.cron4j/cron4j/2.2.5/da0dd0edee48b570cd1e23895e0ac80e09eb272b/cron4j-2.2.5.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-collections4/4.0/da217367fd25e88df52ba79e47658d4cf928b0d1/commons-collections4-4.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/msv/isorelax/20050913/b21859c352bd959ea22d06b2fe8c93b2e24531b9/isorelax-20050913.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/msv/msv/20050913/3fc5ca9708a8e7a219001da0bc3870d0a2d51c2d/msv-20050913.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-expression/4.2.6.RELEASE/c0182d73f348ab11d51d45cbe29f3820c32d0ccc/spring-expression-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-core-asl/1.9.12/ecfc6f73a841c4c3c653b59651a3f9d5f1286469/jackson-core-asl-1.9.12.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.googlecode.json-simple/json-simple/1.1.1/c9ad4a0850ab676c5c64461a05ca524cdfff59f1/json-simple-1.1.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml.woodstox/woodstox-core/5.0.1/13a9863ea0153c8b3353dacecee37a139d80b649/woodstox-core-5.0.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/msv/relaxngDatatype/20050913/b117e0f9182c6cc094e833489bcdddadfd414090/relaxngDatatype-20050913.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/msv/xsdlib/20050913/836b85d70c54589aeef2ea810232ab192137ea84/xsdlib-20050913.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.google.protobuf/protobuf-java/3.6.1/d06d46ecfd92ec6d0f3b423b4cd81cb38d8b924/protobuf-java-3.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.google.errorprone/error_prone_annotations/2.0.8/54e2d56cb157df08cbf183149bcf50c9f5151ed4/error_prone_annotations-2.0.8.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.hamcrest/hamcrest-core/1.3/42a25dc3219429f0e5d060061f71acb49bf010a0/hamcrest-core-1.3.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.objenesis/objenesis/2.1/87c0ea803b69252868d09308b4618f766f135a96/objenesis-2.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.google.code.findbugs/jsr305/1.3.9/40719ea6961c0cb6afaeb6a921eaa1f6afd4cfdf/jsr305-1.3.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.mysema.commons/mysema-commons-lang/0.2.4/d09c8489d54251a6c22fbce804bdd4a070557317/mysema-commons-lang-0.2.4.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.infradna.tool/bridge-method-annotation/1.13/18cdce50cde6f54ee5390d0907384f72183ff0fe/bridge-method-annotation-1.13.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot/1.3.5.RELEASE/b218ba5f3bd01e657fbde9b085722da1fafa4f8a/spring-boot-1.3.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-autoconfigure/1.3.5.RELEASE/2bcfa86bb3afd95eff5252db6d78f2693b706997/spring-boot-autoconfigure-1.3.5.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.yaml/snakeyaml/1.16/d64fb662c9e42789149f5078a62a22edda786c6a/snakeyaml-1.16.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.aspectj/aspectjweaver/1.8.9/db28774f477f07220eac18d5ec9c4e01f48589d7/aspectjweaver-1.8.9.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat/tomcat-jdbc/8.0.33/7f1b6d609f9c2e045e8d7759e96605841fffdf82/tomcat-jdbc-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-jdbc/4.2.6.RELEASE/16075bfb0901a5b89c5be975365ff09b2df04abb/spring-jdbc-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework.data/spring-data-commons/1.11.4.RELEASE/c2b1fd4dbf7dff772d6124bb35892759e8bf088e/spring-data-commons-1.11.4.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-orm/4.2.6.RELEASE/2ef30e836028ebe4dbba0d8355929625a758ed8d/spring-orm-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.springframework/spring-tx/4.2.6.RELEASE/ba7502c0644414748b1eeb65b4193b05d335a110/spring-tx-4.2.6.RELEASE.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/aopalliance/aopalliance/1.0/235ba8b489512805ac13a8f9ea77a1ca5ebe3e8/aopalliance-1.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/commons-logging/commons-logging/1.1.1/5043bfebc3db072ed80fbd362e7caf00e885d8ae/commons-logging-1.1.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.springfox/springfox-core/2.6.1/5c502e6b9d50d34096077eacc384cd00f63710e1/springfox-core-2.6.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.pdfbox/fontbox/2.0.0/6f762d4e1c8ea99589d30597ef3731dfdcee43e2/fontbox-2.0.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.httpcomponents/httpcore/4.4.4/b31526a230871fbe285fbcbe2813f9c0839ae9b0/httpcore-4.4.4.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.ning/async-http-client/1.9.20/35873163b7d5043ab8f921d3f5e66fdb98abdc43/async-http-client-1.9.20.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.objectweb.proactive/programming-annotation/10.1.0-SNAPSHOT/4f2f9440d9f6620f15bd38f4c2063e6c59563a30/programming-annotation-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.objectweb.proactive/programming-util/10.1.0-SNAPSHOT/58a1498f2f721e6f650767f13dad1ac8dd690e9/programming-util-10.1.0-SNAPSHOT.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.ow2.proactive/process-tree-killer/1.0.1/ab24bc603222e65bf80b0365cf0413d75fa67f3a/process-tree-killer-1.0.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.resteasy/resteasy-jackson-provider/3.0.26.Final/1e24718fd6ddc6db564a7e887681e43fb92b5ca3/resteasy-jackson-provider-3.0.26.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.resteasy/resteasy-multipart-provider/3.0.26.Final/c0e5977d4f134bed5e4841a27f1d6a5002b42bb/resteasy-multipart-provider-3.0.26.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.commons/commons-vfs2/2.1.1744488.1/af8c7d2da3d7d04a42a59e746b6fcce17ea15988/commons-vfs2-2.1.1744488.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.codehaus.woodstox/stax2-api/3.1.4/ac19014b1e6a7c08aad07fe114af792676b685b7/stax2-api-3.1.4.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.tomcat/tomcat-juli/8.0.33/330aecfa895156cea91c576cb6609537152761f9/tomcat-juli-8.0.33.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/io.netty/netty/3.10.1.Final/ca63e69a44f86ce822c73fee02267de6526acb68/netty-3.10.1.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/net.java.dev.jna/jna/4.1.0/1c12d070e602efd8021891cdd7fd18bc129372d4/jna-4.1.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jvnet.winp/winp/1.23-proactive/62a12fc0ba84d8aaa1feccf7665ad7a0d0dea285/winp-1.23-proactive.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-jaxrs/1.9.13/534d72d2b9d6199dd531dfb27083dd4844082bba/jackson-jaxrs-1.9.13.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-xc/1.9.13/e3480072bc95c202476ffa1de99ff7ee9149f29c/jackson-xc-1.9.13.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.resteasy/resteasy-jaxrs/3.0.26.Final/8e66f0d4e64af3d1596421f7355520d43f99b71a/resteasy-jaxrs-3.0.26.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.resteasy/resteasy-client/3.0.26.Final/25365b2ef5ca913d4ea58450e351d2772917c5d0/resteasy-client-3.0.26.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.resteasy/resteasy-jaxb-provider/3.0.26.Final/72e59310a0fbcfb060df92003ee71e3c08f1701f/resteasy-jaxb-provider-3.0.26.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.sun.mail/javax.mail/1.5.5/ffcd34b5de820f35bcc9303649cf6ab2c65ad44e/javax.mail-1.5.5.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.apache.james/apache-mime4j/0.6/945007627e8d12275d755081a9e609c018e1210d/apache-mime4j-0.6.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.spec.javax.ws.rs/jboss-jaxrs-api_2.0_spec/1.0.1.Beta1/66c0832acaba167c2fd7ee4cbaf212347854d57c/jboss-jaxrs-api_2.0_spec-1.0.1.Beta1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.jboss.spec.javax.annotation/jboss-annotations-api_1.2_spec/1.0.0.Final/6d7ff02a645227876ed550900d32d618b8f0d556/jboss-annotations-api_1.2_spec-1.0.0.Final.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/javax.activation/activation/1.1.1/485de3a253e23f645037828c07f1d7f1af40763a/activation-1.1.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/net.jcip/jcip-annotations/1.0/afba4942caaeaf46aab0b976afd57cc7c181467e/jcip-annotations-1.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-impl/2.2.7/a29e53347934e694c9551981cecd242fad05022b/jaxb-impl-2.2.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.sun.xml.bind/jaxb-core/2.2.7/f327817188a7dce503ae3c667c5931077630b0a1/jaxb-core-2.2.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.sun.xml.fastinfoset/FastInfoset/1.2.12/e8c1c096162a146c2d84135c5036edf54c1b1d38/FastInfoset-1.2.12.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/javax.xml.bind/jaxb-api/2.2.7/2f51c4bb4724ea408096ee9100ff2827e07e5b7c/jaxb-api-2.2.7.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.sun.istack/istack-commons-runtime/2.16/927eb6fbb003f40d536efd96e7cbcb7ea4c1c2d0/istack-commons-runtime-2.16.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/javax.xml.bind/jsr173_api/1.0/c79b8431c3104315c0aeaed7bf23d0ab0edbaa09/jsr173_api-1.0.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/com.fasterxml/classmate/1.3.1/2ad2fd09dcf5607ca96f8ef432096a96986c40a/classmate-1.3.1.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.10/4b95f4897fa13f2cd904aee711aeafc0c5295cd8/commons-codec-1.10.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/xml-apis/xml-apis/1.4.01/3789d9fada2d3d458c4ba2de349d48780f381ee3/xml-apis-1.4.01.jar
+  - /home/mael/.gradle/caches/modules-2/files-2.1/org.codehaus.jackson/jackson-mapper-asl/1.9.13/1ee2f2bed0e5dd29d1cb155a166e6f8d50bbddb7/jackson-mapper-asl-1.9.13.jar
+  - /media/mael/stamp/wp3/projects/catalog/build/libs/catalog-10.1.0-SNAPSHOT-tests.jar
+* Found 14 matching classes for prefix org.ow2.proactive.catalog.repository.entity
+* Current class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectRevisionEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectRevisionEntity
+* Starting Client-0
+* Connecting to master process on port 9664
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.QCatalogObjectRevisionEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 17
+  - Branch 8
+  - Exception 0
+  - MutationFactory 0
+  - Output 0
+  - Method 5
+  - MethodNoException 5
+  - CBranchFitnessFactory 8
+* Using seed 1561621758388
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 8 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.BucketEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.BucketEntity
+* Starting Client-0
+* Connecting to master process on port 17189
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.BucketEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 35
+  - Branch 27
+  - Exception 0
+  - MutationFactory 45
+  - Output 21
+  - Method 15
+  - MethodNoException 15
+  - CBranchFitnessFactory 27
+* Using seed 1561621773659
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 17 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.metamodel.BucketEntityMetaModelEnum
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.metamodel.BucketEntityMetaModelEnum
+* Starting Client-0
+* Connecting to master process on port 20730
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.metamodel.BucketEntityMetaModelEnum
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 1
+  - Branch 1
+  - Exception 0
+  - MutationFactory 0
+  - Output 8
+  - Method 1
+  - MethodNoException 1
+  - CBranchFitnessFactory 1
+* Using seed 1561621787386
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 1 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.BucketEntityTest
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.BucketEntityTest
+* Starting Client-0
+* Connecting to master process on port 4744
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.BucketEntityTest
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 36
+  - Branch 10
+  - Exception 0
+  - MutationFactory 17
+  - Output 0
+  - Method 1
+  - MethodNoException 1
+  - CBranchFitnessFactory 10
+* Using seed 1561621793232
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 10 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntityTest
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntityTest
+* Starting Client-0
+* Connecting to master process on port 18155
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.CatalogObjectEntityTest
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 37
+  - Branch 7
+  - Exception 0
+  - MutationFactory 24
+  - Output 0
+  - Method 1
+  - MethodNoException 1
+  - CBranchFitnessFactory 7
+* Using seed 1561621798724
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 7 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.QBucketEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.QBucketEntity
+* Starting Client-0
+* Connecting to master process on port 10496
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.QBucketEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 18
+  - Branch 3
+  - Exception 0
+  - MutationFactory 0
+  - Output 0
+  - Method 3
+  - MethodNoException 3
+  - CBranchFitnessFactory 3
+* Using seed 1561621805295
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 3 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntity
+* Starting Client-0
+* Connecting to master process on port 17903
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 48
+  - Branch 47
+  - Exception 0
+  - MutationFactory 73
+  - Output 36
+  - Method 33
+  - MethodNoException 33
+  - CBranchFitnessFactory 47
+* Using seed 1561621821804
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 37 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.metamodel.CatalogObjectEntityMetaModelEnum
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.metamodel.CatalogObjectEntityMetaModelEnum
+* Starting Client-0
+* Connecting to master process on port 14318
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.metamodel.CatalogObjectEntityMetaModelEnum
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 1
+  - Branch 1
+  - Exception 0
+  - MutationFactory 0
+  - Output 8
+  - Method 1
+  - MethodNoException 1
+  - CBranchFitnessFactory 1
+* Using seed 1561621835973
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 1 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntityTest
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntityTest
+* Starting Client-0
+* Connecting to master process on port 16648
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntityTest
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 10
+  - Branch 3
+  - Exception 0
+  - MutationFactory 5
+  - Output 0
+  - Method 1
+  - MethodNoException 1
+  - CBranchFitnessFactory 3
+* Using seed 1561621841469
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 3 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntity
+* Starting Client-0
+* Connecting to master process on port 7094
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.CatalogObjectEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 66
+  - Branch 63
+  - Exception 0
+  - MutationFactory 118
+  - Output 29
+  - Method 39
+  - MethodNoException 39
+  - CBranchFitnessFactory 63
+* Using seed 1561621848157
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 45 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity
+* Starting Client-0
+* Connecting to master process on port 2484
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 17
+  - Branch 10
+  - Exception 0
+  - MutationFactory 0
+  - Output 0
+  - Method 5
+  - MethodNoException 5
+  - CBranchFitnessFactory 10
+* Using seed 1561621864566
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 10 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.KeyValueLabelMetadataEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.KeyValueLabelMetadataEntity
+* Starting Client-0
+* Connecting to master process on port 7895
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.KeyValueLabelMetadataEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 26
+  - Branch 46
+  - Exception 0
+  - MutationFactory 202
+  - Output 24
+  - Method 18
+  - MethodNoException 18
+  - CBranchFitnessFactory 46
+* Using seed 1561621879571
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 24 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.QKeyValueLabelMetadataEntity
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.QKeyValueLabelMetadataEntity
+* Starting Client-0
+* Connecting to master process on port 4790
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.QKeyValueLabelMetadataEntity
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 15
+  - Branch 8
+  - Exception 0
+  - MutationFactory 0
+  - Output 0
+  - Method 5
+  - MethodNoException 5
+  - CBranchFitnessFactory 8
+* Using seed 1561621892635
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 8 / 8
+* Computation finished
+* Current class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity_CatalogObjectEntityKey
+* Going to generate test cases for class: org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity_CatalogObjectEntityKey
+* Starting Client-0
+* Connecting to master process on port 13055
+* Analyzing classpath: 
+* Inheritance tree loaded from /tmp/ES_inheritancetree4864595572512690452.xml.gz
+* Finished analyzing classpath
+* Generating tests for class org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity_CatalogObjectEntityKey
+* Test criteria:
+  - Line Coverage
+  - Branch Coverage
+  - Exception
+  - Mutation testing (weak)
+  - Method-Output Coverage
+  - Top-Level Method Coverage
+  - No-Exception Top-Level Method Coverage
+  - Context Branch Coverage
+* Setting up search algorithm for whole suite generation
+Originally, MOSA was implemented with a 'RANK_CROWD_DISTANCE_TOURNAMENT' selection function. You may want to consider using it.
+* Total number of test goals: 
+  - Line 12
+  - Branch 3
+  - Exception 0
+  - MutationFactory 0
+  - Output 0
+  - Method 3
+  - MethodNoException 3
+  - CBranchFitnessFactory 3
+* Using seed 1561621906899
+* Starting evolution
+[Progress:>                             0%] [Cov:>                                  0%]* Initialsss Number of Goals in DynMOSA = 3 / 8
+* Computation finished
+
+Standard output:
+
+[MASTER] 09:49:32.428 [logback-2] ERROR TestCluster - Failed to check cache for com.mysema.query.types.path.BeanPath<T> : Type points to itself
+[MASTER] 09:49:32.982 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.QCatalogObjectRevisionEntity with seed 1561621758388. Configuration id : null
+java.lang.RuntimeException: not supported: class org.evosuite.utils.generic.WildcardTypeImpl
+	at com.googlecode.gentyref.GenericTypeReflector.erase(GenericTypeReflector.java:44) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.satisfiesBoundaries(GenericClass.java:1637) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.getAssignableClasses(CastClassManager.java:399) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.selectCastClass(CastClassManager.java:494) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericWildcardInstantiation(GenericClass.java:690) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:586) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:634) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericParameterizedTypeInstantiation(GenericClass.java:766) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:594) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:672) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:570) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericAccessibleObject.getGenericInstantiationFromReturnValue(GenericAccessibleObject.java:338) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.cacheGenerators(TestCluster.java:465) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1367) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1384) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createVariable(TestFactory.java:1442) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createOrReuseVariable(TestFactory.java:1397) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.satisfyParameters(TestFactory.java:2386) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addMethodFor(TestFactory.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addCallFor(TestFactory.java:130) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomCallOnObjectAt(TestFactory.java:2317) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.mutation.RandomInsertion.insertStatement(RandomInsertion.java:127) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomStatement(TestFactory.java:2329) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getRandomTestCase(RandomLengthTestFactory.java:69) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:89) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:40) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:88) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:84) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateRandomPopulation(GeneticAlgorithm.java:418) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateInitialPopulation(GeneticAlgorithm.java:361) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:332) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:49:33.087 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:49:33.189 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:49:46.701 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.BucketEntity with seed 1561621773659. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:49:46.806 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:49:46.907 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:49:52.545 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.metamodel.BucketEntityMetaModelEnum with seed 1561621787386. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:49:52.649 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:49:52.750 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:49:58.055 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.BucketEntityTest with seed 1561621793232. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:49:58.161 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:49:58.261 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:50:04.599 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntityTest with seed 1561621798724. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:50:04.706 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:50:04.807 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:50:19.485 [logback-2] ERROR TestCluster - Failed to check cache for com.mysema.query.types.path.BeanPath<T> : Type points to itself
+[MASTER] 09:50:21.120 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.QBucketEntity with seed 1561621805295. Configuration id : null
+java.lang.RuntimeException: not supported: class org.evosuite.utils.generic.WildcardTypeImpl
+	at com.googlecode.gentyref.GenericTypeReflector.erase(GenericTypeReflector.java:44) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.satisfiesBoundaries(GenericClass.java:1637) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.getAssignableClasses(CastClassManager.java:399) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.selectCastClass(CastClassManager.java:494) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericWildcardInstantiation(GenericClass.java:690) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:586) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:634) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericParameterizedTypeInstantiation(GenericClass.java:766) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:594) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:672) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:570) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericAccessibleObject.getGenericInstantiationFromReturnValue(GenericAccessibleObject.java:338) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.cacheGenerators(TestCluster.java:465) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1367) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1384) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createVariable(TestFactory.java:1442) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createOrReuseVariable(TestFactory.java:1397) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.satisfyParameters(TestFactory.java:2386) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addMethodFor(TestFactory.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addCallFor(TestFactory.java:130) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomCallOnObjectAt(TestFactory.java:2317) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.mutation.RandomInsertion.insertStatement(RandomInsertion.java:127) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomStatement(TestFactory.java:2329) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getRandomTestCase(RandomLengthTestFactory.java:69) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:89) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:40) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:88) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:84) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateRandomPopulation(GeneticAlgorithm.java:418) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateInitialPopulation(GeneticAlgorithm.java:361) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:332) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:50:21.224 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:50:21.325 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:50:35.294 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntity with seed 1561621821804. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:50:35.399 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:50:35.500 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:50:40.818 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.metamodel.CatalogObjectEntityMetaModelEnum with seed 1561621835973. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:50:40.921 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:50:41.022 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:50:47.478 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.CatalogObjectRevisionEntityTest with seed 1561621841469. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:50:47.583 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:50:47.684 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:51:03.889 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.CatalogObjectEntity with seed 1561621848157. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:51:03.997 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:51:04.098 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:51:18.874 [logback-2] ERROR TestCluster - Failed to check cache for com.mysema.query.types.path.BeanPath<T> : Type points to itself
+[MASTER] 09:51:18.998 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:51:19.098 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:51:31.927 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.KeyValueLabelMetadataEntity with seed 1561621879571. Configuration id : null
+java.lang.ClassCastException: org.evosuite.testsuite.TestSuiteChromosome cannot be cast to org.evosuite.testcase.TestChromosome
+	at org.evosuite.ga.metaheuristics.mosa.structural.MultiCriteriatManager.calculateFitness(MultiCriteriatManager.java:363) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.calculateFitness(DynaMOSA.java:237) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.calculateFitness(GeneticAlgorithm.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:335) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:51:32.033 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:51:32.134 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:51:46.309 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:51:46.409 [main] ERROR TestGeneration - failed to write statistics data
+[MASTER] 09:51:59.343 [logback-2] ERROR TestCluster - Failed to check cache for com.mysema.query.types.expr.SimpleExpression<T> : Type points to itself
+[MASTER] 09:51:59.416 [logback-2] ERROR ClientNodeImpl - Error when generating tests for: org.ow2.proactive.catalog.repository.entity.QCatalogObjectEntity_CatalogObjectEntityKey with seed 1561621906899. Configuration id : null
+java.lang.RuntimeException: not supported: class org.evosuite.utils.generic.WildcardTypeImpl
+	at com.googlecode.gentyref.GenericTypeReflector.erase(GenericTypeReflector.java:44) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.satisfiesBoundaries(GenericClass.java:1637) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.getAssignableClasses(CastClassManager.java:399) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.seeding.CastClassManager.selectCastClass(CastClassManager.java:494) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericWildcardInstantiation(GenericClass.java:690) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:586) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:634) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericParameterizedTypeInstantiation(GenericClass.java:766) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:594) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericTypeVariableInstantiation(GenericClass.java:672) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:591) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericClass.getGenericInstantiation(GenericClass.java:570) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.utils.generic.GenericAccessibleObject.getGenericInstantiationFromReturnValue(GenericAccessibleObject.java:338) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.cacheGenerators(TestCluster.java:465) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1367) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.setup.TestCluster.hasGenerator(TestCluster.java:1384) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createVariable(TestFactory.java:1442) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.createOrReuseVariable(TestFactory.java:1397) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.satisfyParameters(TestFactory.java:2386) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addMethodFor(TestFactory.java:601) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.addCallFor(TestFactory.java:130) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomCallOnObjectAt(TestFactory.java:2317) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.mutation.RandomInsertion.insertStatement(RandomInsertion.java:127) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.TestFactory.insertRandomStatement(TestFactory.java:2329) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getRandomTestCase(RandomLengthTestFactory.java:69) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:89) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testcase.factories.RandomLengthTestFactory.getChromosome(RandomLengthTestFactory.java:40) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:88) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.archive.ArchiveTestChromosomeFactory.getChromosome(ArchiveTestChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:84) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.testsuite.factories.TestSuiteChromosomeFactory.getChromosome(TestSuiteChromosomeFactory.java:35) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateRandomPopulation(GeneticAlgorithm.java:418) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.GeneticAlgorithm.generateInitialPopulation(GeneticAlgorithm.java:361) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.AbstractMOSA.initializePopulation(AbstractMOSA.java:332) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.ga.metaheuristics.mosa.DynaMOSA.generateSolution(DynaMOSA.java:148) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.strategy.WholeTestSuiteStrategy.generateTests(WholeTestSuiteStrategy.java:113) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTests(TestSuiteGenerator.java:676) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.TestSuiteGenerator.generateTestSuite(TestSuiteGenerator.java:244) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at org.evosuite.rmi.service.ClientNodeImpl$1.run(ClientNodeImpl.java:160) ~[evosuite-master-1.0.7-SNAPSHOT.jar:1.0.7-SNAPSHOT]
+	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511) [na:1.8.0_212]
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149) [na:1.8.0_212]
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624) [na:1.8.0_212]
+	at java.lang.Thread.run(Thread.java:748) [na:1.8.0_212]
+[MASTER] 09:51:59.519 [main] ERROR SearchStatistics - No statistics has been saved because EvoSuite failed to generate any test case
+[MASTER] 09:51:59.620 [main] ERROR TestGeneration - failed to write statistics data
