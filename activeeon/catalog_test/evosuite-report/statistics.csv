@@ -1,3 +1,0 @@
-TARGET_CLASS,search_budget,Total_Time,Length,Size,LineCoverage,BranchCoverage,OutputCoverage,WeakMutationScore,Implicit_MethodExceptions,MutationScore
-org.ow2.proactive.catalog.util.LinkUtil,60,73619,12,8,0.48484848484848486,1.0,0.18181818181818182,0.3,5,0.25555555555555554
-org.ow2.proactive.catalog.util.LinkUtil,60,71439,14,9,0.48484848484848486,1.0,0.18181818181818182,0.3,5,0.2777777777777778
