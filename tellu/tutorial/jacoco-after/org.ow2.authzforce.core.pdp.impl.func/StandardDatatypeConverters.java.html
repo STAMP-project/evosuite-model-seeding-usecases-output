@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StandardDatatypeConverters.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">StandardDatatypeConverters.java</span></div><h1>StandardDatatypeConverters.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import org.ow2.authzforce.core.pdp.api.func.DatatypeConversionFunction.TypeConverter;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.DoubleValue;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.SimpleValue;
+import org.ow2.authzforce.core.pdp.api.value.StringParseableValue;
+import org.ow2.authzforce.core.pdp.api.value.StringValue;
+
+/**
+ * Standard primitive datatype conversion functions: double-to-integer, integer-to-double, *-from-string, *-to-string, etc.
+ * 
+ * @version $Id: $
+ */
+final class StandardDatatypeConverters
+{
+
+<span class="fc" id="L36">	static final TypeConverter&lt;IntegerValue, DoubleValue&gt; DOUBLE_TO_INTEGER = arg -&gt; IntegerValue.valueOf(arg.longValue());</span>
+
+<span class="fc" id="L38">	private static final IllegalArgumentException INTEGER_OUT_OF_RANGE_EXCEPTION = new IllegalArgumentException(&quot;Integer argument is outside the range which can be represented by a double&quot;);</span>
+
+<span class="fc" id="L40">	static final TypeConverter&lt;DoubleValue, IntegerValue&gt; INTEGER_TO_DOUBLE = arg -&gt; {</span>
+		try
+		{
+<span class="fc" id="L43">			return new DoubleValue(Double.valueOf(arg.doubleValue()));</span>
+		}
+<span class="nc" id="L45">		catch (final IllegalArgumentException e)</span>
+		{
+<span class="nc" id="L47">			throw INTEGER_OUT_OF_RANGE_EXCEPTION;</span>
+		}
+	};
+
+	static class FromStringConverter&lt;RETURN extends SimpleValue&lt;?&gt;&gt; implements TypeConverter&lt;RETURN, StringValue&gt;
+	{
+		private final StringParseableValue.Factory&lt;RETURN&gt; returnTypeFactory;
+
+		FromStringConverter(final StringParseableValue.Factory&lt;RETURN&gt; returnTypeFactory)
+<span class="fc" id="L56">		{</span>
+<span class="fc" id="L57">			this.returnTypeFactory = returnTypeFactory;</span>
+<span class="fc" id="L58">		}</span>
+
+		@Override
+		public final RETURN convert(final StringValue arg)
+		{
+<span class="fc" id="L63">			return returnTypeFactory.getInstance(arg.getUnderlyingValue());</span>
+
+		}
+
+	}
+
+<span class="fc" id="L69">	static class ToStringConverter&lt;PARAM extends SimpleValue&lt;?&gt;&gt; implements TypeConverter&lt;StringValue, PARAM&gt;</span>
+	{
+		// not final because overriden specially by BooleanToString
+		@Override
+		public StringValue convert(final PARAM arg)
+		{
+<span class="fc" id="L75">			return new StringValue(arg.toString());</span>
+		}
+
+	}
+
+<span class="fc" id="L80">	static final ToStringConverter&lt;BooleanValue&gt; BOOLEAN_TO_STRING = new ToStringConverter&lt;BooleanValue&gt;()</span>
+<span class="fc" id="L81">	{</span>
+		@Override
+		public final StringValue convert(final BooleanValue arg)
+		{
+<span class="fc" id="L85">			return StringValue.getInstance(arg);</span>
+		}
+
+	};
+
+	private StandardDatatypeConverters()
+	{
+		// empty private constructor to prevent instantiation
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

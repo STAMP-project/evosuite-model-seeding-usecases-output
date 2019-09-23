@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableFunctionRegistry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">ImmutableFunctionRegistry.java</span></div><h1>ImmutableFunctionRegistry.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * 
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.func.GenericHigherOrderFunctionFactory;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.impl.ImmutablePdpExtensionRegistry;
+
+/**
+ * &lt;p&gt;
+ * Immutable function registry
+ * &lt;/p&gt;
+ *
+ * 
+ * @version $Id: $
+ */
+public final class ImmutableFunctionRegistry implements FunctionRegistry
+{
+
+	private final ImmutablePdpExtensionRegistry&lt;Function&lt;?&gt;&gt; nonGenericFunctionRegistry;
+	private final ImmutablePdpExtensionRegistry&lt;GenericHigherOrderFunctionFactory&gt; genericHigherOrderFunctionFactoryRegistry;
+
+	/**
+	 * Constructor
+	 *
+	 * @param nonGenericFunctions
+	 *            (mandatory) non-generic functions
+	 * @param genericFunctionFactories
+	 *            (optional) generic function factories
+	 */
+	public ImmutableFunctionRegistry(final Set&lt;Function&lt;?&gt;&gt; nonGenericFunctions, final Set&lt;GenericHigherOrderFunctionFactory&gt; genericFunctionFactories)
+<span class="fc" id="L54">	{</span>
+<span class="fc" id="L55">		this.nonGenericFunctionRegistry = new ImmutablePdpExtensionRegistry&lt;&gt;(Function.class, nonGenericFunctions);</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">		this.genericHigherOrderFunctionFactoryRegistry = genericFunctionFactories == null ? null : new ImmutablePdpExtensionRegistry&lt;&gt;(GenericHigherOrderFunctionFactory.class,</span>
+				genericFunctionFactories);
+<span class="fc" id="L58">	}</span>
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.ow2.authzforce.core.pdp.impl.func.FunctionRegistry#getFunction(java.lang.String)
+	 */
+	@Override
+	public Function&lt;?&gt; getFunction(final String functionId)
+	{
+<span class="fc" id="L68">		return nonGenericFunctionRegistry.getExtension(functionId);</span>
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see org.ow2.authzforce.core.pdp.impl.func.FunctionRegistry#getFunction(java.lang.String, org.ow2.authzforce.core.pdp.api.value.DatatypeFactory)
+	 */
+	@Override
+	public Function&lt;?&gt; getFunction(final String functionId, final Datatype&lt;? extends AttributeValue&gt; subFunctionReturnType)
+	{
+<span class="fc" id="L79">		final Function&lt;?&gt; nonGenericFunc = nonGenericFunctionRegistry.getExtension(functionId);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">		if (nonGenericFunc != null)</span>
+		{
+<span class="fc" id="L82">			return nonGenericFunc;</span>
+		}
+
+<span class="pc bpc" id="L85" title="1 of 2 branches missed.">		if (genericHigherOrderFunctionFactoryRegistry == null)</span>
+		{
+<span class="nc" id="L87">			return null;</span>
+		}
+
+<span class="fc" id="L90">		final GenericHigherOrderFunctionFactory funcFactory = genericHigherOrderFunctionFactoryRegistry.getExtension(functionId);</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">		if (funcFactory == null)</span>
+		{
+<span class="nc" id="L93">			return null;</span>
+		}
+
+<span class="fc" id="L96">		return funcFactory.getInstance(subFunctionReturnType);</span>
+	}
+
+	@Override
+	public Set&lt;Function&lt;?&gt;&gt; getNonGenericFunctions()
+	{
+<span class="nc" id="L102">		return this.nonGenericFunctionRegistry.getExtensions();</span>
+	}
+
+	@Override
+	public Set&lt;GenericHigherOrderFunctionFactory&gt; getGenericFunctionFactories()
+	{
+<span class="nc" id="L108">		return this.genericHigherOrderFunctionFactoryRegistry.getExtensions();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

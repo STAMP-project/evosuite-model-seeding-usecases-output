@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FlattenedPolicyTree.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.policy</a> &gt; <span class="el_source">FlattenedPolicyTree.java</span></div><h1>FlattenedPolicyTree.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.policy;
+
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyRefsMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.TopLevelPolicyElementType;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterators;
+
+/**
+ * Flattened view of a policy tree made of a root policy and, if any (e.g. the root policy is a XACML PolicySet enclosing Policy(Set)IdReferences), policies referenced from it. (This assumes that all
+ * policy references have been statically resolved.)
+ * 
+ * @version $Id: $
+ */
+public final class FlattenedPolicyTree implements Iterable&lt;PrimaryPolicyMetadata&gt;
+{
+<span class="nc" id="L41">	private static final IllegalArgumentException ILLEGAL_ARGUMENTS_EXCEPTION = new IllegalArgumentException(&quot;Undefined root policy metadata&quot;);</span>
+
+	private final PrimaryPolicyMetadata immutableRootPolicyMetadata;
+	private final Optional&lt;PolicyRefsMetadata&gt; immutableRootPolicyRefsMetadata;
+
+<span class="nc" id="L46">	private transient ImmutableMap&lt;String, PrimaryPolicyMetadata&gt; lazilyFilledMapOfRefPolicies = null;</span>
+<span class="nc" id="L47">	private transient ImmutableMap&lt;String, PrimaryPolicyMetadata&gt; lazilyFilledMapOfRefPolicySets = null;</span>
+
+	/**
+	 * Creates view of applicable policies from the root policy metadata and map of referenced policies. All fields made immutable by this constructor.
+	 *
+	 * @param rootPolicyMetadata
+	 *            root policy metadata
+	 * @param rootPolicyRefsMetadata
+	 *            (optional) root policy's extra metadata, if they is any
+	 */
+	public FlattenedPolicyTree(final PrimaryPolicyMetadata rootPolicyMetadata, final Optional&lt;PolicyRefsMetadata&gt; rootPolicyRefsMetadata)
+<span class="nc" id="L58">	{</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		if (rootPolicyMetadata == null)</span>
+		{
+<span class="nc" id="L61">			throw ILLEGAL_ARGUMENTS_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L64">		this.immutableRootPolicyMetadata = rootPolicyMetadata;</span>
+<span class="nc" id="L65">		this.immutableRootPolicyRefsMetadata = rootPolicyRefsMetadata;</span>
+<span class="nc" id="L66">	}</span>
+
+	/**
+	 * Get the root policy type
+	 *
+	 * @return root policy type
+	 */
+	public PrimaryPolicyMetadata rootPolicyMetadata()
+	{
+<span class="nc" id="L75">		return this.immutableRootPolicyMetadata;</span>
+	}
+
+	/**
+	 * Get the extra metadata of the root policy
+	 *
+	 * @return policy version
+	 */
+	public Optional&lt;PolicyRefsMetadata&gt; rootPolicyRefsMetadata()
+	{
+<span class="nc" id="L85">		return this.immutableRootPolicyRefsMetadata;</span>
+	}
+
+	private void initMaps()
+	{
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (immutableRootPolicyRefsMetadata.isPresent())</span>
+		{
+<span class="nc" id="L92">			final Set&lt;PrimaryPolicyMetadata&gt; allRefPolicies = immutableRootPolicyRefsMetadata.get().getRefPolicies();</span>
+			final int maxNumOfRefPolicies;
+			final int maxNumOfRefPolicySets;
+<span class="nc bnc" id="L95" title="All 2 branches missed.">			if (this.rootPolicyMetadata().getType() == TopLevelPolicyElementType.POLICY)</span>
+			{
+<span class="nc" id="L97">				maxNumOfRefPolicies = 1 + allRefPolicies.size();</span>
+<span class="nc" id="L98">				maxNumOfRefPolicySets = allRefPolicies.size();</span>
+			}
+			else
+			{
+<span class="nc" id="L102">				maxNumOfRefPolicies = allRefPolicies.size();</span>
+<span class="nc" id="L103">				maxNumOfRefPolicySets = 1 + allRefPolicies.size();</span>
+			}
+
+<span class="nc" id="L106">			final Map&lt;String, PrimaryPolicyMetadata&gt; mutableMapOfRefPolicies = HashCollections.newUpdatableMap(maxNumOfRefPolicies);</span>
+<span class="nc" id="L107">			final Map&lt;String, PrimaryPolicyMetadata&gt; mutableMapOfRefPolicySets = HashCollections.newUpdatableMap(maxNumOfRefPolicySets);</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">			for (final PrimaryPolicyMetadata refPolicyMetadata : allRefPolicies)</span>
+			{
+<span class="nc bnc" id="L111" title="All 2 branches missed.">				if (refPolicyMetadata.getType() == TopLevelPolicyElementType.POLICY)</span>
+				{
+<span class="nc" id="L113">					mutableMapOfRefPolicies.put(refPolicyMetadata.getId(), refPolicyMetadata);</span>
+				}
+				else
+				{
+<span class="nc" id="L117">					mutableMapOfRefPolicySets.put(refPolicyMetadata.getId(), refPolicyMetadata);</span>
+				}
+<span class="nc" id="L119">			}</span>
+
+<span class="nc" id="L121">			this.lazilyFilledMapOfRefPolicies = ImmutableMap.copyOf(mutableMapOfRefPolicies);</span>
+<span class="nc" id="L122">			this.lazilyFilledMapOfRefPolicySets = ImmutableMap.copyOf(mutableMapOfRefPolicySets);</span>
+<span class="nc" id="L123">		}</span>
+		else
+		{
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			if (this.rootPolicyMetadata().getType() == TopLevelPolicyElementType.POLICY)</span>
+			{
+<span class="nc" id="L128">				this.lazilyFilledMapOfRefPolicies = ImmutableMap.of(this.immutableRootPolicyMetadata.getId(), immutableRootPolicyMetadata);</span>
+<span class="nc" id="L129">				this.lazilyFilledMapOfRefPolicySets = ImmutableMap.of();</span>
+			}
+			else
+			{
+<span class="nc" id="L133">				this.lazilyFilledMapOfRefPolicies = ImmutableMap.of();</span>
+<span class="nc" id="L134">				this.lazilyFilledMapOfRefPolicySets = ImmutableMap.of(this.immutableRootPolicyMetadata.getId(), immutableRootPolicyMetadata);</span>
+			}
+		}
+<span class="nc" id="L137">	}</span>
+
+	private Map&lt;String, PrimaryPolicyMetadata&gt; getMapOfRefPolicies()
+	{
+<span class="nc bnc" id="L141" title="All 2 branches missed.">		if (this.lazilyFilledMapOfRefPolicies == null)</span>
+		{
+<span class="nc" id="L143">			initMaps();</span>
+		}
+
+<span class="nc" id="L146">		return this.lazilyFilledMapOfRefPolicies;</span>
+
+	}
+
+	private Map&lt;String, PrimaryPolicyMetadata&gt; getMapOfRefPolicySets()
+	{
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		if (this.lazilyFilledMapOfRefPolicySets == null)</span>
+		{
+<span class="nc" id="L154">			initMaps();</span>
+		}
+
+<span class="nc" id="L157">		return this.lazilyFilledMapOfRefPolicySets;</span>
+	}
+
+	/**
+	 * Type-specific policy iterator
+	 * 
+	 * @param policyType
+	 *            policy type (Policy or PolicySet)
+	 *
+	 * @return unmodifiable iterator over applicable policies of requested type
+	 */
+	public Iterator&lt;PrimaryPolicyMetadata&gt; policyIterator(final TopLevelPolicyElementType policyType)
+	{
+<span class="nc bnc" id="L170" title="All 2 branches missed.">		return policyType == TopLevelPolicyElementType.POLICY ? getMapOfRefPolicies().values().iterator() : getMapOfRefPolicySets().values().iterator();</span>
+	}
+
+	/**
+	 * Get applicable policy matching a given policy type and ID
+	 * 
+	 * @param policyType
+	 *            policy type (Policy or PolicySet)
+	 *
+	 * @param policyId
+	 *            policy ID to be matched
+	 * @return matching applicable policy version; null if no match
+	 */
+	public PrimaryPolicyMetadata getPolicy(final TopLevelPolicyElementType policyType, final String policyId)
+	{
+<span class="nc bnc" id="L185" title="All 2 branches missed.">		return policyType == TopLevelPolicyElementType.POLICY ? getMapOfRefPolicies().get(policyId) : getMapOfRefPolicySets().get(policyId);</span>
+	}
+
+	/**
+	 * The first element is the root policy in the tree, then, if any (e.g. the root policy is a XACML PolicySet enclosing Policy(Set)IdReferences), come the policies referenced from it. (This assumes
+	 * that all policy references, e.g. Policy(Set)IdReferences, have been statically resolved.)
+	 */
+	@Override
+	public Iterator&lt;PrimaryPolicyMetadata&gt; iterator()
+	{
+<span class="nc" id="L195">		final Iterator&lt;PrimaryPolicyMetadata&gt; rootPolicyIterator = Iterators.singletonIterator(this.immutableRootPolicyMetadata);</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">		return immutableRootPolicyRefsMetadata.isPresent() ? Iterators.concat(rootPolicyIterator, this.immutableRootPolicyRefsMetadata.get().getRefPolicies().iterator()) : rootPolicyIterator;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

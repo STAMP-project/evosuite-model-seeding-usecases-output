@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PolicyVersions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.policy</a> &gt; <span class="el_source">PolicyVersions.java</span></div><h1>PolicyVersions.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.policy;
+
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NavigableSet;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersion;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersionPatterns;
+
+import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.UnmodifiableIterator;
+
+/**
+ * Policy versions sorted from latest version to oldest.
+ * &lt;p&gt;
+ * The choice to have the latest version in first position is motivated by §5.10 of XACML core spec: &quot;In the case that more than one matching version can be obtained, then the most recent one SHOULD
+ * be used.&quot;
+ *
+ * @param &lt;P&gt;
+ *            policy type (or any other type of data corresponding to a specific policy version)
+ * 
+ * @version $Id: $
+ */
+<span class="nc bnc" id="L44" title="All 2 branches missed.">public final class PolicyVersions&lt;P&gt; implements Iterable&lt;Entry&lt;PolicyVersion, P&gt;&gt;</span>
+{
+	private final ImmutableSortedMap&lt;PolicyVersion, P&gt; policiesByVersion;
+
+	/**
+	 * Creates instance
+	 *
+	 * @param versions
+	 *            policy versions
+	 */
+	public PolicyVersions(final Map&lt;PolicyVersion, P&gt; versions)
+<span class="nc" id="L55">	{</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		policiesByVersion = versions == null ? ImmutableSortedMap.&lt;PolicyVersion, P&gt;of() : ImmutableSortedMap.copyOf(versions, Collections.reverseOrder());</span>
+<span class="nc" id="L57">	}</span>
+
+	/**
+	 * Get policy in a specific version
+	 *
+	 * @param version
+	 *            policy version
+	 * @return policy
+	 */
+	public P get(final PolicyVersion version) {
+<span class="nc" id="L67">		return policiesByVersion.get(version);</span>
+	}
+
+	/**
+	 * Get latest policy version matching specific version patterns
+	 *
+	 * @param PolicyVersionPatterns
+	 *            version patterns
+	 * @return latest version; null if none matched
+	 */
+	public Entry&lt;PolicyVersion, P&gt; getLatest(final Optional&lt;PolicyVersionPatterns&gt; PolicyVersionPatterns) {
+<span class="nc bnc" id="L78" title="All 4 branches missed.">		assert PolicyVersionPatterns != null;</span>
+
+		// policiesByVersion is not empty -&gt; at least one value
+<span class="nc" id="L81">		final Iterator&lt;Entry&lt;PolicyVersion, P&gt;&gt; versionPolicyPairsIterator = policiesByVersion.entrySet().iterator();</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		if (!PolicyVersionPatterns.isPresent())</span>
+		{
+			/*
+			 * Return the latest version which is the first element by design (TreeMap initialized with reverse order on version keys). See §5.10 of XACML core spec:
+			 * &quot;In the case that more than one matching version can be obtained, then the most recent one SHOULD be used.&quot;
+			 */
+<span class="nc" id="L88">			return versionPolicyPairsIterator.next();</span>
+		}
+
+<span class="nc" id="L91">		final PolicyVersionPatterns nonNullPolicyVersionPatterns = PolicyVersionPatterns.get();</span>
+
+		// constraints not null
+		// in the loop, go on until LatestVersion matched, then go on as long as
+		// EarliestVersion
+		// matched, if Version matched, return the result
+<span class="nc" id="L97">		boolean latestVersionMatched = false;</span>
+<span class="nc" id="L98">		boolean earliestVersionMatched = false;</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		while (versionPolicyPairsIterator.hasNext())</span>
+		{
+<span class="nc" id="L101">			final Entry&lt;PolicyVersion, P&gt; versionPolicyPair = versionPolicyPairsIterator.next();</span>
+<span class="nc" id="L102">			final PolicyVersion version = versionPolicyPair.getKey();</span>
+			/*
+			 * Versions ordered by latest first, so check against constraints' LatestVersion pattern first. If LatestVersion is matched by this version, no need to check again for the next versions,
+			 * as they are already sorted from latest to earliest. If LatestVersion not matched yet, we check now.
+			 */
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			if (!latestVersionMatched)</span>
+			{
+<span class="nc" id="L109">				latestVersionMatched = nonNullPolicyVersionPatterns.matchLatestVersion(version);</span>
+			}
+
+			// If LatestVersion matched, check other constraints, else do
+			// nothing (check next
+			// version)
+<span class="nc bnc" id="L115" title="All 2 branches missed.">			if (latestVersionMatched)</span>
+			{
+				/*
+				 * If EarliestVersion already checked and not matched before, we would have returned null (see below). So at this point, EarliestVersion is either not checked yet or already matched.
+				 * So EarliestVersion no checked iff not already matched.
+				 */
+<span class="nc bnc" id="L121" title="All 2 branches missed.">				if (!earliestVersionMatched)</span>
+				{
+					// EarliestVersion not checked yet
+					// check against EarliestVersion pattern
+<span class="nc" id="L125">					earliestVersionMatched = nonNullPolicyVersionPatterns.matchEarliestVersion(version);</span>
+					/*
+					 * If still not matched, version cannot be in the [EarliestVersion, LatestVersion] interval. All next versions are earlier, so they cannot be either -&gt; no match
+					 */
+<span class="nc bnc" id="L129" title="All 2 branches missed.">					if (!earliestVersionMatched)</span>
+					{
+<span class="nc" id="L131">						return null;</span>
+					}
+				}
+
+				// EarliestVersion and LatestVersion matched.
+				// Check against Version pattern
+<span class="nc bnc" id="L137" title="All 2 branches missed.">				if (nonNullPolicyVersionPatterns.matchVersion(version))</span>
+				{
+					// all constraints matched, return the associated policy
+<span class="nc" id="L140">					return versionPolicyPair;</span>
+				}
+
+				// constraints not met, so try next version
+			}
+<span class="nc" id="L145">		}</span>
+
+		// no match found
+<span class="nc" id="L148">		return null;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public Iterator&lt;Entry&lt;PolicyVersion, P&gt;&gt; iterator() {
+<span class="nc" id="L154">		return policiesByVersion.entrySet().iterator();</span>
+	}
+
+	/**
+	 * Get number of versions
+	 * 
+	 * @return number of policy versions
+	 */
+	public int size() {
+<span class="nc" id="L163">		return this.policiesByVersion.size();</span>
+	}
+
+	/**
+	 * Get iterator over versions from oldest to latest
+	 * 
+	 * @return unmodifiable iterator over versions from oldest to latest
+	 */
+	public UnmodifiableIterator&lt;Entry&lt;PolicyVersion, P&gt;&gt; oldestToLatestIterator() {
+		/*
+		 * The map is sorted from latest to oldest by default, so &quot;descending&quot; in this case means from oldest to latest
+		 */
+<span class="nc" id="L175">		return policiesByVersion.descendingMap().entrySet().iterator();</span>
+	}
+
+	/**
+	 * Get versions from latest to oldest
+	 * 
+	 * @return versions from latest to oldest
+	 */
+	public NavigableSet&lt;PolicyVersion&gt; latestToOldestSet() {
+<span class="nc" id="L184">		return policiesByVersion.keySet();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

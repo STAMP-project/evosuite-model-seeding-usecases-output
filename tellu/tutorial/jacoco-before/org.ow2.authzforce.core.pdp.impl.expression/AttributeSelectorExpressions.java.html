@@ -1,0 +1,723 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributeSelectorExpressions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.expression</a> &gt; <span class="el_source">AttributeSelectorExpressions.java</span></div><h1>AttributeSelectorExpressions.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * 
+ */
+package org.ow2.authzforce.core.pdp.impl.expression;
+
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.xml.namespace.QName;
+
+import org.ow2.authzforce.core.pdp.api.AttributeFqn;
+import org.ow2.authzforce.core.pdp.api.AttributeFqns;
+import org.ow2.authzforce.core.pdp.api.AttributeProvider;
+import org.ow2.authzforce.core.pdp.api.AttributeSelectorId;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.AttributeSelectorExpression;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactory;
+import org.ow2.authzforce.core.pdp.api.value.Bag;
+import org.ow2.authzforce.core.pdp.api.value.BagDatatype;
+import org.ow2.authzforce.core.pdp.api.value.Bags;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.XPathValue;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+import net.sf.saxon.s9api.SaxonApiException;
+import net.sf.saxon.s9api.XPathCompiler;
+import net.sf.saxon.s9api.XPathExecutable;
+import net.sf.saxon.s9api.XPathSelector;
+import net.sf.saxon.s9api.XdmAtomicValue;
+import net.sf.saxon.s9api.XdmItem;
+import net.sf.saxon.s9api.XdmNode;
+import net.sf.saxon.s9api.XdmValue;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeSelectorType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeValueType;
+
+/**
+ * Static utility methods pertaining to {@link AttributeSelectorExpression} instances.
+ *
+ */
+public final class AttributeSelectorExpressions
+{
+	private AttributeSelectorExpressions()
+	{
+		// hide constructor
+	}
+
+	/**
+	 * Extensible AttributeSelector evaluator, that may be extended to support ContextSelectorId, and which uses SAXON parser to evaluate XPath expressions. The AttributeSelector feature in optional
+	 * in the XACML core specification, and this implementation is experimental (not to be used in production).
+	 * &lt;p&gt;
+	 * Reasons for using SAXON's native API (s9api) in XPath evaluation instead of standard Java APIs (e.g. JAXP):
+	 *
+	 * &lt;ol&gt;
+	 * &lt;li&gt;Performance: See http://www.saxonica.com/documentation9.5/javadoc/net /sf/saxon/s9api/package-summary.html:
+	 * &lt;p&gt;
+	 * &lt;i&gt;This package provides Saxon's preferred Java API for XSLT, XQuery, XPath, and XML Schema processing. The interface is designed to hide as much as possible of the detail of the
+	 * implementation. However, the API architecture faithfully reflects the internal architecture of the Saxon product, unlike standard APIs such as JAXP and XQJ which in many cases force compromises
+	 * in the design and performance of the application.&lt;/i&gt;
+	 * &lt;/p&gt;
+	 * &lt;/li&gt;
+	 *
+	 * &lt;li&gt;Functional: s9api provides XPATH 3.0 support, whereas standard Java APIs designed for XPATH 1.0 support only. See http://www.saxonica.com/html/documentation/conformance/jaxp.html. However,
+	 * for the moment, only XPath 1.0 and 2.0 are supported by this class. But we prepare for the future.&lt;/li&gt;
+	 * &lt;/ol&gt;
+	 * &lt;/p&gt;
+	 *
+	 * @param &lt;AV&gt;
+	 *            AttributeSelector evaluation results' primitive returnType
+	 * 
+	 * @version $Id: $
+	 */
+	private static abstract class ExtensibleAttributeSelectorExpression&lt;AV extends AttributeValue&gt; implements AttributeSelectorExpression&lt;AV&gt;
+	{
+<span class="nc" id="L99">		private static final IllegalArgumentException NULL_INPUT_XPATH_EXPRESSION_BAG_EXCEPTION = new IllegalArgumentException(&quot;Input xpathExpression bag is null or empty&quot;);</span>
+
+<span class="nc" id="L101">		private static final IndeterminateEvaluationException NULL_CONTENT_ARG_EXCEPTION = new IndeterminateEvaluationException(&quot;Undefined &lt;Content&gt;&quot;, XacmlStatusCode.PROCESSING_ERROR.value());</span>
+
+		// the logger we'll use for all messages
+		// private static final Logger LOGGER = LoggerFactory.getLogger(AttributeSelector.class);
+<span class="nc" id="L105">		private static final IllegalArgumentException NULL_XACML_ATTRIBUTE_SELECTOR_EXCEPTION = new IllegalArgumentException(</span>
+				&quot;AttributeSelector's input XACML/JAXB AttributeSelector element undefined&quot;);
+<span class="nc" id="L107">		private static final IllegalArgumentException NULL_XPATH_COMPILER_EXCEPTION = new IllegalArgumentException(&quot;XPath version/compiler undefined but required for AttributeSelector evaluation&quot;);</span>
+<span class="nc" id="L108">		private static final IllegalArgumentException NULL_ATTRIBUTE_FACTORY_EXCEPTION = new IllegalArgumentException(&quot;AttributeSelector's returnType factory undefined&quot;);</span>
+
+		private static final String NODE_DESCRIPTION_FORMAT = &quot;type=%s, name=%s, value=%s&quot;;
+
+		private static String getDescription(final XdmNode node)
+		{
+<span class="nc" id="L114">			return String.format(NODE_DESCRIPTION_FORMAT, node.getNodeKind(), node.getNodeName(), node.getStringValue());</span>
+		}
+
+		protected abstract String getXPathEvalExceptionMsgSuffix();
+
+		private static final AttributeValueType xdmToJaxbAttributeValue(final String attrDatatype, final XdmNode node) throws IllegalArgumentException
+		{
+			final Map&lt;QName, String&gt; otherAttributes;
+			final List&lt;Serializable&gt; content;
+<span class="nc" id="L123">			final String nodeStrVal = node.getStringValue();</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			switch (node.getNodeKind())</span>
+			{
+				case ATTRIBUTE:
+					/*
+					 * We only take the attribute value. (For XPath getting an attribute Value, the result XdmNode still holds the attribute QName.)
+					 */
+				case TEXT:
+<span class="nc" id="L131">					otherAttributes = Collections.emptyMap();</span>
+<span class="nc" id="L132">					content = Collections.&lt;Serializable&gt;singletonList(nodeStrVal);</span>
+<span class="nc" id="L133">					break;</span>
+
+				/*
+				 * TODO: the commented cases below are more complex to handle. Further checking/testing is required before providing support for them. But first of all, are these cases worth the
+				 * trouble? Find a few good use cases for them. In the meantime, do not remove these lines of code below, unless to rewrite/refactor with same quality level.
+				 */
+				// case Node.DOCUMENT_NODE:
+				// case Node.ELEMENT_NODE:
+				// final Unmarshaller u;
+				// try
+				// {
+				// u = PdpModelHandler.XACML_3_0_JAXB_CONTEXT.createUnmarshaller();
+				// } catch (JAXBException e)
+				// {
+				// throw new IllegalArgumentException(&quot;Cannot create AttributeValue from XML node&quot;, e);
+				// }
+				//
+				// final Object attrValue;
+				// try
+				// {
+				// attrValue = u.unmarshal(node);
+				// } catch (JAXBException e)
+				// {
+				// throw new
+				// IllegalArgumentException(String.format(&quot;Cannot create AttributeValue from XML node: %s&quot;,
+				// getDescription(node.getUnderlyingNode())), e);
+				// }
+				//
+				// if (!(attrValue instanceof JAXBElement))
+				// {
+				// throw new
+				// IllegalArgumentException(String.format(&quot;Cannot create AttributeValue from XML node: %s&quot;,
+				// getDescription(node.getUnderlyingNode())));
+				// }
+				// xacmlAttrVal.getContent().add((Serializable) attrValue);
+				// break;
+
+				default:
+<span class="nc" id="L171">					throw new IllegalArgumentException(&quot;Cannot create AttributeValue from XML node (type not supported): &quot; + getDescription(node));</span>
+			}
+
+<span class="nc" id="L174">			return new AttributeValueType(content, attrDatatype, otherAttributes);</span>
+		}
+
+		protected final AttributeSelectorId attributeSelectorId;
+		private final boolean mustBePresent;
+		private final AttributeValueFactory&lt;?&gt; attrFactory;
+		private final transient Bag.Validator mustBePresentEnforcer;
+		protected final transient XPathCompiler xPathCompiler;
+		private final transient XPathExecutable xPathEvaluator;
+		private final transient BagDatatype&lt;AV&gt; returnType;
+		private final transient IndeterminateEvaluationException missingAttributeBecauseNullContextException;
+		private final transient IndeterminateEvaluationException missingAttributesContentException;
+		private final transient String xPathEvalExceptionMessage;
+
+		// cached method results
+<span class="nc" id="L189">		private transient volatile String toString = null;</span>
+<span class="nc" id="L190">		private transient volatile int hashCode = 0;</span>
+
+		/** {@inheritDoc} */
+		@Override
+		public final Optional&lt;Bag&lt;AV&gt;&gt; getValue()
+		{
+			// depends on the evaluation context
+<span class="nc" id="L197">			return Optional.empty();</span>
+		}
+
+		/**
+		 * Creates instance from XACML model
+		 *
+		 * @param attrSelectorElement
+		 *            XACML AttributeSelector
+		 * @param xPathCompiler
+		 *            XPATH compiler used for compiling {@code attrSelectorElement.getPath()} and XPath given by {@code attrSelectorElement.getContextSelectorId()} if not null
+		 * @param attrFactory
+		 *            attribute factory to create the AttributeValue(s) from the XML node(s) resolved by XPath
+		 * @throws java.lang.IllegalArgumentException
+		 *             if {@code attrSelectorElement == null || xPathCompiler == null || attrFactory == null}; or {@code attrSelectorElement.getContextSelectorId() != null} but
+		 *             {@code attrProvider == null}; or {@code attrSelectorElement.getPath()} is not a valid XPath expression
+		 */
+		private ExtensibleAttributeSelectorExpression(final AttributeSelectorType attrSelectorElement, final XPathCompiler xPathCompiler, final AttributeValueFactory&lt;AV&gt; attrFactory)
+				throws IllegalArgumentException
+<span class="nc" id="L215">		{</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">			if (attrSelectorElement == null)</span>
+			{
+<span class="nc" id="L218">				throw NULL_XACML_ATTRIBUTE_SELECTOR_EXCEPTION;</span>
+			}
+
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (attrFactory == null)</span>
+			{
+<span class="nc" id="L223">				throw NULL_ATTRIBUTE_FACTORY_EXCEPTION;</span>
+			}
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">			if (xPathCompiler == null)</span>
+			{
+<span class="nc" id="L228">				throw NULL_XPATH_COMPILER_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L231">			this.attributeSelectorId = new AttributeSelectorId(attrSelectorElement);</span>
+<span class="nc" id="L232">			this.attrFactory = attrFactory;</span>
+<span class="nc" id="L233">			this.returnType = attrFactory.getDatatype().getBagDatatype();</span>
+
+<span class="nc" id="L235">			final String attributeCategory = attributeSelectorId.getCategory();</span>
+
+<span class="nc" id="L237">			final String missingAttributeMessage = this + &quot; not found in context&quot;;</span>
+
+<span class="nc" id="L239">			this.xPathEvalExceptionMessage = this + &quot;: Error evaluating XPath against XML node from Content of Attributes Category='&quot; + attributeCategory + &quot;'&quot; + getXPathEvalExceptionMsgSuffix();</span>
+<span class="nc" id="L240">			this.xPathCompiler = null;</span>
+
+			try
+			{
+<span class="nc" id="L244">				this.xPathEvaluator = xPathCompiler.compile(attributeSelectorId.getPath());</span>
+			}
+<span class="nc" id="L246">			catch (final SaxonApiException e)</span>
+			{
+<span class="nc" id="L248">				throw new IllegalArgumentException(&quot;AttributeSelector's Path is not a valid XPath &quot; + xPathCompiler.getLanguageVersion() + &quot; expression: '&quot; + attributeSelectorId.getPath() + &quot;'&quot;, e);</span>
+<span class="nc" id="L249">			}</span>
+
+			// error messages/exceptions
+<span class="nc" id="L252">			this.missingAttributeBecauseNullContextException = new IndeterminateEvaluationException(&quot;Missing request context for evaluating AttributeSelector '&quot; + this.attributeSelectorId + &quot;'&quot;,</span>
+<span class="nc" id="L253">					XacmlStatusCode.PROCESSING_ERROR.value());</span>
+<span class="nc" id="L254">			this.missingAttributesContentException = new IndeterminateEvaluationException(this + &quot;: No &lt;Content&gt; element found in Attributes of Category=&quot; + attributeCategory,</span>
+<span class="nc" id="L255">					XacmlStatusCode.SYNTAX_ERROR.value());</span>
+
+<span class="nc" id="L257">			this.mustBePresent = attrSelectorElement.isMustBePresent();</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">			this.mustBePresentEnforcer = mustBePresent ? new Bags.NonEmptinessValidator(missingAttributeMessage) : Bags.DUMB_VALIDATOR;</span>
+<span class="nc" id="L259">		}</span>
+
+		@Override
+		public final AttributeSelectorId getAttributeSelectorId()
+		{
+<span class="nc" id="L264">			return this.attributeSelectorId;</span>
+		}
+
+		@Override
+		public final boolean isNonEmptyBagRequired()
+		{
+<span class="nc" id="L270">			return this.mustBePresent;</span>
+		}
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 * Returns the data type of the attribute values that the evaluation of this selector will return
+		 */
+		@Override
+		public final Datatype&lt;Bag&lt;AV&gt;&gt; getReturnType()
+		{
+<span class="nc" id="L281">			return this.returnType;</span>
+		}
+
+		private final Bag&lt;AV&gt; checkContextForCachedEvalResult(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+			/*
+			 * Check the context whether the evaluation result is not already there
+			 */
+<span class="nc bnc" id="L289" title="All 2 branches missed.">			if (context == null)</span>
+			{
+<span class="nc" id="L291">				throw missingAttributeBecauseNullContextException;</span>
+			}
+
+<span class="nc" id="L294">			final Bag&lt;AV&gt; ctxResult = context.getAttributeSelectorResult(this);</span>
+			// IF AttributeSelector already resolved in context
+<span class="nc bnc" id="L296" title="All 2 branches missed.">			if (ctxResult != null)</span>
+			{
+<span class="nc" id="L298">				this.mustBePresentEnforcer.validate(ctxResult);</span>
+<span class="nc" id="L299">				return ctxResult;</span>
+			}
+
+<span class="nc" id="L302">			return null;</span>
+		}
+
+		private final Bag&lt;AV&gt; handleRecoverableIndeterminate(final IndeterminateEvaluationException e, final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+			/**
+			 * If a non-fatal/recoverable error occurred during AttributeSelector evaluation, we put the empty value to prevent retry in the same context, which may succeed at another time in the same
+			 * context, resulting in different value of the same attribute at different times during evaluation within the same context, therefore inconsistencies. The value(s) must remain constant
+			 * during the evaluation context, as explained in section 7.3.5 Attribute Retrieval of XACML core spec:
+			 * &lt;p&gt;
+			 * Regardless of any dynamic modifications of the request context during policy evaluation, the PDP SHALL behave as if each bag of attribute values is fully populated in the context before
+			 * it is first tested, and is thereafter immutable during evaluation. (That is, every subsequent test of that attribute shall use 3313 the same bag of values that was initially tested.)
+			 * &lt;/p&gt;
+			 * Therefore, if no value found, we keep it that way until evaluation is done for the current request context.
+			 * &lt;p&gt;
+			 * We could put the null value to indicate the evaluation error, instead of an empty Bag, but it would make checking the context for any cached result next time a bit ambiguous/confusing
+			 * (see method checkContextForCachedEvalResult()), for instance:
+			 * &lt;p&gt;
+			 * &lt;code&gt;
+			 * final Bag&lt;T&gt; contextBag = context.getAttributeSelectorResult(id,...)
+			 * &lt;/code&gt;
+			 * &lt;/p&gt;
+			 * &lt;p&gt;
+			 * Indeed, contextBag could be null for one of these two reasons:
+			 * &lt;ol&gt;
+			 * &lt;li&gt;The attribute selector has never been requested in this context;
+			 * &lt;li&gt;It has been requested before in this context but could not be found: error occurred (IndeterminateEvaluationException)&lt;/li&gt;
+			 * &lt;/ol&gt;
+			 * To avoid this confusion, we put an empty Bag (with some error info saying why this is empty).
+			 * &lt;/p&gt;
+			 */
+<span class="nc" id="L333">			final Bag&lt;AV&gt; result = Bags.empty(this.returnType.getElementType(), e);</span>
+<span class="nc" id="L334">			context.putAttributeSelectorResultIfAbsent(this, result);</span>
+<span class="nc" id="L335">			mustBePresentEnforcer.validate(result);</span>
+<span class="nc" id="L336">			return result;</span>
+		}
+
+		private final Bag&lt;AV&gt; evaluateFinal(final XdmItem xPathEvaluationContextItem, final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+			/*
+			 * An XPathExecutable is immutable, and therefore thread-safe. It is simpler to load a new XPathSelector each time the expression is to be evaluated. However, the XPathSelector is serially
+			 * reusable within a single thread. See Saxon Javadoc.
+			 */
+<span class="nc" id="L345">			final XPathSelector xpathSelector = xPathEvaluator.load();</span>
+			final XdmValue xpathEvalResult;
+			try
+			{
+<span class="nc" id="L349">				xpathSelector.setContextItem(xPathEvaluationContextItem);</span>
+<span class="nc" id="L350">				xpathEvalResult = xpathSelector.evaluate();</span>
+			}
+<span class="nc" id="L352">			catch (final SaxonApiException e)</span>
+			{
+<span class="nc" id="L354">				throw new IndeterminateEvaluationException(this.xPathEvalExceptionMessage, XacmlStatusCode.SYNTAX_ERROR.value(), e);</span>
+<span class="nc" id="L355">			}</span>
+
+<span class="nc" id="L357">			final Datatype&lt;AV&gt; attributeDatatype = returnType.getElementType();</span>
+			/*
+			 * The values in a bag are not ordered (§7.3.2 of XACML core spec) but may contain duplicates
+			 */
+<span class="nc" id="L361">			final Deque&lt;AV&gt; resultBag = new ArrayDeque&lt;&gt;(xpathEvalResult.size());</span>
+<span class="nc" id="L362">			int xpathEvalResultItemIndex = 0;</span>
+<span class="nc bnc" id="L363" title="All 2 branches missed.">			for (final XdmItem xpathEvalResultItem : xpathEvalResult)</span>
+			{
+				final AttributeValueType jaxbAttrVal;
+<span class="nc bnc" id="L366" title="All 2 branches missed.">				if (xpathEvalResultItem instanceof XdmAtomicValue)</span>
+				{
+<span class="nc" id="L368">					final String strVal = xpathEvalResultItem.getStringValue();</span>
+<span class="nc" id="L369">					jaxbAttrVal = new AttributeValueType(Collections.&lt;Serializable&gt;singletonList(strVal), attributeDatatype.getId(), null);</span>
+<span class="nc" id="L370">				}</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">				else if (xpathEvalResultItem instanceof XdmNode)</span>
+				{
+					try
+					{
+<span class="nc" id="L375">						jaxbAttrVal = xdmToJaxbAttributeValue(attributeDatatype.getId(), (XdmNode) xpathEvalResultItem);</span>
+					}
+<span class="nc" id="L377">					catch (final IllegalArgumentException e)</span>
+					{
+<span class="nc" id="L379">						final Optional&lt;String&gt; contextSelectorId = attributeSelectorId.getContextSelectorId();</span>
+<span class="nc" id="L380">						throw new IndeterminateEvaluationException(</span>
+								this + &quot;: Error creating attribute value of type '&quot; + attributeDatatype + &quot;' from result #&quot; + xpathEvalResultItemIndex
+<span class="nc bnc" id="L382" title="All 2 branches missed.">										+ &quot; of evaluating XPath against XML node from Content of Attributes Category='&quot; + attributeSelectorId.getCategory()</span>
+										+ (contextSelectorId == null ? &quot;&quot; : &quot;' selected by ContextSelectorId='&quot; + contextSelectorId + &quot;'&quot;) + &quot;: &quot; + xpathEvalResultItem,
+<span class="nc" id="L384">								XacmlStatusCode.SYNTAX_ERROR.value(), e);</span>
+<span class="nc" id="L385">					}</span>
+				}
+				else
+				{
+<span class="nc" id="L389">					final Optional&lt;String&gt; contextSelectorId = attributeSelectorId.getContextSelectorId();</span>
+<span class="nc" id="L390">					throw new IndeterminateEvaluationException(this + &quot;: Invalid type of result #&quot; + xpathEvalResultItemIndex</span>
+<span class="nc bnc" id="L391" title="All 2 branches missed.">							+ &quot; from evaluating XPath against XML node from Content of Attributes Category='&quot; + attributeSelectorId.getCategory()</span>
+<span class="nc" id="L392">							+ (contextSelectorId == null ? &quot;&quot; : &quot;' selected by ContextSelectorId='&quot; + contextSelectorId + &quot;'&quot;) + xpathEvalResultItem.getClass().getName(),</span>
+<span class="nc" id="L393">							XacmlStatusCode.SYNTAX_ERROR.value());</span>
+				}
+
+				final AttributeValue attrVal;
+				try
+				{
+<span class="nc" id="L399">					attrVal = attrFactory.getInstance(jaxbAttrVal.getContent(), jaxbAttrVal.getOtherAttributes(), this.xPathCompiler);</span>
+				}
+<span class="nc" id="L401">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L403">					final Optional&lt;String&gt; contextSelectorId = attributeSelectorId.getContextSelectorId();</span>
+<span class="nc" id="L404">					throw new IndeterminateEvaluationException(</span>
+							this + &quot;: Error creating attribute value of type '&quot; + attributeDatatype + &quot;' from result #&quot; + xpathEvalResultItemIndex
+<span class="nc bnc" id="L406" title="All 2 branches missed.">									+ &quot; of evaluating XPath against XML node from Content of Attributes Category='&quot; + attributeSelectorId.getCategory() + &quot;'&quot;</span>
+									+ (contextSelectorId == null ? &quot;&quot; : &quot; selected by ContextSelectorId='&quot; + contextSelectorId + &quot;'&quot;) + &quot;: &quot; + xpathEvalResultItem,
+<span class="nc" id="L408">							XacmlStatusCode.SYNTAX_ERROR.value(), e);</span>
+<span class="nc" id="L409">				}</span>
+
+<span class="nc" id="L411">				resultBag.add(attributeDatatype.cast(attrVal));</span>
+<span class="nc" id="L412">				xpathEvalResultItemIndex++;</span>
+<span class="nc" id="L413">			}</span>
+
+<span class="nc" id="L415">			final Bag&lt;AV&gt; result = Bags.newBag(attributeDatatype, resultBag);</span>
+<span class="nc" id="L416">			context.putAttributeSelectorResultIfAbsent(this, result);</span>
+<span class="nc" id="L417">			this.mustBePresentEnforcer.validate(result);</span>
+<span class="nc" id="L418">			return result;</span>
+		}
+
+		@Override
+		public final Bag&lt;AV&gt; evaluate(final XdmNode contentElement, final Optional&lt;XPathExecutable&gt; contextPathEvaluator, final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L424">			final Bag&lt;AV&gt; cachedResult = checkContextForCachedEvalResult(context);</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">			if (cachedResult != null)</span>
+			{
+<span class="nc" id="L427">				return cachedResult;</span>
+			}
+
+			// AttributeSelector not yet evaluated in context, we have to do it now
+<span class="nc bnc" id="L431" title="All 2 branches missed.">			if (contentElement == null)</span>
+			{
+<span class="nc" id="L433">				throw NULL_CONTENT_ARG_EXCEPTION;</span>
+			}
+
+			final XdmItem finalXPathEvaluationContextItem;
+			try
+			{
+<span class="nc bnc" id="L439" title="All 2 branches missed.">				if (contextPathEvaluator.isPresent())</span>
+				{
+					/*
+					 * An XPathExecutable is immutable, and therefore thread-safe. It is simpler to load a new XPathSelector each time the expression is to be evaluated. However, the XPathSelector is
+					 * serially reusable within a single thread. See SAXON Javadoc.
+					 */
+<span class="nc" id="L445">					final XPathSelector contextPathSelector = contextPathEvaluator.get().load();</span>
+					try
+					{
+<span class="nc" id="L448">						contextPathSelector.setContextItem(contentElement);</span>
+<span class="nc" id="L449">						finalXPathEvaluationContextItem = contextPathSelector.evaluateSingle();</span>
+					}
+<span class="nc" id="L451">					catch (final SaxonApiException e)</span>
+					{
+<span class="nc" id="L453">						throw new IndeterminateEvaluationException(</span>
+<span class="nc" id="L454">								this + &quot;: Error evaluating XPath = '&quot; + contextPathEvaluator.get().getUnderlyingExpression().getInternalExpression().toString() + &quot;' against &lt;Content&gt; element&quot;,</span>
+<span class="nc" id="L455">								XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L456">					}</span>
+
+<span class="nc bnc" id="L458" title="All 2 branches missed.">					if (finalXPathEvaluationContextItem == null)</span>
+					{
+<span class="nc" id="L460">						throw new IndeterminateEvaluationException(this + &quot;: No node returned by evaluation of XPath = '&quot;</span>
+<span class="nc" id="L461">								+ contextPathEvaluator.get().getUnderlyingExpression().getInternalExpression().toString() + &quot;' against &lt;Content&gt; element&quot;, XacmlStatusCode.SYNTAX_ERROR.value());</span>
+					}
+<span class="nc" id="L463">				}</span>
+				else
+				{
+<span class="nc" id="L466">					finalXPathEvaluationContextItem = contentElement;</span>
+				}
+
+<span class="nc" id="L469">				return evaluateFinal(finalXPathEvaluationContextItem, context);</span>
+			}
+<span class="nc" id="L471">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L473">				return handleRecoverableIndeterminate(e, context);</span>
+			}
+		}
+
+		protected abstract XdmItem getFinalXPathEvaluationContextItem(XdmNode contentElement, EvaluationContext context) throws IndeterminateEvaluationException;
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 */
+		@Override
+		public final Bag&lt;AV&gt; evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L486">			final Bag&lt;AV&gt; cachedResult = checkContextForCachedEvalResult(context);</span>
+<span class="nc bnc" id="L487" title="All 2 branches missed.">			if (cachedResult != null)</span>
+			{
+<span class="nc" id="L489">				return cachedResult;</span>
+			}
+
+			// ELSE AttributeSelector not yet resolved in context, we have to do it now
+			// get the DOM root of the request document
+<span class="nc" id="L494">			final XdmNode contentElement = context.getAttributesContent(attributeSelectorId.getCategory());</span>
+			try
+			{
+<span class="nc bnc" id="L497" title="All 2 branches missed.">				if (contentElement == null)</span>
+				{
+<span class="nc" id="L499">					throw this.missingAttributesContentException;</span>
+				}
+
+<span class="nc" id="L502">				final XdmItem finalXPathEvaluationContextItem = getFinalXPathEvaluationContextItem(contentElement, context);</span>
+<span class="nc" id="L503">				return evaluateFinal(finalXPathEvaluationContextItem, context);</span>
+			}
+<span class="nc" id="L505">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L507">				return handleRecoverableIndeterminate(e, context);</span>
+			}
+		}
+
+		@Override
+		public XPathExecutable getXPath(final Bag&lt;XPathValue&gt; xpathExpressionBag) throws IllegalArgumentException
+		{
+<span class="nc bnc" id="L514" title="All 4 branches missed.">			if (xpathExpressionBag == null || xpathExpressionBag.isEmpty())</span>
+			{
+<span class="nc" id="L516">				throw NULL_INPUT_XPATH_EXPRESSION_BAG_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L519">			final String xpathExpression = xpathExpressionBag.getSingleElement().getUnderlyingValue();</span>
+
+			try
+			{
+<span class="nc" id="L523">				return xPathCompiler.compile(xpathExpression);</span>
+			}
+<span class="nc" id="L525">			catch (final SaxonApiException e)</span>
+			{
+<span class="nc" id="L527">				throw new IllegalArgumentException(&quot;Input value given as context selector value is not a valid XPath &quot; + xPathCompiler.getLanguageVersion() + &quot; expression: '&quot; + xpathExpression + &quot;'&quot;,</span>
+						e);
+			}
+
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see java.lang.Object#toString()
+		 */
+		/** {@inheritDoc} */
+		@Override
+		public final String toString()
+		{
+			/*
+			 * Because this class is immutable (excluding toString which is derived from others), we can do caching (and lazy init) of this method result.
+			 */
+<span class="nc bnc" id="L545" title="All 2 branches missed.">			if (toString == null)</span>
+			{
+<span class="nc bnc" id="L547" title="All 2 branches missed.">				toString = &quot;AttributeSelector [&quot; + this.attributeSelectorId + &quot;, dataType= &quot; + this.returnType.getElementType() + &quot;, mustBePresent= &quot;</span>
+						+ (mustBePresentEnforcer == Bags.DUMB_VALIDATOR ? &quot;false&quot; : &quot;true&quot;) + &quot;]&quot;;
+			}
+
+<span class="nc" id="L551">			return toString;</span>
+		}
+
+		/** {@inheritDoc} */
+		@Override
+		public final int hashCode()
+		{
+<span class="nc bnc" id="L558" title="All 2 branches missed.">			if (hashCode == 0)</span>
+			{
+<span class="nc" id="L560">				hashCode = this.attributeSelectorId.hashCode();</span>
+			}
+
+<span class="nc" id="L563">			return hashCode;</span>
+		}
+
+		/** Equal iff the Category, Path and ContextSelectorId are equal (Datatype is ignored) */
+		@Override
+		public final boolean equals(final Object obj)
+		{
+<span class="nc bnc" id="L570" title="All 2 branches missed.">			if (this == obj)</span>
+			{
+<span class="nc" id="L572">				return true;</span>
+			}
+
+<span class="nc bnc" id="L575" title="All 2 branches missed.">			if (!(obj instanceof ExtensibleAttributeSelectorExpression))</span>
+			{
+<span class="nc" id="L577">				return false;</span>
+			}
+
+<span class="nc" id="L580">			final ExtensibleAttributeSelectorExpression&lt;?&gt; other = (ExtensibleAttributeSelectorExpression&lt;?&gt;) obj;</span>
+<span class="nc" id="L581">			return this.attributeSelectorId.equals(other.attributeSelectorId);</span>
+		}
+
+	}
+
+<span class="nc bnc" id="L586" title="All 2 branches missed.">	private static final class AttributeSelectorExpressionWithoutContextSelector&lt;AV extends AttributeValue&gt; extends ExtensibleAttributeSelectorExpression&lt;AV&gt;</span>
+	{
+		private AttributeSelectorExpressionWithoutContextSelector(final AttributeSelectorType attributeSelectorElement, final XPathCompiler xPathCompiler,
+				final AttributeValueFactory&lt;AV&gt; attributeFactory) throws IllegalArgumentException
+		{
+<span class="nc" id="L591">			super(attributeSelectorElement, xPathCompiler, attributeFactory);</span>
+<span class="nc bnc" id="L592" title="All 4 branches missed.">			assert attributeSelectorElement.getContextSelectorId() == null;</span>
+<span class="nc" id="L593">		}</span>
+
+		@Override
+		protected String getXPathEvalExceptionMsgSuffix()
+		{
+<span class="nc" id="L598">			return &quot;&quot;;</span>
+		}
+
+		@Override
+		protected XdmItem getFinalXPathEvaluationContextItem(final XdmNode contentElement, final EvaluationContext context)
+		{
+<span class="nc" id="L604">			return contentElement;</span>
+		}
+
+		@Override
+		public Optional&lt;AttributeFqn&gt; getContextSelectorFQN()
+		{
+<span class="nc" id="L610">			return Optional.empty();</span>
+		}
+	}
+
+<span class="nc bnc" id="L614" title="All 2 branches missed.">	private static final class AttributeSelectorExpressionWithContextSelector&lt;AV extends AttributeValue&gt; extends ExtensibleAttributeSelectorExpression&lt;AV&gt;</span>
+	{
+		private final AttributeFqn contextSelectorFQN;
+		private final AttributeProvider attrProvider;
+		private final IndeterminateEvaluationException missingAttributeForUnknownReasonException;
+		private final String missingContextSelectorAttributeExceptionMessage;
+		private final String xpathEvalErrMsgSuffix;
+
+		@Override
+		protected String getXPathEvalExceptionMsgSuffix()
+		{
+<span class="nc" id="L625">			return &quot;' selected by ContextSelectorId='&quot; + this.attributeSelectorId.getContextSelectorId() + &quot;'&quot;;</span>
+		}
+
+		private AttributeSelectorExpressionWithContextSelector(final AttributeSelectorType attrSelectorElement, final XPathCompiler xPathCompiler, final AttributeValueFactory&lt;AV&gt; attrFactory,
+				final AttributeProvider attrProvider) throws IllegalArgumentException
+		{
+<span class="nc" id="L631">			super(attrSelectorElement, xPathCompiler, attrFactory);</span>
+<span class="nc bnc" id="L632" title="All 6 branches missed.">			assert attrSelectorElement.getContextSelectorId() != null &amp;&amp; attrProvider != null;</span>
+
+<span class="nc" id="L634">			final String attributeCategory = attributeSelectorId.getCategory();</span>
+<span class="nc" id="L635">			final String contextSelectorId = attributeSelectorId.getContextSelectorId().get();</span>
+<span class="nc" id="L636">			this.contextSelectorFQN = AttributeFqns.newInstance(attributeCategory, Optional.empty(), contextSelectorId);</span>
+<span class="nc" id="L637">			this.attrProvider = attrProvider;</span>
+<span class="nc" id="L638">			this.missingAttributeForUnknownReasonException = new IndeterminateEvaluationException(this + &quot; not found in context for unknown reason&quot;, XacmlStatusCode.MISSING_ATTRIBUTE.value());</span>
+<span class="nc" id="L639">			this.missingContextSelectorAttributeExceptionMessage = this + &quot;: No value found for attribute designated by Category=&quot; + attributeCategory + &quot; and ContextSelectorId=&quot; + contextSelectorId;</span>
+<span class="nc" id="L640">			this.xpathEvalErrMsgSuffix = &quot;' from ContextSelectorId='&quot; + contextSelectorId + &quot;' against Content of Attributes of Category=&quot; + attributeCategory;</span>
+<span class="nc" id="L641">		}</span>
+
+		@Override
+		public Optional&lt;AttributeFqn&gt; getContextSelectorFQN()
+		{
+<span class="nc" id="L646">			return Optional.of(this.contextSelectorFQN);</span>
+		}
+
+		@Override
+		protected XdmItem getFinalXPathEvaluationContextItem(final XdmNode contentElement, final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L652">			final Bag&lt;XPathValue&gt; bag = attrProvider.get(contextSelectorFQN, StandardDatatypes.XPATH, context);</span>
+<span class="nc bnc" id="L653" title="All 2 branches missed.">			if (bag == null)</span>
+			{
+<span class="nc" id="L655">				throw this.missingAttributeForUnknownReasonException;</span>
+			}
+
+<span class="nc bnc" id="L658" title="All 2 branches missed.">			if (bag.isEmpty())</span>
+			{
+<span class="nc" id="L660">				throw new IndeterminateEvaluationException(missingContextSelectorAttributeExceptionMessage, XacmlStatusCode.MISSING_ATTRIBUTE.value(), bag.getReasonWhyEmpty());</span>
+			}
+
+<span class="nc" id="L663">			final String contextSelectorPath = bag.getSingleElement().getUnderlyingValue();</span>
+			final XdmItem contextNode;
+			try
+			{
+<span class="nc" id="L667">				contextNode = xPathCompiler.evaluateSingle(contextSelectorPath, contentElement);</span>
+			}
+<span class="nc" id="L669">			catch (final SaxonApiException e)</span>
+			{
+<span class="nc" id="L671">				throw new IndeterminateEvaluationException(this + &quot;: Error evaluating XPath='&quot; + contextSelectorPath + xpathEvalErrMsgSuffix, XacmlStatusCode.SYNTAX_ERROR.value(), e);</span>
+<span class="nc" id="L672">			}</span>
+
+<span class="nc bnc" id="L674" title="All 2 branches missed.">			if (contextNode == null)</span>
+			{
+<span class="nc" id="L676">				throw new IndeterminateEvaluationException(this + &quot;: No node returned by evaluation of XPath='&quot; + contextSelectorPath + xpathEvalErrMsgSuffix, XacmlStatusCode.SYNTAX_ERROR.value());</span>
+			}
+
+<span class="nc" id="L679">			return contextNode;</span>
+		}
+
+	}
+
+<span class="nc" id="L684">	private static final IllegalArgumentException NULL_ATTRIBUTE_PROVIDER_BUT_NON_NULL_CONTEXT_SELECTOR_ID_EXCEPTION = new IllegalArgumentException(</span>
+			&quot;Attribute Provider undefined but required for non-null ContextSelectorId in AttributeSelector&quot;);
+
+	/**
+	 * Creates instance from XACML model
+	 *
+	 * @param attributeSelectorElement
+	 *            XACML AttributeSelector
+	 * @param xPathCompiler
+	 *            XPATH compiler used for compiling {@code attributeSelectorElement.getPath()} and XPath given by {@code attributeSelectorElement.getContextSelectorId()} if not null
+	 * @param attributeProvider
+	 *            AttributeProvider for finding value of the attribute identified by ContextSelectorId in {@code attrSelectorElement}; may be null if
+	 *            {@code attributeSelectorElement.getContextSelectorId() == null}
+	 * @param attributeFactory
+	 *            attribute factory to create the AttributeValue(s) from the XML node(s) resolved by XPath
+	 * @return instance of AttributeSelector expression
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code attributeSelectorElement == null || xPathCompiler == null || attributeFactory == null}; or {@code attributeSelectorElement.getContextSelectorId() != null} but
+	 *             {@code attributeProvider == null}; or {@code attributeSelectorElement.getPath()} is not a valid XPath expression
+	 */
+	public static &lt;AV extends AttributeValue&gt; AttributeSelectorExpression&lt;AV&gt; newInstance(final AttributeSelectorType attributeSelectorElement, final XPathCompiler xPathCompiler,
+			final AttributeProvider attributeProvider, final AttributeValueFactory&lt;AV&gt; attributeFactory) throws IllegalArgumentException
+	{
+<span class="nc" id="L707">		final String contextSelectorId = attributeSelectorElement.getContextSelectorId();</span>
+<span class="nc bnc" id="L708" title="All 2 branches missed.">		if (contextSelectorId == null)</span>
+		{
+<span class="nc" id="L710">			return new AttributeSelectorExpressionWithoutContextSelector&lt;&gt;(attributeSelectorElement, xPathCompiler, attributeFactory);</span>
+		}
+
+		// contextSelectorId != null
+<span class="nc bnc" id="L714" title="All 2 branches missed.">		if (attributeProvider == null)</span>
+		{
+<span class="nc" id="L716">			throw NULL_ATTRIBUTE_PROVIDER_BUT_NON_NULL_CONTEXT_SELECTOR_ID_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L719">		return new AttributeSelectorExpressionWithContextSelector&lt;&gt;(attributeSelectorElement, xPathCompiler, attributeFactory, attributeProvider);</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

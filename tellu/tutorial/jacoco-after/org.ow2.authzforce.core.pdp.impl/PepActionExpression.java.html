@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PepActionExpression.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">PepActionExpression.java</span></div><h1>PepActionExpression.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.PepActionAttributeAssignment;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeAssignmentExpression;
+
+/**
+ * PEP action (obligation/advice) expression evaluator
+ *
+ * @version $Id: $
+ */
+public final class PepActionExpression
+{
+<span class="nc" id="L46">	private static final Logger LOGGER = LoggerFactory.getLogger(PepActionExpression.class);</span>
+
+	private final String actionId;
+
+	private final boolean isMandatory;
+
+	private final List&lt;AttributeAssignmentExpressionEvaluator&gt; evaluatableAttributeAssignmentExpressions;
+
+	private transient final String toString;
+
+	/**
+	 * Constructor that takes all the data associated with an PEP action (obligation/advice) expression.
+	 *
+	 * @param pepActionFactory
+	 *            PEP action factory
+	 * @param pepActionId
+	 *            the obligation's id
+	 * @param appliesTo
+	 *            the type of decision to which the PEP action applies (ObligationExpression's FulfillOn / AdviceExpression's AppliesTo)
+	 * @param isMandatory
+	 *            true iff the PEP action is mandatory (XACML Obligation, as opposed to Advice)
+	 * @param jaxbAssignmentExps
+	 *            a &lt;code&gt;List&lt;/code&gt; of &lt;code&gt;AttributeAssignmentExpression&lt;/code&gt;s
+	 * @param xPathCompiler
+	 *            XPath compiler corresponding to enclosing policy(set) default XPath version
+	 * @param expFactory
+	 *            Expression factory for parsing/instantiating AttributeAssignment expressions
+	 * @throws java.lang.IllegalArgumentException
+	 *             one of the AttributeAssignmentExpressions' Expression is invalid
+	 */
+	public PepActionExpression(final String pepActionId, final boolean isMandatory, final List&lt;AttributeAssignmentExpression&gt; jaxbAssignmentExps, final XPathCompiler xPathCompiler,
+	        final ExpressionFactory expFactory) throws IllegalArgumentException
+<span class="nc" id="L78">	{</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		Preconditions.checkArgument(pepActionId != null, &quot;Undefined PEP action (obligation/advice) ID&quot;);</span>
+<span class="nc" id="L80">		this.actionId = pepActionId;</span>
+<span class="nc" id="L81">		this.isMandatory = isMandatory;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		this.toString = (isMandatory ? &quot;Obligation &quot; : &quot;Advice &quot;) + &quot;'&quot; + actionId + &quot;'&quot;;</span>
+
+<span class="nc bnc" id="L84" title="All 4 branches missed.">		if (jaxbAssignmentExps == null || jaxbAssignmentExps.isEmpty())</span>
+		{
+<span class="nc" id="L86">			this.evaluatableAttributeAssignmentExpressions = Collections.emptyList();</span>
+		} else
+		{
+<span class="nc" id="L89">			this.evaluatableAttributeAssignmentExpressions = new ArrayList&lt;&gt;(jaxbAssignmentExps.size());</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">			for (final AttributeAssignmentExpression jaxbAttrAssignExp : jaxbAssignmentExps)</span>
+			{
+				final AttributeAssignmentExpressionEvaluator attrAssignExp;
+				try
+				{
+<span class="nc" id="L95">					attrAssignExp = new AttributeAssignmentExpressionEvaluator(jaxbAttrAssignExp, xPathCompiler, expFactory);</span>
+<span class="nc" id="L96">				} catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L98">					throw new IllegalArgumentException(&quot;Invalid &quot; + toString + &quot;: Invalid AttributeAssignmentExpression[@AttributeId=&quot; + jaxbAttrAssignExp.getAttributeId() + &quot;]&quot;, e);</span>
+<span class="nc" id="L99">				}</span>
+
+<span class="nc" id="L101">				this.evaluatableAttributeAssignmentExpressions.add(attrAssignExp);</span>
+<span class="nc" id="L102">			}</span>
+		}
+<span class="nc" id="L104">	}</span>
+
+	/**
+	 * ID of the PEP action (ObligationId / AdviceId)
+	 *
+	 * @return action ID
+	 */
+	public String getActionId()
+	{
+<span class="nc" id="L113">		return this.actionId;</span>
+	}
+
+	@Override
+	public String toString()
+	{
+<span class="nc" id="L119">		return toString;</span>
+	}
+
+	/**
+	 * Evaluates to a PEP action (obligation/advice).
+	 *
+	 * @param context
+	 *            evaluation context
+	 * @return an instance of a PEP action in JAXB model (JAXB Obligation/Advice)
+	 * @throws org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException
+	 *             if any of the attribute assignment expressions evaluates to &quot;Indeterminate&quot; (see XACML 3.0 core spec, section 7.18)
+	 */
+	public PepAction evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+	{
+		// else there are assignmentExpressions
+<span class="nc" id="L134">		final List&lt;PepActionAttributeAssignment&lt;?&gt;&gt; assignments = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for (final AttributeAssignmentExpressionEvaluator attrAssignmentExpr : this.evaluatableAttributeAssignmentExpressions)</span>
+		{
+			/*
+			 * Section 5.39 of XACML 3.0 core spec says there may be multiple AttributeAssignments resulting from one AttributeAssignmentExpression
+			 */
+			final Collection&lt;PepActionAttributeAssignment&lt;?&gt;&gt; attrAssignsFromExpr;
+			try
+			{
+<span class="nc" id="L143">				attrAssignsFromExpr = attrAssignmentExpr.evaluate(context);</span>
+<span class="nc" id="L144">				LOGGER.debug(&quot;{}/{} -&gt; {}&quot;, this, attrAssignmentExpr, attrAssignsFromExpr);</span>
+<span class="nc" id="L145">			} catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L147">				throw new IndeterminateEvaluationException(this + &quot;: Error evaluating &quot; + attrAssignmentExpr, e.getStatusCode(), e);</span>
+<span class="nc" id="L148">			}</span>
+
+<span class="nc" id="L150">			assignments.addAll(attrAssignsFromExpr);</span>
+<span class="nc" id="L151">		}</span>
+
+<span class="nc" id="L153">		return new PepAction(actionId, isMandatory, ImmutableList.copyOf(assignments));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

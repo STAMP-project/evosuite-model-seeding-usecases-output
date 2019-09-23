@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicalNOfFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">LogicalNOfFunction.java</span></div><h1>LogicalNOfFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.MultiParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+/**
+ * A class that implements the n-of function. From the XACML spec (urn:oasis:names:tc:xacml:1.0:function:n-of): the first argument to this function SHALL be of data-type
+ * http://www.w3.org/2001/XMLSchema#integer. The remaining arguments SHALL be of data-type http://www.w3.org/2001/XMLSchema#boolean. The first argument specifies the minimum number of the remaining
+ * arguments that MUST evaluate to &quot;True&quot; for the expression to be considered &quot;True&quot;. If the first argument is 0, the result SHALL be &quot;True&quot;. If the number of arguments after the first one is less
+ * than the value of the first argument, then the expression SHALL result in &quot;Indeterminate&quot;. The order of evaluation SHALL be: first evaluate the integer value, and then evaluate each subsequent
+ * argument. The evaluation SHALL stop and return &quot;True&quot; if the specified number of arguments evaluate to &quot;True&quot;. The evaluation of arguments SHALL stop if it is determined that evaluating the
+ * remaining arguments will not satisfy the requirement.
+ * &lt;p&gt;
+ * This function evaluates the arguments one at a time, starting with the first one. As soon as the result of the function can be determined, evaluation stops and that result is returned. During this
+ * process, if any argument evaluates to indeterminate, an indeterminate result is returned.
+ *
+ * 
+ * @version $Id: $
+ */
+final class LogicalNOfFunction extends MultiParameterTypedFirstOrderFunction&lt;BooleanValue&gt;
+{
+	private static String getInvalidArg0MessagePrefix(final FirstOrderFunctionSignature&lt;?&gt; funcsig) {
+<span class="fc" id="L58">		return &quot;Function &quot; + funcsig.getName() + &quot;: Invalid arg #0 (number of required Trues): expected: 0 &lt;= (integer) &lt;= number_of_remaining_arguments; actual: &quot;;</span>
+	}
+
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">	private static abstract class Call extends BaseFirstOrderFunctionCall&lt;BooleanValue&gt;</span>
+	{
+
+		protected final int numOfArgsAfterFirst;
+		protected final String indeterminateArgMsgPrefix;
+		private final IndeterminateEvaluationException indeterminateArgException;
+		private final String invalidArgTypeMsgPrefix;
+
+		private Call(final FirstOrderFunctionSignature&lt;BooleanValue&gt; functionSig, final List&lt;Expression&lt;?&gt;&gt; args, final Datatype&lt;?&gt;... remainingArgTypes)
+		{
+<span class="fc" id="L71">			super(functionSig, args, remainingArgTypes);</span>
+			/*
+			 * Number of remaining args, i.e. all (boolean) args after the first (integer) arg (excluded).
+			 */
+<span class="fc" id="L75">			numOfArgsAfterFirst = args.size() + remainingArgTypes.length - 1;</span>
+<span class="fc" id="L76">			indeterminateArgMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Indeterminate arg #&quot;;</span>
+<span class="fc" id="L77">			indeterminateArgException = new IndeterminateEvaluationException(&quot;Function &quot; + functionSig.getName() + &quot;: evaluation failed because of indeterminate arg&quot;,</span>
+<span class="fc" id="L78">					XacmlStatusCode.PROCESSING_ERROR.value());</span>
+<span class="fc" id="L79">			invalidArgTypeMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Invalid type (expected = &quot; + StandardDatatypes.BOOLEAN + &quot;) of arg#&quot;;</span>
+<span class="fc" id="L80">		}</span>
+
+		protected BooleanValue evaluate(final EvaluationContext context, final int requiredMinOfTrues, final Iterator&lt;? extends Expression&lt;?&gt;&gt; remainingArgExpsIterator,
+				final AttributeValue... checkedRemainingArgs) throws IndeterminateEvaluationException {
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">			assert requiredMinOfTrues &lt;= this.numOfArgsAfterFirst;</span>
+
+<span class="fc" id="L86">			int nOfRequiredTrues = requiredMinOfTrues;</span>
+<span class="fc" id="L87">			int nOfRemainingArgs = this.numOfArgsAfterFirst;</span>
+<span class="fc" id="L88">			IndeterminateEvaluationException lastIndeterminateException = null;</span>
+<span class="fc" id="L89">			int nOfIndeterminateArgs = 0;</span>
+
+			// loop through the inputs, trying to find at least n trues
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">			while (remainingArgExpsIterator.hasNext())</span>
+			{
+				// evaluate the next argument
+<span class="fc" id="L95">				final Expression&lt;?&gt; input = remainingArgExpsIterator.next();</span>
+<span class="fc" id="L96">				nOfRemainingArgs--;</span>
+				final BooleanValue attrVal;
+				try
+				{
+<span class="fc" id="L100">					attrVal = Expressions.eval(input, context, StandardDatatypes.BOOLEAN);</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">					if (attrVal.getUnderlyingValue().booleanValue())</span>
+					{
+						/*
+						 * Arg evaluation result = TRUE -&gt; We're one step closer to our goal...check if we met it
+						 */
+<span class="fc" id="L106">						nOfRequiredTrues--;</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">						if (nOfRequiredTrues == 0)</span>
+						{
+<span class="fc" id="L109">							return BooleanValue.TRUE;</span>
+						}
+					}
+<span class="fc" id="L112">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+					/*
+					 * Keep the indeterminate arg error to throw it later in exception, in case there was not enough TRUEs in the remaining args.
+					 * 
+					 * Indicate arg index to help troubleshooting: argIndex (starting at 0) = max_index - number_of_args_remaining_to_evaluate = (totalArgCount - 1) - nOfRemainingArgs =
+					 * numOfArgsAfterFirst - nOfRemainingArgs
+					 */
+<span class="fc" id="L120">					final int argIndex = numOfArgsAfterFirst - nOfRemainingArgs;</span>
+<span class="fc" id="L121">					lastIndeterminateException = new IndeterminateEvaluationException(indeterminateArgMsgPrefix + argIndex, e.getStatusCode(), e);</span>
+<span class="fc" id="L122">					nOfIndeterminateArgs++;</span>
+<span class="fc" id="L123">				}</span>
+
+				// nOfRequiredTrues != 0
+				/*
+				 * If number of required TRUEs &gt; number of remaining args, the result is definitely not TRUE (but FALSE or Indeterminate)
+				 */
+<span class="fc bfc" id="L129" title="All 2 branches covered.">				if (nOfRequiredTrues &gt; nOfRemainingArgs)</span>
+				{
+					/*
+					 * The final result is either False or Indeterminate. If we already have nOfIndeterminateArgs &gt;= nOfRequiredTrues, the final result would be TRUE if all Indeterminate where TRUE,
+					 * so the final result is Indeterminate.
+					 */
+<span class="fc bfc" id="L135" title="All 2 branches covered.">					if (nOfRequiredTrues &lt;= nOfIndeterminateArgs)</span>
+					{
+						/*
+						 * nOfIndeterminateArgs (= nOfRequiredTrues) != 0 as well if all indeterminate args have been TRUE, result would be TRUE -&gt; indeterminate result
+						 */
+<span class="pc bpc" id="L140" title="1 of 2 branches missed.">						if (lastIndeterminateException == null)</span>
+						{
+							/*
+							 * This should not happen in theory as lastIndeterminateException != null when nOfIndeterminateArgs != 0
+							 */
+<span class="nc" id="L145">							throw indeterminateArgException;</span>
+						}
+
+<span class="fc" id="L148">						throw lastIndeterminateException;</span>
+					}
+
+					/*
+					 * If number of required TRUEs &gt; number of possible TRUEs (= nOfRemainingArgs + nOfIndeterminateArgs), then the result is definitely FALSE. (Else it can still be Indeterminate or
+					 * True.)
+					 */
+<span class="fc bfc" id="L155" title="All 2 branches covered.">					if (nOfRequiredTrues &gt; nOfRemainingArgs + nOfIndeterminateArgs)</span>
+					{
+<span class="fc" id="L157">						return BooleanValue.FALSE;</span>
+					}
+				}
+<span class="fc" id="L160">			}</span>
+
+			/*
+			 * Do the same logic with remaining arg values (except they are constants)
+			 */
+<span class="nc bnc" id="L165" title="All 2 branches missed.">			if (checkedRemainingArgs != null)</span>
+			{
+<span class="nc bnc" id="L167" title="All 2 branches missed.">				for (final AttributeValue arg : checkedRemainingArgs)</span>
+				{
+<span class="nc" id="L169">					nOfRemainingArgs--;</span>
+					final BooleanValue attrVal;
+					try
+					{
+<span class="nc" id="L173">						attrVal = BooleanValue.class.cast(arg);</span>
+<span class="nc" id="L174">					} catch (final ClassCastException e)</span>
+					{
+						/*
+						 * Indicate arg index to help troubleshooting: argIndex (starting at 0) = max_index - number_of_args_remaining_to_evaluate = (totalArgCount - 1) - nOfRemainingArgs =
+						 * numOfArgsAfterFirst - nOfRemainingArgs
+						 */
+<span class="nc" id="L180">						final int argIndex = numOfArgsAfterFirst - nOfRemainingArgs;</span>
+<span class="nc" id="L181">						throw new IndeterminateEvaluationException(invalidArgTypeMsgPrefix + argIndex + &quot;: &quot; + arg.getClass().getName(), XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L182">					}</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">					if (attrVal.getUnderlyingValue().booleanValue())</span>
+					{
+						/*
+						 * Arg = TRUE -&gt; We're one step closer to our goal...check if we met it
+						 */
+<span class="nc" id="L189">						nOfRequiredTrues--;</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">						if (nOfRequiredTrues == 0)</span>
+						{
+<span class="nc" id="L192">							return BooleanValue.TRUE;</span>
+						}
+					}
+
+					/*
+					 * If number of required TRUEs &gt; number of remaining args, the result is definitely not TRUE (but FALSE or Indeterminate)
+					 */
+<span class="nc bnc" id="L199" title="All 2 branches missed.">					if (nOfRequiredTrues &gt; nOfRemainingArgs)</span>
+					{
+						/*
+						 * The final result is either False or Indeterminate. If we already have nOfIndeterminateArgs &gt;= nOfRequiredTrues, the final result would be TRUE if all Indeterminate where
+						 * TRUE, so the final result is Indeterminate.
+						 */
+<span class="nc bnc" id="L205" title="All 2 branches missed.">						if (nOfRequiredTrues &lt;= nOfIndeterminateArgs)</span>
+						{
+							/*
+							 * nOfIndeterminateArgs (= nOfRequiredTrues) != 0 as well if all indeterminate args have been TRUE, result would be TRUE -&gt; indeterminate result
+							 */
+<span class="nc bnc" id="L210" title="All 2 branches missed.">							if (lastIndeterminateException == null)</span>
+							{
+								/*
+								 * This should not happen in theory as lastIndeterminateException != null when nOfIndeterminateArgs != 0
+								 */
+<span class="nc" id="L215">								throw indeterminateArgException;</span>
+							}
+
+<span class="nc" id="L218">							throw lastIndeterminateException;</span>
+						}
+
+						/*
+						 * If number of required TRUEs &gt; number of possible TRUEs (= nOfRemainingArgs + nOfIndeterminateArgs), then the result is definitely FALSE. (Else it can still be Indeterminate
+						 * or True.)
+						 */
+<span class="nc bnc" id="L225" title="All 2 branches missed.">						if (nOfRequiredTrues &gt; nOfRemainingArgs + nOfIndeterminateArgs)</span>
+						{
+<span class="nc" id="L227">							return BooleanValue.FALSE;</span>
+						}
+					}
+				}
+			}
+
+<span class="nc" id="L233">			return BooleanValue.FALSE;</span>
+		}
+
+	}
+
+	private static final class CallWithFixedArg0 extends Call
+	{
+
+		private final int requiredMinOfTrues;
+		private final List&lt;Expression&lt;?&gt;&gt; checkedArgExpressionsAfterFirst;
+
+		public CallWithFixedArg0(final FirstOrderFunctionSignature&lt;BooleanValue&gt; functionSignature, final int arg0, final List&lt;Expression&lt;?&gt;&gt; allArgExpressions, final Datatype&lt;?&gt;... remainingArgTypes)
+		{
+<span class="fc" id="L246">			super(functionSignature, allArgExpressions, remainingArgTypes);</span>
+<span class="fc" id="L247">			requiredMinOfTrues = arg0;</span>
+<span class="fc" id="L248">			checkedArgExpressionsAfterFirst = allArgExpressions.subList(1, allArgExpressions.size());</span>
+<span class="fc" id="L249">		}</span>
+
+		@Override
+		public BooleanValue evaluate(final EvaluationContext context, final AttributeValue... remainingArgs) throws IndeterminateEvaluationException {
+<span class="fc" id="L253">			return super.evaluate(context, requiredMinOfTrues, checkedArgExpressionsAfterFirst.iterator(), remainingArgs);</span>
+		}
+
+	}
+
+	private static final class CallWithVarArg0 extends Call
+	{
+		private final String invalidArg0MsgPrefix;
+		private final List&lt;Expression&lt;?&gt;&gt; checkedArgExpressions;
+
+		private CallWithVarArg0(final FirstOrderFunctionSignature&lt;BooleanValue&gt; functionSig, final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes)
+				throws IllegalArgumentException
+		{
+<span class="nc" id="L266">			super(functionSig, argExpressions, remainingArgTypes);</span>
+<span class="nc" id="L267">			this.checkedArgExpressions = argExpressions;</span>
+<span class="nc" id="L268">			invalidArg0MsgPrefix = getInvalidArg0MessagePrefix(functionSig);</span>
+<span class="nc" id="L269">		}</span>
+
+		@Override
+		public BooleanValue evaluate(final EvaluationContext context, final AttributeValue... checkedRemainingArgs) throws IndeterminateEvaluationException {
+			/*
+			 * Arg datatypes and number is already checked in superclass but we need to do further checks specific to this function such as the first argument which must be a positive integer
+			 */
+			/*
+			 * Evaluate the arguments one by one. As soon as we can return a result, do so. Return Indeterminate if any argument evaluated is indeterminate.
+			 */
+<span class="nc" id="L279">			final Iterator&lt;? extends Expression&lt;?&gt;&gt; argExpsIterator = checkedArgExpressions.iterator();</span>
+
+			// Evaluate the first argument
+<span class="nc" id="L282">			final Expression&lt;?&gt; input0 = argExpsIterator.next();</span>
+			final IntegerValue intAttrVal;
+			try
+			{
+<span class="nc" id="L286">				intAttrVal = Expressions.eval(input0, context, StandardDatatypes.INTEGER);</span>
+<span class="nc" id="L287">			} catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L289">				throw new IndeterminateEvaluationException(indeterminateArgMsgPrefix + 0, e.getStatusCode(), e);</span>
+<span class="nc" id="L290">			}</span>
+
+			/*
+			 * intAttrVal is 'n' (number of Trues to reach).
+			 * 
+			 * We downsize the BigInteger value to int right away, because anyway inputs.size() is an int, so we cannot do better and don't need to.
+			 */
+<span class="nc" id="L297">			final int nOfRequiredTrues = intAttrVal.getUnderlyingValue().intValue();</span>
+
+			// If the number of trues needed is less than zero, report an error.
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			if (nOfRequiredTrues &lt; 0)</span>
+			{
+<span class="nc" id="L302">				throw new IndeterminateEvaluationException(invalidArg0MsgPrefix + nOfRequiredTrues, XacmlStatusCode.PROCESSING_ERROR.value());</span>
+			}
+
+			// If the number of trues needed is zero, return true.
+<span class="nc bnc" id="L306" title="All 2 branches missed.">			if (nOfRequiredTrues == 0)</span>
+			{
+<span class="nc" id="L308">				return BooleanValue.TRUE;</span>
+			}
+
+			// else nOfRequiredTrues &gt; 0
+			// make sure it's possible to find n true values in the remaining arguments
+<span class="nc bnc" id="L313" title="All 2 branches missed.">			if (nOfRequiredTrues &gt; numOfArgsAfterFirst)</span>
+			{
+<span class="nc" id="L315">				throw new IndeterminateEvaluationException(invalidArg0MsgPrefix + nOfRequiredTrues + &quot; &gt; number_of_remaining_args (&quot; + numOfArgsAfterFirst + &quot;)&quot;,</span>
+<span class="nc" id="L316">						XacmlStatusCode.PROCESSING_ERROR.value());</span>
+			}
+
+<span class="nc" id="L319">			return evaluate(context, nOfRequiredTrues, argExpsIterator, checkedRemainingArgs);</span>
+		}
+	}
+
+	LogicalNOfFunction(final String functionId)
+	{
+<span class="fc" id="L325">		super(functionId, StandardDatatypes.BOOLEAN, true, Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.BOOLEAN));</span>
+<span class="fc" id="L326">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;BooleanValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException {
+		/*
+		 * Optimization: check whether the first arg ('n' = number of Trues to reach) is constant
+		 */
+<span class="fc" id="L334">		final Iterator&lt;? extends Expression&lt;?&gt;&gt; argExpsIterator = argExpressions.iterator();</span>
+		/*
+		 * Evaluate the first argument if not in remainingArgTypes
+		 */
+<span class="pc bpc" id="L338" title="1 of 2 branches missed.">		if (!argExpsIterator.hasNext())</span>
+		{
+<span class="nc" id="L340">			return new CallWithVarArg0(functionSignature, argExpressions, remainingArgTypes);</span>
+		}
+
+<span class="fc" id="L343">		final Optional&lt;? extends Value&gt; arg0 = argExpsIterator.next().getValue();</span>
+<span class="pc bpc" id="L344" title="1 of 2 branches missed.">		if (arg0.isPresent())</span>
+		{
+			// arg0 is constant
+			// We downsize the BigInteger value to int right away, because anyway inputs.size() is an
+			// int, so we cannot do better and don't need to.
+<span class="fc" id="L349">			final int nOfRequiredTrues = IntegerValue.class.cast(arg0.get()).getUnderlyingValue().intValueExact();</span>
+<span class="fc bfc" id="L350" title="All 2 branches covered.">			if (nOfRequiredTrues &lt; 0)</span>
+			{
+<span class="fc" id="L352">				throw new IllegalArgumentException(getInvalidArg0MessagePrefix(functionSignature) + nOfRequiredTrues);</span>
+			}
+
+			// If the number of trues needed is zero, return true.
+<span class="fc bfc" id="L356" title="All 2 branches covered.">			if (nOfRequiredTrues == 0)</span>
+			{
+<span class="fc" id="L358">				return new ConstantResultFirstOrderFunctionCall&lt;&gt;(BooleanValue.TRUE, StandardDatatypes.BOOLEAN);</span>
+			}
+
+			// else nOfRequiredTrues &gt; 0
+			// make sure it's possible to find n true values in the remaining arguments
+			// Total number of args to the n-of function:
+<span class="fc" id="L364">			final int totalArgCount = argExpressions.size() + remainingArgTypes.length;</span>
+			/*
+			 * Number of remaining args, i.e. all (boolean) args after the first (integer) arg (excluded).
+			 */
+<span class="fc" id="L368">			final int nOfRemainingArgs = totalArgCount - 1;</span>
+<span class="fc bfc" id="L369" title="All 2 branches covered.">			if (nOfRequiredTrues &gt; nOfRemainingArgs)</span>
+			{
+<span class="fc" id="L371">				throw new IllegalArgumentException(getInvalidArg0MessagePrefix(functionSignature) + nOfRequiredTrues + &quot; &gt; number_of_remaining args (&quot; + nOfRemainingArgs + &quot;)&quot;);</span>
+			}
+
+<span class="fc" id="L374">			return new CallWithFixedArg0(functionSignature, nOfRequiredTrues, argExpressions, remainingArgTypes);</span>
+		}
+
+		/**
+		 * TODO: optimize by checking the following: If any argument expression is constant BooleanAttributeValue False, remove it from the arguments, as it has no effect on the final result. Indeed,
+		 * n-of function is commutative except for the first argument, and n-of(N, false, x, y...) = n-of(N, x, y...).
+		 */
+<span class="nc" id="L381">		return new CallWithVarArg0(functionSignature, argExpressions, remainingArgTypes);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

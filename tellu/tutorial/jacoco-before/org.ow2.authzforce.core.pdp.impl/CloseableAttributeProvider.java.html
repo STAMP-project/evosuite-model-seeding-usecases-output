@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CloseableAttributeProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">CloseableAttributeProvider.java</span></div><h1>CloseableAttributeProvider.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.AttributeFqn;
+import org.ow2.authzforce.core.pdp.api.AttributeFqns;
+import org.ow2.authzforce.core.pdp.api.AttributeProvider;
+import org.ow2.authzforce.core.pdp.api.CloseableNamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.NamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactoryRegistry;
+
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ListMultimap;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeDesignatorType;
+
+/**
+ * Closeable AttributeProvider
+ * &lt;p&gt;
+ * The sub-providers may very likely hold resources such as network resources to get attributes remotely, or attribute caches to speed up finding, etc. Therefore, you are required to call
+ * {@link #close()} when you no longer need an instance - especially before replacing with a new instance (with different modules) - in order to make sure these resources are released properly by each
+ * underlying module (e.g. close the attribute caches).
+ *
+ * @version $Id: $
+ */
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">public final class CloseableAttributeProvider extends ModularAttributeProvider implements Closeable</span>
+{
+
+	private static final class ModuleAdapter
+	{
+		private final CloseableNamedAttributeProvider module;
+
+		private ModuleAdapter(final CloseableNamedAttributeProvider module) throws IOException
+<span class="nc" id="L57">		{</span>
+<span class="nc" id="L58">			final Set&lt;AttributeDesignatorType&gt; providedAttributes = module.getProvidedAttributes();</span>
+<span class="nc bnc" id="L59" title="All 4 branches missed.">			if (providedAttributes == null || providedAttributes.isEmpty())</span>
+			{
+<span class="nc" id="L61">				module.close();</span>
+<span class="nc" id="L62">				throw new IllegalArgumentException(&quot;Invalid &quot; + module + &quot; : list of supported AttributeDesignators is null or empty&quot;);</span>
+			}
+
+<span class="nc" id="L65">			this.module = module;</span>
+<span class="nc" id="L66">		}</span>
+
+		private void close() throws IOException
+		{
+<span class="nc" id="L70">			this.module.close();</span>
+<span class="nc" id="L71">		}</span>
+
+		private Set&lt;AttributeDesignatorType&gt; getProvidedAttributes()
+		{
+<span class="nc" id="L75">			return this.module.getProvidedAttributes();</span>
+		}
+
+		@Override
+		public String toString()
+		{
+<span class="nc" id="L81">			return module.toString();</span>
+		}
+
+		private NamedAttributeProvider getAdaptedModule()
+		{
+<span class="nc" id="L86">			return this.module;</span>
+		}
+	}
+
+	private static void close(final Set&lt;ModuleAdapter&gt; moduleClosers) throws IOException
+	{
+		// An error occuring on closing one module should not stop from closing
+		// the others
+		// But we keep the exception in memory if any, to throw it at the end as
+		// we do not want to hide that an error occurred
+<span class="nc" id="L96">		IOException latestEx = null;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		for (final ModuleAdapter mod : moduleClosers)</span>
+		{
+			try
+			{
+<span class="nc" id="L101">				mod.close();</span>
+<span class="nc" id="L102">			} catch (final IOException e)</span>
+			{
+<span class="nc" id="L104">				latestEx = e;</span>
+<span class="nc" id="L105">			}</span>
+<span class="nc" id="L106">		}</span>
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (latestEx != null)</span>
+		{
+<span class="nc" id="L110">			throw latestEx;</span>
+		}
+<span class="nc" id="L112">	}</span>
+
+	// not-null
+	private final Set&lt;ModuleAdapter&gt; moduleClosers;
+
+	private CloseableAttributeProvider(final ImmutableListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; modulesByAttributeId, final Set&lt;ModuleAdapter&gt; moduleClosers,
+	        final boolean strictAttributeIssuerMatch)
+	{
+<span class="fc" id="L120">		super(modulesByAttributeId, null, strictAttributeIssuerMatch);</span>
+<span class="pc bpc" id="L121" title="2 of 4 branches missed.">		assert moduleClosers != null;</span>
+<span class="fc" id="L122">		this.moduleClosers = moduleClosers;</span>
+<span class="fc" id="L123">	}</span>
+
+<span class="fc" id="L125">	private static final CloseableAttributeProvider EVALUATION_CONTEXT_ONLY_SCOPED_CLOSEABLE_ATTRIBUTE_PROVIDER = new CloseableAttributeProvider(ImmutableListMultimap.of(),</span>
+<span class="fc" id="L126">	        Collections.&lt;ModuleAdapter&gt;emptySet(), true);</span>
+
+	/**
+	 * Instantiates attribute Provider that tries to find attribute values in evaluation context, then, if not there, query the {@code module} providing the requested attribute ID, if any.
+	 *
+	 * @param attributeFactory
+	 *            (mandatory) attribute value factory
+	 * @param attributeProviderFactories
+	 *            Attribute Provider factories (Attribute Providers resolve values of attributes absent from the request context). Empty if none.
+	 * @return instance of this class
+	 * @param strictAttributeIssuerMatch
+	 *            true iff it is required that AttributeDesignator without Issuer only match request Attributes without Issuer. This mode is not fully compliant with XACML 3.0, §5.29, in the case that
+	 *            the Issuer is not present; but it performs better and is recommended when all AttributeDesignators have an Issuer (best practice). Set it to false, if you want full compliance with
+	 *            the XACML 3.0 Attribute Evaluation: &quot;If the Issuer is not present in the AttributeDesignator, then the matching of the attribute to the named attribute SHALL be governed by
+	 *            AttributeId and DataType attributes alone.&quot;
+	 * @throws java.lang.IllegalArgumentException
+	 *             If any Attribute Provider created from {@code attributeProviderFactories} does not provide any attribute.
+	 * @throws java.io.IOException
+	 *             error closing the Attribute Providers created from {@code attributeProviderFactories}, when a {@link IllegalArgumentException} is raised
+	 */
+	public static CloseableAttributeProvider getInstance(final List&lt;CloseableNamedAttributeProvider.DependencyAwareFactory&gt; attributeProviderFactories,
+	        final AttributeValueFactoryRegistry attributeFactory, final boolean strictAttributeIssuerMatch) throws IOException
+	{
+<span class="pc bpc" id="L149" title="3 of 4 branches missed.">		if (attributeProviderFactories == null || attributeProviderFactories.isEmpty())</span>
+		{
+<span class="fc" id="L151">			return EVALUATION_CONTEXT_ONLY_SCOPED_CLOSEABLE_ATTRIBUTE_PROVIDER;</span>
+		}
+
+<span class="nc" id="L154">		final ListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; modulesByAttributeId = ArrayListMultimap.create();</span>
+<span class="nc" id="L155">		final int moduleCount = attributeProviderFactories.size();</span>
+<span class="nc" id="L156">		final Set&lt;ModuleAdapter&gt; mutableModuleCloserSet = HashCollections.newUpdatableSet(moduleCount);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		for (final CloseableNamedAttributeProvider.DependencyAwareFactory attProviderFactory : attributeProviderFactories)</span>
+		{
+			try
+			{
+<span class="nc" id="L161">				final Set&lt;AttributeDesignatorType&gt; requiredAttrs = attProviderFactory.getDependencies();</span>
+				/*
+				 * Each AttributeProviderModule is given a read-only AttributeProvider - aka &quot;dependency attribute Provider&quot; - to find any attribute they require (dependency), based on the attribute
+				 * Provider modules that provide these required attributes (set above); read-only so that modules use this attribute Provider only to get required attributes, nothing else. Create this
+				 * dependency attribute Provider.
+				 */
+				final AttributeProvider depAttrProvider;
+<span class="nc bnc" id="L168" title="All 2 branches missed.">				if (requiredAttrs == null)</span>
+				{
+<span class="nc" id="L170">					depAttrProvider = ModularAttributeProvider.EVALUATION_CONTEXT_ONLY_SCOPED_ATTRIBUTE_PROVIDER;</span>
+				} else
+				{
+<span class="nc" id="L173">					final ImmutableListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; immutableCopyOfAttrProviderModsByAttrId = ImmutableListMultimap.copyOf(modulesByAttributeId);</span>
+<span class="nc" id="L174">					depAttrProvider = new ModularAttributeProvider(immutableCopyOfAttrProviderModsByAttrId, requiredAttrs, strictAttributeIssuerMatch);</span>
+				}
+
+				/*
+				 * attrProviderMod closing isn't done in this method but handled in close() method when closing all modules
+				 */
+<span class="nc" id="L180">				final ModuleAdapter moduleAdapter = new ModuleAdapter(attProviderFactory.getInstance(attributeFactory, depAttrProvider));</span>
+<span class="nc" id="L181">				mutableModuleCloserSet.add(moduleAdapter);</span>
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">				for (final AttributeDesignatorType attrDesignator : moduleAdapter.getProvidedAttributes())</span>
+				{
+<span class="nc" id="L185">					final AttributeFqn attrGUID = AttributeFqns.newInstance(attrDesignator);</span>
+					/*
+					 * We allow multiple modules supporting the same attribute designator (as fall-back: if one does not find any value, the next one comes in)
+					 */
+<span class="nc" id="L189">					modulesByAttributeId.put(attrGUID, moduleAdapter.getAdaptedModule());</span>
+<span class="nc" id="L190">				}</span>
+<span class="nc" id="L191">			} catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L193">				close(mutableModuleCloserSet);</span>
+<span class="nc" id="L194">				throw e;</span>
+<span class="nc" id="L195">			}</span>
+<span class="nc" id="L196">		}</span>
+
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		if (modulesByAttributeId.isEmpty())</span>
+		{
+<span class="nc" id="L200">			return EVALUATION_CONTEXT_ONLY_SCOPED_CLOSEABLE_ATTRIBUTE_PROVIDER;</span>
+		}
+
+<span class="nc" id="L203">		return new CloseableAttributeProvider(ImmutableListMultimap.copyOf(modulesByAttributeId), HashCollections.newImmutableSet(mutableModuleCloserSet), strictAttributeIssuerMatch);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public void close() throws IOException
+	{
+<span class="nc" id="L210">		close(this.moduleClosers);</span>
+<span class="nc" id="L211">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

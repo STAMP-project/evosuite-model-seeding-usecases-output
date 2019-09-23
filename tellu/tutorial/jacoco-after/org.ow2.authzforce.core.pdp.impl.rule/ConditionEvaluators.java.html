@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConditionEvaluators.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.rule</a> &gt; <span class="el_source">ConditionEvaluators.java</span></div><h1>ConditionEvaluators.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.rule;
+
+import java.util.Optional;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Condition;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ExpressionType;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.impl.BooleanEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * XACML Condition evaluators.
+ *
+ * @version $Id: $
+ */
+public final class ConditionEvaluators
+{
+
+<span class="nc" id="L44">	private static final IllegalArgumentException INVALID_CONSTANT_FALSE_EXPRESSION_EXCEPTION = new IllegalArgumentException(&quot;Invalid condition: Expression is equivalent to constant False&quot;);</span>
+
+	/**
+	 * Logger used for all classes
+	 */
+<span class="nc" id="L49">	private static final Logger LOGGER = LoggerFactory.getLogger(ConditionEvaluators.class);</span>
+
+<span class="nc" id="L51">	private static final IllegalArgumentException NULL_EXPR_FACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(</span>
+			&quot;Cannot create Condition evaluator: undefined input XACML expression parser (expressionFactory)&quot;);
+
+	/**
+	 * Condition that always evaluates to True
+	 */
+<span class="nc" id="L57">	public static final BooleanEvaluator TRUE_CONDITION = new BooleanEvaluator()</span>
+<span class="nc" id="L58">	{</span>
+
+		@Override
+		public boolean evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L63">			LOGGER.debug(&quot;Condition is null or Expression equals constant True -&gt; True&quot;);</span>
+<span class="nc" id="L64">			return true;</span>
+		}
+	};
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">	private static final class BooleanExpressionEvaluator implements BooleanEvaluator</span>
+	{
+
+		private transient final Expression&lt;BooleanValue&gt; evaluatableBoolExpression;
+
+		private BooleanExpressionEvaluator(final Expression&lt;BooleanValue&gt; boolExpression) throws IllegalArgumentException
+<span class="nc" id="L74">		{</span>
+
+<span class="nc bnc" id="L76" title="All 4 branches missed.">			assert boolExpression != null;</span>
+<span class="nc" id="L77">			this.evaluatableBoolExpression = boolExpression;</span>
+<span class="nc" id="L78">		}</span>
+
+		/**
+		 * Evaluates the &lt;code&gt;Condition&lt;/code&gt; to boolean by evaluating its child boolean &lt;code&gt;Expression&lt;/code&gt;.
+		 *
+		 * @param context
+		 *            the representation of the request
+		 * @return true if and only if condition is true, i.e. its expression evaluates to True
+		 * @throws org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException
+		 *             if error evaluating the condition
+		 * 
+		 * 
+		 */
+		@Override
+		public boolean evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L94">			final BooleanValue boolVal = evaluatableBoolExpression.evaluate(context);</span>
+<span class="nc" id="L95">			return boolVal.getUnderlyingValue().booleanValue();</span>
+		}
+
+	}
+
+	/**
+	 * Instantiates a Condition evaluator from XACML-Schema-derived &lt;code&gt;Condition&lt;/code&gt;
+	 *
+	 * @param condition
+	 *            XACML-schema-derived JAXB Condition element
+	 * @param expressionFactory
+	 *            expression factory
+	 * @param xPathCompiler
+	 *            XPath compiler corresponding to enclosing policy(set) default XPath version
+	 * @return instance of Condition evaluator
+	 * @throws java.lang.IllegalArgumentException
+	 *             if the expression is not a valid boolean Expression
+	 */
+	public static BooleanEvaluator getInstance(final Condition condition, final XPathCompiler xPathCompiler, final ExpressionFactory expressionFactory) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		if (condition == null)</span>
+		{
+<span class="nc" id="L117">			return TRUE_CONDITION;</span>
+		}
+
+		/*
+		 * condition != null -&gt; condition's Expression is not null (by definition of XACML schema), therefore expressionFactory is needed
+		 */
+<span class="nc" id="L123">		final ExpressionType exprElt = condition.getExpression().getValue();</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (expressionFactory == null)</span>
+		{
+<span class="nc" id="L126">			throw NULL_EXPR_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L129">		final Expression&lt;?&gt; expr = expressionFactory.getInstance(exprElt, xPathCompiler, null);</span>
+
+		// make sure it's a boolean expression...
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (!(expr.getReturnType().equals(StandardDatatypes.BOOLEAN)))</span>
+		{
+<span class="nc" id="L134">			throw new IllegalArgumentException(&quot;Invalid return datatype (&quot; + expr.getReturnType() + &quot;) for Expression (&quot; + expr.getClass().getSimpleName() + &quot;) in Condition. Expected: Boolean.&quot;);</span>
+		}
+
+		// WARNING: unchecked cast
+<span class="nc" id="L138">		final Expression&lt;BooleanValue&gt; evaluatableExpression = (Expression&lt;BooleanValue&gt;) expr;</span>
+
+		/*
+		 * Check whether the expression is constant
+		 */
+<span class="nc" id="L143">		final Optional&lt;BooleanValue&gt; constant = evaluatableExpression.getValue();</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">		if (constant.isPresent())</span>
+		{
+<span class="nc bnc" id="L146" title="All 2 branches missed.">			if (constant.get().getUnderlyingValue())</span>
+			{
+				// constant TRUE
+<span class="nc" id="L149">				LOGGER.warn(&quot;Condition's expression is equivalent to constant True -&gt; optimization: replacing with constant True condition&quot;);</span>
+<span class="nc" id="L150">				return TRUE_CONDITION;</span>
+			}
+
+			// constant False -&gt; unacceptable
+<span class="nc" id="L154">			throw INVALID_CONSTANT_FALSE_EXPRESSION_EXCEPTION;</span>
+		}
+
+		// constant == null
+<span class="nc" id="L158">		LOGGER.debug(&quot;Condition's Expression is not constant (evaluation without context failed)&quot;);</span>
+<span class="nc" id="L159">		return new BooleanExpressionEvaluator(evaluatableExpression);</span>
+	}
+
+	private ConditionEvaluators()
+	{
+		// prevent instantiation
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

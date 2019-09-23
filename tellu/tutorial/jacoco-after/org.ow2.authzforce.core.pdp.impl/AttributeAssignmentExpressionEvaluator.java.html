@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AttributeAssignmentExpressionEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">AttributeAssignmentExpressionEvaluator.java</span></div><h1>AttributeAssignmentExpressionEvaluator.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * 
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import javax.xml.bind.JAXBElement;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.PepActionAttributeAssignment;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Bag;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeAssignmentExpression;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ExpressionType;
+
+/**
+ * XACML AttributeAssignmentExpression evaluator
+ *
+ * @version $Id: $
+ */
+public final class AttributeAssignmentExpressionEvaluator
+{
+	private static abstract class AttributeValueExpression&lt;AV extends AttributeValue&gt;
+	{
+		private final Datatype&lt;AV&gt; datatype;
+
+		private AttributeValueExpression(Datatype&lt;AV&gt; attributeDatatype)
+<span class="nc" id="L61">		{</span>
+<span class="nc" id="L62">			this.datatype = attributeDatatype;</span>
+<span class="nc" id="L63">		}</span>
+
+		private final Datatype&lt;AV&gt; getDatatype()
+		{
+<span class="nc" id="L67">			return datatype;</span>
+		}
+
+		protected abstract Collection&lt;AV&gt; evaluate(final EvaluationContext ctx) throws IndeterminateEvaluationException;
+	}
+
+	private static final class SingleAttributeValueExpression&lt;AV extends AttributeValue&gt; extends AttributeValueExpression&lt;AV&gt;
+	{
+
+		private final Expression&lt;AV&gt; valueExpr;
+
+		private SingleAttributeValueExpression(Expression&lt;AV&gt; valueExpression)
+		{
+<span class="nc" id="L80">			super(valueExpression.getReturnType());</span>
+<span class="nc" id="L81">			this.valueExpr = valueExpression;</span>
+<span class="nc" id="L82">		}</span>
+
+		@Override
+		protected Collection&lt;AV&gt; evaluate(EvaluationContext ctx) throws IndeterminateEvaluationException
+		{
+			// atomic (see spec §5.30, 5.40) / primitive attribute value
+<span class="nc" id="L88">			return Collections.singleton(valueExpr.evaluate(ctx));</span>
+		}
+
+	}
+
+	private static final class AttributeBagExpression&lt;AV extends AttributeValue&gt; extends AttributeValueExpression&lt;AV&gt;
+	{
+
+		private final Expression&lt;? extends Bag&lt;AV&gt;&gt; valueExpr;
+
+		private &lt;B extends Bag&lt;AV&gt;&gt; AttributeBagExpression(Expression&lt;B&gt; valueExpression)
+		{
+<span class="nc" id="L100">			super((Datatype&lt;AV&gt;) valueExpression.getReturnType().getTypeParameter().get());</span>
+<span class="nc" id="L101">			this.valueExpr = valueExpression;</span>
+<span class="nc" id="L102">		}</span>
+
+		@Override
+		protected Collection&lt;AV&gt; evaluate(EvaluationContext ctx) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L107">			return valueExpr.evaluate(ctx).elements();</span>
+		}
+
+	}
+
+<span class="nc" id="L112">	private static final Logger LOGGER = LoggerFactory.getLogger(AttributeAssignmentExpressionEvaluator.class);</span>
+
+	private final String attributeId;
+
+	private final Optional&lt;String&gt; category;
+
+	private final Optional&lt;String&gt; issuer;
+
+	private final AttributeValueExpression&lt;?&gt; attValExpr;
+
+	private transient final String toString;
+
+	/**
+	 * Instantiates evaluatable AttributeAssignment expression evaluator from XACML-Schema-derived JAXB {@link oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeAssignmentExpression}
+	 *
+	 * @param jaxbAttrAssignExp
+	 *            XACML-schema-derived JAXB AttributeAssignmentExpression
+	 * @param xPathCompiler
+	 *            XPath compiler corresponding to enclosing policy(set) default XPath version
+	 * @param expFactory
+	 *            expression factory for parsing the AttributeAssignmentExpression's expression
+	 * @throws java.lang.IllegalArgumentException
+	 *             invalid AttributeAssignmentExpression's Expression
+	 */
+	public AttributeAssignmentExpressionEvaluator(final AttributeAssignmentExpression jaxbAttrAssignExp, final XPathCompiler xPathCompiler, final ExpressionFactory expFactory)
+	        throws IllegalArgumentException
+<span class="nc" id="L138">	{</span>
+		/*
+		 * Cannot used AttributeFQN class to handle metadata because AttributeAssignment Category is not required like in AttributeDesignator which is what the AttributeFQN is used for
+		 */
+<span class="nc" id="L142">		this.attributeId = jaxbAttrAssignExp.getAttributeId();</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		Preconditions.checkArgument(attributeId != null, &quot;Undefined AttributeAssignment/AttributeId&quot;);</span>
+<span class="nc" id="L144">		this.category = Optional.ofNullable(jaxbAttrAssignExp.getCategory());</span>
+<span class="nc" id="L145">		this.issuer = Optional.ofNullable(jaxbAttrAssignExp.getIssuer());</span>
+<span class="nc" id="L146">		this.toString = &quot;AttributeAssignmentExpression [attributeId=&quot; + attributeId + &quot;, category=&quot; + category.orElse(null) + &quot;, issuer=&quot; + issuer.orElse(null) + &quot;]&quot;;</span>
+
+<span class="nc" id="L148">		final JAXBElement&lt;? extends ExpressionType&gt; xacmlExpr = jaxbAttrAssignExp.getExpression();</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">		Preconditions.checkArgument(xacmlExpr != null, &quot;Undefined AttributeAssignment/Expression&quot;);</span>
+<span class="nc" id="L150">		final Expression&lt;?&gt; evaluatableExpression = expFactory.getInstance(xacmlExpr.getValue(), xPathCompiler, null);</span>
+
+		/*
+		 * As stated in section 5.41 of XACML spec, the expression must evaluate to a constant attribute value or a bag of zero or more attribute values.
+		 */
+<span class="nc" id="L155">		final Datatype&lt;?&gt; expReturnType = evaluatableExpression.getReturnType();</span>
+<span class="nc" id="L156">		final Optional&lt;? extends Datatype&lt;?&gt;&gt; expReturnTypeParam = expReturnType.getTypeParameter();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		if (expReturnTypeParam.isPresent())</span>
+		{
+			/*
+			 * RexpReturnTypeParam is generic. Make sure it is a bag of AttributeValues
+			 */
+<span class="nc" id="L162">			final Datatype&lt;?&gt; nonNullTypeParam = expReturnTypeParam.get();</span>
+			/*
+			 * Make sure typeParam is not itself generic like a bag
+			 */
+<span class="nc bnc" id="L166" title="All 4 branches missed.">			if (nonNullTypeParam.getTypeParameter().isPresent() || nonNullTypeParam == StandardDatatypes.FUNCTION)</span>
+			{
+<span class="nc" id="L168">				throw new IllegalArgumentException(</span>
+				        &quot;Invalid &quot; + toString + &quot;: invalid Expression's return type (&quot; + expReturnType + &quot;)'. Expected: AttributeValue or bag (of AttributeValues) datatype.&quot;);
+			}
+
+			/*
+			 * So we assume that if type parameter is not Function or generic (bag), it is AttributeValue subtype and expReturnType is Bag&lt;?&gt; datatype. (This is not formally guaranteed :-( but can we
+			 * do better?)
+			 */
+<span class="nc" id="L176">			this.attValExpr = new AttributeBagExpression&lt;&gt;((Expression&lt;Bag&gt;) evaluatableExpression);</span>
+<span class="nc" id="L177">		} else</span>
+		{
+			/*
+			 * expReturnType assumed primitive (Function or AttributeValue a priori)
+			 */
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			if (expReturnType == StandardDatatypes.FUNCTION)</span>
+			{
+<span class="nc" id="L184">				throw new IllegalArgumentException(</span>
+				        &quot;Invalid &quot; + toString + &quot;: invalid Expression's return type (&quot; + expReturnType + &quot;)'. Expected: AttributeValue or bag (of AttributeValues) datatype.&quot;);
+			}
+
+			/*
+			 * So we assume that if expReturnType is not Function, it is AttributeValue subtype. (This is not formally guaranteed :-( but can we do better?)
+			 */
+<span class="nc" id="L191">			this.attValExpr = new SingleAttributeValueExpression&lt;&gt;((Expression&lt;? extends AttributeValue&gt;) evaluatableExpression);</span>
+		}
+
+<span class="nc" id="L194">	}</span>
+
+	private &lt;AV extends AttributeValue&gt; PepActionAttributeAssignment&lt;AV&gt; newAttributeAssignment(Datatype&lt;AV&gt; datatype, final AV attrVal)
+	{
+<span class="nc" id="L198">		return new PepActionAttributeAssignment&lt;&gt;(this.attributeId, this.category, this.issuer, datatype, attrVal);</span>
+	}
+
+	private &lt;AV extends AttributeValue&gt; List&lt;PepActionAttributeAssignment&lt;?&gt;&gt; newAttributeAssignments(final AttributeValueExpression&lt;AV&gt; expression, final EvaluationContext context)
+	        throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L204">		final Collection&lt;AV&gt; vals = expression.evaluate(context);</span>
+<span class="nc" id="L205">		LOGGER.debug(&quot;{}/Expression -&gt; {}&quot;, this, vals);</span>
+
+		/*
+		 * vals may be empty bag, in particular if AttributeDesignator/AttributeSelector with MustBePresent=False evaluates to empty bag. Sections 5.30/5.40 of XACML core spec says:
+		 * &quot;If the bag is empty, there shall be no &lt;AttributeAssignment&gt; from this &lt;AttributeAssignmentExpression&gt;.&quot;
+		 */
+<span class="nc" id="L211">		return vals.stream().map(av -&gt; newAttributeAssignment(expression.getDatatype(), av)).collect(Collectors.toList());</span>
+	}
+
+	/**
+	 * Evaluates to AttributeAssignments Section 5.39 and 5.40 of XACML 3.0 core spec: If an AttributeAssignmentExpression evaluates to an atomic attribute value, then there MUST be one resulting
+	 * AttributeAssignment which MUST contain this single attribute value. If the AttributeAssignmentExpression evaluates to a bag, then there MUST be a resulting AttributeAssignment for each of the
+	 * values in the bag. If the bag is empty, there shall be no AttributeAssignment from this AttributeAssignmentExpression
+	 *
+	 * @param context
+	 *            evaluation context
+	 * @return non-null AttributeAssignments; empty if no AttributeValue resulting from evaluation of the Expression
+	 * @throws org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException
+	 *             if evaluation of the Expression in this context fails (Indeterminate)
+	 */
+	public Collection&lt;PepActionAttributeAssignment&lt;?&gt;&gt; evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L227">		return newAttributeAssignments(this.attValExpr, context);</span>
+	}
+
+	@Override
+	public String toString()
+	{
+<span class="nc" id="L233">		return toString;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

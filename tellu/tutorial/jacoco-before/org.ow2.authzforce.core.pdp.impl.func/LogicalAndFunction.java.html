@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicalAndFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">LogicalAndFunction.java</span></div><h1>LogicalAndFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+/**
+ * A class that implements the logical function &quot;and&quot;.
+ * &lt;p&gt;
+ * From XACML core specification of function 'urn:oasis:names:tc:xacml:1.0:function:and': This function SHALL return &quot;True&quot; if it has no arguments and SHALL return &quot;False&quot; if one of its arguments
+ * evaluates to &quot;False&quot;. The order of evaluation SHALL be from first argument to last. The evaluation SHALL stop with a result of &quot;False&quot; if any argument evaluates to &quot;False&quot;, leaving the rest of the
+ * arguments unevaluated.
+ *
+ * 
+ * @version $Id: $
+ */
+final class LogicalAndFunction extends SingleParameterTypedFirstOrderFunction&lt;BooleanValue, BooleanValue&gt;
+{
+	private static final class CallFactory
+	{
+
+		private static final class Call extends BaseFirstOrderFunctionCall&lt;BooleanValue&gt;
+		{
+			private final String invalidArgTypeMsgPrefix;
+			private final String indeterminateArgMsgPrefix;
+
+			private final List&lt;Expression&lt;?&gt;&gt; checkedArgExpressions;
+
+			private Call(final FirstOrderFunctionSignature&lt;BooleanValue&gt; functionSig, final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+			{
+<span class="fc" id="L62">				super(functionSig, argExpressions, remainingArgTypes);</span>
+<span class="fc" id="L63">				this.checkedArgExpressions = argExpressions;</span>
+<span class="fc" id="L64">				invalidArgTypeMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Invalid type (expected = &quot; + StandardDatatypes.BOOLEAN + &quot;) of arg#&quot;;</span>
+<span class="fc" id="L65">				indeterminateArgMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Indeterminate arg #&quot;;</span>
+<span class="fc" id="L66">			}</span>
+
+			@Override
+			public BooleanValue evaluate(final EvaluationContext context, final AttributeValue... remainingArgs) throws IndeterminateEvaluationException
+			{
+<span class="fc" id="L71">				IndeterminateEvaluationException indeterminateException = null;</span>
+<span class="fc" id="L72">				int argIndex = 0;</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">				for (final Expression&lt;?&gt; arg : checkedArgExpressions)</span>
+				{
+					// Evaluate the argument
+					final BooleanValue attrVal;
+					try
+					{
+<span class="fc" id="L79">						attrVal = Expressions.eval(arg, context, StandardDatatypes.BOOLEAN);</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">						if (!attrVal.getUnderlyingValue().booleanValue())</span>
+						{
+<span class="fc" id="L82">							return BooleanValue.FALSE;</span>
+						}
+					}
+<span class="fc" id="L85">					catch (final IndeterminateEvaluationException e)</span>
+					{
+						// keep the indeterminate error to throw later if there was not any FALSE in
+						// remaining args
+<span class="fc" id="L89">						indeterminateException = new IndeterminateEvaluationException(indeterminateArgMsgPrefix + argIndex, e.getStatusCode(), e);</span>
+<span class="fc" id="L90">					}</span>
+
+<span class="fc" id="L92">					argIndex++;</span>
+<span class="fc" id="L93">				}</span>
+
+				// do the same with remaining arg values
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">				if (remainingArgs != null)</span>
+				{
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">					for (final AttributeValue arg : remainingArgs)</span>
+					{
+						// Evaluate the argument
+						final BooleanValue attrVal;
+						try
+						{
+<span class="nc" id="L105">							attrVal = BooleanValue.class.cast(arg);</span>
+						}
+<span class="nc" id="L107">						catch (final ClassCastException e)</span>
+						{
+<span class="nc" id="L109">							throw new IndeterminateEvaluationException(invalidArgTypeMsgPrefix + argIndex + &quot;: &quot; + arg.getClass().getName(), XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L110">						}</span>
+
+<span class="nc bnc" id="L112" title="All 2 branches missed.">						if (!attrVal.getUnderlyingValue().booleanValue())</span>
+						{
+<span class="nc" id="L114">							return BooleanValue.FALSE;</span>
+						}
+
+<span class="nc" id="L117">						argIndex++;</span>
+					}
+				}
+
+<span class="fc bfc" id="L121" title="All 2 branches covered.">				if (indeterminateException != null)</span>
+				{
+					// there was at least one indeterminate arg that could have been TRUE or FALSE -&gt;
+					// indeterminate result
+<span class="fc" id="L125">					throw indeterminateException;</span>
+				}
+
+<span class="fc" id="L128">				return BooleanValue.TRUE;</span>
+			}
+
+		}
+
+		private final SingleParameterTypedFirstOrderFunctionSignature&lt;BooleanValue, BooleanValue&gt; funcSig;
+
+		private CallFactory(final SingleParameterTypedFirstOrderFunctionSignature&lt;BooleanValue, BooleanValue&gt; functionSignature)
+<span class="fc" id="L136">		{</span>
+<span class="fc" id="L137">			this.funcSig = functionSignature;</span>
+<span class="fc" id="L138">		}</span>
+
+		protected FirstOrderFunctionCall&lt;BooleanValue&gt; getInstance(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+		{
+			/**
+			 * TODO: optimize this function call by checking the following:
+			 * &lt;ol&gt;
+			 * &lt;li&gt;If any argument expression is constant BooleanAttributeValue True, remove it from the arguments, as it has no effect on the final result. Indeed, and function is commutative and
+			 * and(true, x, y...) = and(x, y...).&lt;/li&gt;
+			 * &lt;/ol&gt;
+			 * Other optimizations are already achieved by ApplyExpression pre-evaluating the function call with context = null and check the result if no IndeterminateEvaluationException is thrown.
+			 */
+<span class="fc" id="L150">			return new Call(funcSig, argExpressions, remainingArgTypes);</span>
+		}
+
+	}
+
+	private final CallFactory funcCallFactory;
+
+	LogicalAndFunction(final String functionId)
+	{
+<span class="fc" id="L159">		super(functionId, StandardDatatypes.BOOLEAN, true, Arrays.asList(StandardDatatypes.BOOLEAN));</span>
+<span class="fc" id="L160">		this.funcCallFactory = new CallFactory(this.functionSignature);</span>
+<span class="fc" id="L161">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;BooleanValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException
+	{
+<span class="fc" id="L167">		return this.funcCallFactory.getInstance(argExpressions, remainingArgTypes);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

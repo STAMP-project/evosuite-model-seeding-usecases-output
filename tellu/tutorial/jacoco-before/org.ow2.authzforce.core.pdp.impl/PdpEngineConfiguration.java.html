@@ -1,0 +1,806 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PdpEngineConfiguration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">PdpEngineConfiguration.java</span></div><h1>PdpEngineConfiguration.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * 
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.net.URL;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+
+import javax.xml.bind.JAXBException;
+import javax.xml.transform.Source;
+import javax.xml.transform.stream.StreamSource;
+
+import org.ow2.authzforce.core.pdp.api.CloseableNamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.DecisionCache;
+import org.ow2.authzforce.core.pdp.api.DecisionRequestPreprocessor;
+import org.ow2.authzforce.core.pdp.api.DecisionResultPostprocessor;
+import org.ow2.authzforce.core.pdp.api.EnvironmentProperties;
+import org.ow2.authzforce.core.pdp.api.EnvironmentPropertyName;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.XmlUtils;
+import org.ow2.authzforce.core.pdp.api.XmlUtils.XmlnsFilteringParserFactory;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.io.XacmlJaxbParsingUtils;
+import org.ow2.authzforce.core.pdp.api.policy.CloseableRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.RootPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactory;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactoryRegistry;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.ImmutableAttributeValueFactoryRegistry;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardAttributeValueFactories;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.StringParseableValue;
+import org.ow2.authzforce.core.pdp.impl.combining.ImmutableCombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.impl.combining.StandardCombiningAlgorithm;
+import org.ow2.authzforce.core.pdp.impl.expression.DepthLimitingExpressionFactory;
+import org.ow2.authzforce.core.pdp.impl.func.FunctionRegistry;
+import org.ow2.authzforce.core.pdp.impl.func.ImmutableFunctionRegistry;
+import org.ow2.authzforce.core.pdp.impl.func.StandardFunction;
+import org.ow2.authzforce.core.xmlns.pdp.InOutProcChain;
+import org.ow2.authzforce.core.xmlns.pdp.Pdp;
+import org.ow2.authzforce.core.xmlns.pdp.StandardEnvironmentAttributeSource;
+import org.ow2.authzforce.xacml.identifiers.XacmlDatatypeId;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractAttributeProvider;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractDecisionCache;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractPolicyProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.ResourceUtils;
+
+import com.google.common.collect.ImmutableMap;
+
+/**
+ * PDP engine configuration
+ *
+ */
+<span class="nc bnc" id="L90" title="All 2 branches missed.">public final class PdpEngineConfiguration</span>
+{
+<span class="nc" id="L92">	private static final IllegalArgumentException NULL_REQPREPROC_EXCEPTION = new IllegalArgumentException(</span>
+	        &quot;Undefined request preprocessor ('requestPreproc' element) in I/O processing chain ('ioProcChain' element)&quot;);
+
+<span class="nc" id="L95">	private static final IllegalArgumentException ILLEGAL_USE_STD_FUNCTIONS_ARGUMENT_EXCEPTION = new IllegalArgumentException(</span>
+	        &quot;useStandardFunctions = true not allowed if useStandardDatatypes = false&quot;);
+
+<span class="nc" id="L98">	private static final IllegalArgumentException NULL_ROOTPOLICYPROVIDER_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined rootPolicyProvider&quot;);</span>
+
+	// the logger we'll use for all messages
+<span class="nc" id="L101">	private static final Logger LOGGER = LoggerFactory.getLogger(BasePdpEngine.class);</span>
+
+<span class="nc" id="L103">	private static final IllegalArgumentException NULL_PDP_MODEL_HANDLER_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined PDP configuration model handler&quot;);</span>
+
+	private static boolean isXpathBased(final Function&lt;?&gt; function)
+	{
+		/*
+		 * A function is said &quot;XPath-based&quot; iff it takes at least one (XACML) xpathExpression parameter. Regarding higher-order function, as of now, we only provide higher-order functions defined in
+		 * the XACML (3.0) Core specification, which are not XPath-based, or if a higher-order function happens to take a XPathExpression parameter, it is actually a parameter to the first-order
+		 * sub-function. Plus it is not possible to add extensions that are higher-order functions in this PDP implementation. Therefore, it is enough to check first-order functions (class
+		 * FirstOrderFunction) only. (Remember that such functions may be used as parameter to a higher-order function.)
+		 */
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		if (function instanceof FirstOrderFunction)</span>
+		{
+<span class="nc" id="L115">			final List&lt;? extends Datatype&lt;?&gt;&gt; paramTypes = ((FirstOrderFunction&lt;?&gt;) function).getParameterTypes();</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">			for (final Datatype&lt;?&gt; paramType : paramTypes)</span>
+			{
+<span class="nc bnc" id="L118" title="All 2 branches missed.">				if (paramType.getId().equals(XacmlDatatypeId.XPATH_EXPRESSION.value()))</span>
+				{
+<span class="nc" id="L120">					return true;</span>
+				}
+<span class="nc" id="L122">			}</span>
+		}
+
+<span class="nc" id="L125">		return false;</span>
+	}
+
+	private static &lt;JAXB_CONF extends AbstractAttributeProvider&gt; CloseableNamedAttributeProvider.DependencyAwareFactory newAttributeProviderProviderFactory(final JAXB_CONF jaxbConf,
+	        final EnvironmentProperties envProps)
+	{
+<span class="nc" id="L131">		final CloseableNamedAttributeProvider.FactoryBuilder&lt;JAXB_CONF&gt; attrProviderModBuilder = PdpExtensions.getAttributeProviderFactoryBuilder((Class&lt;JAXB_CONF&gt;) jaxbConf.getClass());</span>
+<span class="nc" id="L132">		return attrProviderModBuilder.getInstance(jaxbConf, envProps);</span>
+	}
+
+	private static &lt;JAXB_CONF extends AbstractPolicyProvider&gt; CloseableRefPolicyProvider newRefPolicyProvider(final JAXB_CONF jaxbConf, final XmlnsFilteringParserFactory xacmlParserFactory,
+	        final int maxPolicySetRefDepth, final ExpressionFactory xacmlExprFactory, final CombiningAlgRegistry combiningAlgRegistry, final EnvironmentProperties envProps)
+	{
+<span class="nc" id="L138">		final CloseableRefPolicyProvider.Factory&lt;JAXB_CONF&gt; refPolicyProviderModFactory = PdpExtensions.getRefPolicyProviderFactory((Class&lt;JAXB_CONF&gt;) jaxbConf.getClass());</span>
+<span class="nc" id="L139">		return refPolicyProviderModFactory.getInstance(jaxbConf, xacmlParserFactory, maxPolicySetRefDepth, xacmlExprFactory, combiningAlgRegistry, envProps);</span>
+	}
+
+	private static &lt;JAXB_CONF extends AbstractPolicyProvider&gt; RootPolicyProvider newRootPolicyProvider(final JAXB_CONF jaxbConf, final XmlnsFilteringParserFactory xacmlParserFactory,
+	        final ExpressionFactory xacmlExprFactory, final CombiningAlgRegistry combiningAlgRegistry, final Optional&lt;CloseableRefPolicyProvider&gt; refPolicyProvider,
+	        final EnvironmentProperties envProps)
+	{
+<span class="nc" id="L146">		final RootPolicyProvider.Factory&lt;JAXB_CONF&gt; rootPolicyProviderFactory = PdpExtensions.getRootPolicyProviderFactory((Class&lt;JAXB_CONF&gt;) jaxbConf.getClass());</span>
+<span class="nc" id="L147">		return rootPolicyProviderFactory.getInstance(jaxbConf, xacmlParserFactory, xacmlExprFactory, combiningAlgRegistry, refPolicyProvider, envProps);</span>
+	}
+
+	private static &lt;JAXB_CONF extends AbstractDecisionCache&gt; DecisionCache newDecisionCache(final JAXB_CONF jaxbConf, final AttributeValueFactoryRegistry attValFactories,
+	        final EnvironmentProperties envProps)
+	{
+<span class="nc" id="L153">		final DecisionCache.Factory&lt;JAXB_CONF&gt; decisionCacheFactory = PdpExtensions.getDecisionCacheFactory((Class&lt;JAXB_CONF&gt;) jaxbConf.getClass());</span>
+<span class="nc" id="L154">		return decisionCacheFactory.getInstance(jaxbConf, attValFactories, envProps);</span>
+	}
+
+	private final boolean enableXPath;
+	private final AttributeValueFactoryRegistry attValFactoryRegistry;
+
+	private final ExpressionFactory xacmlExpressionFactory;
+
+	private final RootPolicyProvider rootPolicyProvider;
+
+	private final boolean strictAttributeIssuerMatch;
+
+	private final StandardEnvironmentAttributeSource stdEnvAttributeSource;
+
+	private final Optional&lt;DecisionCache&gt; decisionCache;
+
+	private final Map&lt;Class&lt;?&gt;, Entry&lt;DecisionRequestPreprocessor&lt;?, ?&gt;, DecisionResultPostprocessor&lt;?, ?&gt;&gt;&gt; ioProcChainsByInputType;
+
+	private final int clientReqErrVerbosityLevel;
+
+	/**
+	 * Constructs configuration from PDP XML-schema-derived JAXB model (usually 'unmarshaled' from XML configuration file)
+	 *
+	 * @param pdpJaxbConf
+	 *            (JAXB-bound) PDP configuration
+	 * @param envProps
+	 *            PDP configuration environment properties (e.g. PARENT_DIR)
+	 * @throws java.lang.IllegalArgumentException
+	 *             invalid PDP configuration
+	 * @throws java.io.IOException
+	 *             if any error occurred closing already created {@link Closeable} modules (policy Providers, attribute Providers, decision cache)
+	 */
+	public PdpEngineConfiguration(final Pdp pdpJaxbConf, final EnvironmentProperties envProps) throws IllegalArgumentException, IOException
+<span class="nc" id="L187">	{</span>
+		/*
+		 * Check required args
+		 */
+		/*
+		 * Root policy provider
+		 */
+<span class="nc" id="L194">		final AbstractPolicyProvider rootPolicyProviderJaxbConf = pdpJaxbConf.getRootPolicyProvider();</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">		if (rootPolicyProviderJaxbConf == null)</span>
+		{
+<span class="nc" id="L197">			throw NULL_ROOTPOLICYPROVIDER_ARGUMENT_EXCEPTION;</span>
+		}
+
+		/*
+		 * Enable support for XPath expressions, XPath functions, etc.
+		 */
+<span class="nc" id="L203">		enableXPath = pdpJaxbConf.isEnableXPath();</span>
+
+		// Attribute datatypes (primitive)
+<span class="nc" id="L206">		final List&lt;String&gt; datatypeExtensionIdentifiers = pdpJaxbConf.getAttributeDatatypes();</span>
+<span class="nc" id="L207">		final Set&lt;AttributeValueFactory&lt;?&gt;&gt; datatypeExtensions = HashCollections.newUpdatableSet(datatypeExtensionIdentifiers.size());</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">		for (final String datatypeId : datatypeExtensionIdentifiers)</span>
+		{
+<span class="nc" id="L210">			final AttributeValueFactory&lt;?&gt; datatypeFactory = PdpExtensions.getExtension(AttributeValueFactory.class, datatypeId);</span>
+<span class="nc" id="L211">			datatypeExtensions.add(datatypeFactory);</span>
+<span class="nc" id="L212">		}</span>
+
+		/*
+		 * Merge with standards if required, or use the standards as is if no extension
+		 */
+<span class="nc" id="L217">		final boolean enableStdDatatypes = pdpJaxbConf.isUseStandardDatatypes();</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">		if (enableStdDatatypes)</span>
+		{
+<span class="nc" id="L220">			final AttributeValueFactoryRegistry stdRegistry = StandardAttributeValueFactories.getRegistry(enableXPath, Optional.ofNullable(pdpJaxbConf.getMaxIntegerValue()));</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (datatypeExtensionIdentifiers.isEmpty())</span>
+			{
+<span class="nc" id="L223">				attValFactoryRegistry = stdRegistry;</span>
+			} else
+			{
+<span class="nc" id="L226">				attValFactoryRegistry = new ImmutableAttributeValueFactoryRegistry(HashCollections.newImmutableSet(stdRegistry.getExtensions(), datatypeExtensions));</span>
+			}
+<span class="nc" id="L228">		} else</span>
+		{
+<span class="nc" id="L230">			attValFactoryRegistry = new ImmutableAttributeValueFactoryRegistry(datatypeExtensions);</span>
+		}
+
+		// Standard Environment Attribute source
+<span class="nc" id="L234">		final StandardEnvironmentAttributeSource stdEnvAttSourceFromJaxbConf = pdpJaxbConf.getStandardEnvAttributeSource();</span>
+		/*
+		 * The default behavior for getting the standard environment attributes (current date/time) is the one complying strictly with the XACML spec: if request does not have values for these
+		 * attributes, the &quot;context handler&quot; (PDP in this case) must provide them. So we use PDP values if it does not override any existing value in the request.
+		 */
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		stdEnvAttributeSource = stdEnvAttSourceFromJaxbConf == null ? StandardEnvironmentAttributeSource.REQUEST_ELSE_PDP : stdEnvAttSourceFromJaxbConf;</span>
+
+		// Extra Attribute Providers
+<span class="nc" id="L242">		final List&lt;AbstractAttributeProvider&gt; attProviderJaxbConfs = pdpJaxbConf.getAttributeProviders();</span>
+<span class="nc" id="L243">		final List&lt;CloseableNamedAttributeProvider.DependencyAwareFactory&gt; attProviderFactories = new ArrayList&lt;&gt;(attProviderJaxbConfs.size());</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">		for (final AbstractAttributeProvider attProviderJaxbConf : attProviderJaxbConfs)</span>
+		{
+<span class="nc" id="L246">			final CloseableNamedAttributeProvider.DependencyAwareFactory depAwareAttrProviderModFactory = newAttributeProviderProviderFactory(attProviderJaxbConf, envProps);</span>
+<span class="nc" id="L247">			attProviderFactories.add(depAwareAttrProviderModFactory);</span>
+<span class="nc" id="L248">		}</span>
+
+		/*
+		 * Variable processing - max Variable reference depth
+		 */
+<span class="nc" id="L253">		final BigInteger bigMaxVarRefDepth = pdpJaxbConf.getMaxVariableRefDepth();</span>
+		final int maxVarRefDepth;
+		try
+		{
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			maxVarRefDepth = bigMaxVarRefDepth == null ? -1 : bigMaxVarRefDepth.intValueExact();</span>
+<span class="nc" id="L258">		} catch (final ArithmeticException e)</span>
+		{
+<span class="nc" id="L260">			throw new IllegalArgumentException(&quot;Invalid maxVariableRefDepth: &quot; + bigMaxVarRefDepth, e);</span>
+<span class="nc" id="L261">		}</span>
+
+		// Functions (only non-generic functions supported in configuration)
+<span class="nc" id="L264">		final List&lt;String&gt; nonGenericFunctionExtensionIdentifiers = pdpJaxbConf.getFunctions();</span>
+<span class="nc" id="L265">		final Set&lt;Function&lt;?&gt;&gt; nonGenericFunctionExtensions = HashCollections.newUpdatableSet(nonGenericFunctionExtensionIdentifiers.size());</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		for (final String funcId : nonGenericFunctionExtensionIdentifiers)</span>
+		{
+<span class="nc" id="L268">			final Function&lt;?&gt; function = PdpExtensions.getExtension(Function.class, funcId);</span>
+<span class="nc bnc" id="L269" title="All 4 branches missed.">			if (!enableXPath &amp;&amp; isXpathBased(function))</span>
+			{
+<span class="nc" id="L271">				throw new IllegalArgumentException(&quot;XPath-based function not allowed (because configuration parameter 'enableXPath' = false): &quot; + function);</span>
+			}
+
+<span class="nc" id="L274">			nonGenericFunctionExtensions.add(function);</span>
+<span class="nc" id="L275">		}</span>
+
+		/*
+		 * Merge with standards if required, or use the standards as is if no extension
+		 */
+		final FunctionRegistry functionRegistry;
+<span class="nc bnc" id="L281" title="All 2 branches missed.">		if (pdpJaxbConf.isUseStandardFunctions())</span>
+		{
+<span class="nc bnc" id="L283" title="All 2 branches missed.">			if (!enableStdDatatypes)</span>
+			{
+<span class="nc" id="L285">				throw ILLEGAL_USE_STD_FUNCTIONS_ARGUMENT_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L288">			final AttributeValueFactory&lt;?&gt; intValFactory = attValFactoryRegistry.getExtension(StandardDatatypes.INTEGER.getId());</span>
+<span class="nc bnc" id="L289" title="All 8 branches missed.">			assert intValFactory != null &amp;&amp; intValFactory.getDatatype() == StandardDatatypes.INTEGER &amp;&amp; intValFactory instanceof StringParseableValue.Factory;</span>
+
+<span class="nc" id="L291">			final FunctionRegistry stdRegistry = StandardFunction.getRegistry(enableXPath, (StringParseableValue.Factory&lt;IntegerValue&gt;) intValFactory);</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">			if (nonGenericFunctionExtensionIdentifiers.isEmpty())</span>
+			{
+<span class="nc" id="L294">				functionRegistry = stdRegistry;</span>
+			} else
+			{
+<span class="nc" id="L297">				functionRegistry = new ImmutableFunctionRegistry(HashCollections.newImmutableSet(stdRegistry.getNonGenericFunctions(), nonGenericFunctionExtensions),</span>
+<span class="nc" id="L298">				        stdRegistry.getGenericFunctionFactories());</span>
+			}
+<span class="nc" id="L300">		} else</span>
+		{
+<span class="nc" id="L302">			functionRegistry = new ImmutableFunctionRegistry(nonGenericFunctionExtensions, null);</span>
+		}
+
+		/*
+		 * XACML element (Policies, etc.) parser factory
+		 */
+<span class="nc" id="L308">		final XmlnsFilteringParserFactory xacmlParserFactory = XacmlJaxbParsingUtils.getXacmlParserFactory(enableXPath);</span>
+
+		/*
+		 * Strict Attribute Issuer match
+		 */
+<span class="nc" id="L313">		strictAttributeIssuerMatch = pdpJaxbConf.isStrictAttributeIssuerMatch();</span>
+
+		// Policy/Rule Combining Algorithms
+		// Extensions
+<span class="nc" id="L317">		final List&lt;String&gt; algExtensionIdentifiers = pdpJaxbConf.getCombiningAlgorithms();</span>
+<span class="nc" id="L318">		final Set&lt;CombiningAlg&lt;?&gt;&gt; algExtensions = HashCollections.newUpdatableSet(algExtensionIdentifiers.size());</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">		for (final String algId : algExtensionIdentifiers)</span>
+		{
+<span class="nc" id="L321">			final CombiningAlg&lt;?&gt; alg = PdpExtensions.getExtension(CombiningAlg.class, algId);</span>
+<span class="nc" id="L322">			algExtensions.add(alg);</span>
+<span class="nc" id="L323">		}</span>
+
+		/*
+		 * Merge with standards if required, or use the standards as is if no extension
+		 */
+		final CombiningAlgRegistry combiningAlgRegistry;
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		if (pdpJaxbConf.isUseStandardCombiningAlgorithms())</span>
+		{
+<span class="nc bnc" id="L331" title="All 2 branches missed.">			if (algExtensions.isEmpty())</span>
+			{
+<span class="nc" id="L333">				combiningAlgRegistry = StandardCombiningAlgorithm.REGISTRY;</span>
+			} else
+			{
+<span class="nc" id="L336">				combiningAlgRegistry = new ImmutableCombiningAlgRegistry(HashCollections.newImmutableSet(StandardCombiningAlgorithm.REGISTRY.getExtensions(), algExtensions));</span>
+			}
+		} else
+		{
+<span class="nc" id="L340">			combiningAlgRegistry = new ImmutableCombiningAlgRegistry(algExtensions);</span>
+		}
+
+		/*
+		 * Policy Reference processing - Max PolicySet reference depth
+		 */
+<span class="nc" id="L346">		final BigInteger bigMaxPolicyRefDepth = pdpJaxbConf.getMaxPolicyRefDepth();</span>
+		final int maxPolicySetRefDepth;
+		try
+		{
+<span class="nc bnc" id="L350" title="All 2 branches missed.">			maxPolicySetRefDepth = bigMaxPolicyRefDepth == null ? -1 : bigMaxPolicyRefDepth.intValueExact();</span>
+<span class="nc" id="L351">		} catch (final ArithmeticException e)</span>
+		{
+<span class="nc" id="L353">			throw new IllegalArgumentException(&quot;Invalid maxPolicyRefDepth: &quot; + bigMaxPolicyRefDepth, e);</span>
+<span class="nc" id="L354">		}</span>
+
+		/*
+		 * XACML Expression factory/parser
+		 */
+<span class="nc" id="L359">		xacmlExpressionFactory = new DepthLimitingExpressionFactory(attValFactoryRegistry, functionRegistry, attProviderFactories, maxVarRefDepth, enableXPath, strictAttributeIssuerMatch);</span>
+
+		/*
+		 * Policy Reference processing - Policy-by-reference Provider
+		 */
+<span class="nc" id="L364">		final AbstractPolicyProvider refPolicyProviderJaxbConf = pdpJaxbConf.getRefPolicyProvider();</span>
+		final Optional&lt;CloseableRefPolicyProvider&gt; refPolicyProvider;
+<span class="nc bnc" id="L366" title="All 2 branches missed.">		if (refPolicyProviderJaxbConf == null)</span>
+		{
+<span class="nc" id="L368">			refPolicyProvider = Optional.empty();</span>
+		} else
+		{
+<span class="nc" id="L371">			refPolicyProvider = Optional.of(newRefPolicyProvider(refPolicyProviderJaxbConf, xacmlParserFactory, maxPolicySetRefDepth, xacmlExpressionFactory, combiningAlgRegistry, envProps));</span>
+		}
+
+		/*
+		 * Root Policy Provider
+		 */
+<span class="nc" id="L377">		rootPolicyProvider = newRootPolicyProvider(rootPolicyProviderJaxbConf, xacmlParserFactory, xacmlExpressionFactory, combiningAlgRegistry, refPolicyProvider, envProps);</span>
+
+		// Decision cache
+<span class="nc" id="L380">		final AbstractDecisionCache decisionCacheJaxbConf = pdpJaxbConf.getDecisionCache();</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">		if (decisionCacheJaxbConf == null)</span>
+		{
+<span class="nc" id="L383">			decisionCache = Optional.empty();</span>
+		} else
+		{
+<span class="nc" id="L386">			decisionCache = Optional.of(newDecisionCache(decisionCacheJaxbConf, attValFactoryRegistry, envProps));</span>
+		}
+
+		// Decision Result postprocessor
+<span class="nc" id="L390">		final BigInteger clientReqErrVerbosityBigInt = pdpJaxbConf.getClientRequestErrorVerbosityLevel();</span>
+		try
+		{
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			this.clientReqErrVerbosityLevel = clientReqErrVerbosityBigInt == null ? 0 : clientReqErrVerbosityBigInt.intValueExact();</span>
+<span class="nc" id="L394">		} catch (final ArithmeticException e)</span>
+		{
+<span class="nc" id="L396">			throw new IllegalArgumentException(&quot;Invalid clientRequestErrorVerbosityLevel: &quot; + clientReqErrVerbosityBigInt, e);</span>
+<span class="nc" id="L397">		}</span>
+
+<span class="nc" id="L399">		final List&lt;InOutProcChain&gt; inoutProcChains = pdpJaxbConf.getIoProcChains();</span>
+
+<span class="nc bnc" id="L401" title="All 2 branches missed.">		if (inoutProcChains.isEmpty())</span>
+		{
+<span class="nc" id="L403">			this.ioProcChainsByInputType = Collections.emptyMap();</span>
+		} else
+		{
+<span class="nc" id="L406">			final Map&lt;Class&lt;?&gt;, Entry&lt;DecisionRequestPreprocessor&lt;?, ?&gt;, DecisionResultPostprocessor&lt;?, ?&gt;&gt;&gt; mutableInoutProcChainsByInputType = HashCollections</span>
+<span class="nc" id="L407">			        .newUpdatableMap(inoutProcChains.size());</span>
+<span class="nc" id="L408">			final Map&lt;Class&lt;?&gt;, String&gt; reqProcIdentifiersByInputType = HashCollections.newUpdatableMap(inoutProcChains.size());</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">			for (final InOutProcChain chain : inoutProcChains)</span>
+			{
+				// Decision Result postprocessor
+<span class="nc" id="L412">				final String resultPostprocId = chain.getResultPostproc();</span>
+				final DecisionResultPostprocessor&lt;?, ?&gt; decisionResultPostproc;
+<span class="nc bnc" id="L414" title="All 2 branches missed.">				if (resultPostprocId == null)</span>
+				{
+<span class="nc" id="L416">					decisionResultPostproc = null;</span>
+				} else
+				{
+<span class="nc" id="L419">					final DecisionResultPostprocessor.Factory&lt;?, ?&gt; resultPostprocFactory = PdpExtensions.getExtension(DecisionResultPostprocessor.Factory.class, resultPostprocId);</span>
+<span class="nc" id="L420">					decisionResultPostproc = resultPostprocFactory.getInstance(clientReqErrVerbosityLevel);</span>
+				}
+
+				// Decision Request preprocessor
+<span class="nc" id="L424">				final String reqPreprocId = chain.getRequestPreproc();</span>
+
+<span class="nc bnc" id="L426" title="All 2 branches missed.">				if (reqPreprocId == null)</span>
+				{
+<span class="nc" id="L428">					throw NULL_REQPREPROC_EXCEPTION;</span>
+				}
+
+<span class="nc" id="L431">				final DecisionRequestPreprocessor.Factory&lt;?, ?&gt; requestPreprocFactory = PdpExtensions.getExtension(DecisionRequestPreprocessor.Factory.class, reqPreprocId);</span>
+<span class="nc bnc" id="L432" title="All 2 branches missed.">				final DecisionRequestPreprocessor&lt;?, ?&gt; decisionRequestPreproc = requestPreprocFactory.getInstance(attValFactoryRegistry, strictAttributeIssuerMatch, enableXPath,</span>
+<span class="nc" id="L433">				        XmlUtils.SAXON_PROCESSOR, decisionResultPostproc == null ? Collections.emptySet() : decisionResultPostproc.getFeatures());</span>
+<span class="nc bnc" id="L434" title="All 4 branches missed.">				if (decisionResultPostproc != null &amp;&amp; decisionRequestPreproc.getOutputRequestType() != decisionResultPostproc.getRequestType())</span>
+				{
+<span class="nc" id="L436">					throw new IllegalArgumentException(</span>
+<span class="nc" id="L437">					        &quot;Invalid 'ioProcChain': request pre-processor's output request type (requestPreproc.getOutputRequestType() = &quot; + decisionRequestPreproc.getOutputRequestType()</span>
+<span class="nc" id="L438">					                + &quot;) and result post-processor's request type (resultPostproc.getRequestType() = &quot; + decisionResultPostproc.getRequestType() + &quot;) do not match&quot;);</span>
+				}
+
+<span class="nc" id="L441">				final Class&lt;?&gt; inputType = decisionRequestPreproc.getInputRequestType();</span>
+<span class="nc" id="L442">				final Entry&lt;DecisionRequestPreprocessor&lt;?, ?&gt;, DecisionResultPostprocessor&lt;?, ?&gt;&gt; oldEntry = mutableInoutProcChainsByInputType.put(inputType,</span>
+				        new AbstractMap.SimpleImmutableEntry&lt;&gt;(decisionRequestPreproc, decisionResultPostproc));
+<span class="nc bnc" id="L444" title="All 2 branches missed.">				if (oldEntry != null)</span>
+				{
+<span class="nc" id="L446">					throw new IllegalArgumentException(&quot;Conflicting 'ioProcChain' (I/O processing chain) elements: request preprocessors '&quot; + reqProcIdentifiersByInputType.get(inputType)</span>
+					        + &quot;' in one chain and '&quot; + reqPreprocId + &quot; in another handle the same input type (only one 'ioProcChain', i.e. 'requestPreproc', per input type is allowed)&quot;);
+				}
+
+<span class="nc" id="L450">				reqProcIdentifiersByInputType.put(inputType, reqPreprocId);</span>
+<span class="nc" id="L451">			}</span>
+
+<span class="nc" id="L453">			this.ioProcChainsByInputType = ImmutableMap.copyOf(mutableInoutProcChainsByInputType);</span>
+		}
+
+<span class="nc" id="L456">	}</span>
+
+	private static PdpEngineConfiguration getInstance(final Source confXmlSrc, final PdpModelHandler modelHandler, final EnvironmentProperties envProps) throws IOException, IllegalArgumentException
+	{
+<span class="nc bnc" id="L460" title="All 6 branches missed.">		assert confXmlSrc != null &amp;&amp; modelHandler != null;</span>
+
+		// configuration file exists
+		final Pdp pdpJaxbConf;
+		try
+		{
+<span class="nc" id="L466">			pdpJaxbConf = modelHandler.unmarshal(confXmlSrc, Pdp.class);</span>
+<span class="nc" id="L467">		} catch (final JAXBException e)</span>
+		{
+<span class="nc" id="L469">			throw new IllegalArgumentException(&quot;Invalid PDP configuration file&quot;, e);</span>
+<span class="nc" id="L470">		}</span>
+
+<span class="nc" id="L472">		return new PdpEngineConfiguration(pdpJaxbConf, envProps);</span>
+	}
+
+	/**
+	 * Create PDP instance
+	 * &lt;p&gt;
+	 * To allow using file paths relative to the parent folder of the configuration file (located at confLocation) anywhere in this configuration file (including in PDP extensions'), we define a
+	 * property 'PARENT_DIR', so that the placeholder ${PARENT_DIR} can be used as prefix for file paths in the configuration file. E.g. if confLocation = 'file:///path/to/configurationfile', then
+	 * ${PARENT_DIR} will be replaced by 'file:///path/to'. If confLocation is not a file on the filesystem, then ${PARENT_DIR} is undefined.
+	 *
+	 * @param confFile
+	 *            PDP configuration file
+	 * @param modelHandler
+	 *            PDP configuration model handler
+	 * @return PDP instance
+	 * @throws java.io.IOException
+	 *             I/O error reading from {@code confFile}
+	 * @throws java.lang.IllegalArgumentException
+	 *             Invalid PDP configuration in {@code confFile}
+	 */
+	public static PdpEngineConfiguration getInstance(final File confFile, final PdpModelHandler modelHandler) throws IOException, IllegalArgumentException
+	{
+<span class="nc bnc" id="L494" title="All 4 branches missed.">		if (confFile == null || !confFile.exists())</span>
+		{
+			// no property replacement of PARENT_DIR
+<span class="nc" id="L497">			throw new IllegalArgumentException(&quot;Invalid configuration file location: No file exists at: &quot; + confFile);</span>
+		}
+		// configuration file exists
+
+<span class="nc bnc" id="L501" title="All 2 branches missed.">		if (modelHandler == null)</span>
+		{
+<span class="nc" id="L503">			throw NULL_PDP_MODEL_HANDLER_ARGUMENT_EXCEPTION;</span>
+		}
+
+		/*
+		 * Set property PARENT_DIR in environment properties for future replacement in configuration strings by PDP extensions using file paths
+		 */
+<span class="nc" id="L509">		final File confAbsFile = confFile.getAbsoluteFile();</span>
+<span class="nc" id="L510">		LOGGER.debug(&quot;Config file's location - absolute path: {}&quot;, confAbsFile);</span>
+<span class="nc" id="L511">		final File confAbsFileParent = confAbsFile.getParentFile();</span>
+<span class="nc" id="L512">		LOGGER.debug(&quot;Config file's parent directory: {}&quot;, confAbsFileParent);</span>
+<span class="nc" id="L513">		final String propVal = confAbsFileParent.toURI().toString();</span>
+<span class="nc" id="L514">		LOGGER.debug(&quot;Property {} = {}&quot;, EnvironmentPropertyName.PARENT_DIR, propVal);</span>
+<span class="nc" id="L515">		final EnvironmentProperties envProps = new DefaultEnvironmentProperties(Collections.singletonMap(EnvironmentPropertyName.PARENT_DIR, propVal));</span>
+<span class="nc" id="L516">		return getInstance(new StreamSource(confFile), modelHandler, envProps);</span>
+	}
+
+	/**
+	 * Create PDP instance. Locations here can be any resource string supported by Spring ResourceLoader. More info: http://docs.spring.io/spring/docs/current/spring-framework-reference/html
+	 * /resources.html.
+	 * &lt;p&gt;
+	 * To allow using file paths relative to the parent folder of the configuration file (located at confLocation) anywhere in this configuration file (including in PDP extensions'), we define a
+	 * property 'PARENT_DIR', so that the placeholder ${PARENT_DIR} can be used as prefix for file paths in the configuration file. E.g. if confLocation = 'file:///path/to/configurationfile', then
+	 * ${PARENT_DIR} will be replaced by 'file:///path/to'. If confLocation is not a file on the filesystem, then ${PARENT_DIR} is undefined.
+	 *
+	 * @param confLocation
+	 *            location of PDP configuration file
+	 * @param modelHandler
+	 *            PDP configuration model handler
+	 * @return PDP instance
+	 * @throws java.io.IOException
+	 *             I/O error reading from {@code confLocation}
+	 * @throws java.lang.IllegalArgumentException
+	 *             Invalid PDP configuration at {@code confLocation}
+	 */
+	public static PdpEngineConfiguration getInstance(final String confLocation, final PdpModelHandler modelHandler) throws IOException, IllegalArgumentException
+	{
+
+<span class="nc bnc" id="L540" title="All 2 branches missed.">		if (modelHandler == null)</span>
+		{
+<span class="nc" id="L542">			throw NULL_PDP_MODEL_HANDLER_ARGUMENT_EXCEPTION;</span>
+		}
+
+		try
+		{
+<span class="nc" id="L547">			final File confFile = ResourceUtils.getFile(confLocation);</span>
+<span class="nc" id="L548">			return getInstance(confFile, modelHandler);</span>
+<span class="nc" id="L549">		} catch (final FileNotFoundException e)</span>
+		{
+<span class="nc bnc" id="L551" title="All 2 branches missed.">			if (LOGGER.isInfoEnabled())</span>
+			{
+<span class="nc" id="L553">				LOGGER.info(</span>
+				        &quot;Could not resolve input PDP configuration location to a file in the file system ({}). Trying to resolve as generic URL instead (but PARENT_DIR property will remain undefined).&quot;,
+<span class="nc" id="L555">				        e.getMessage());</span>
+			}
+		}
+
+		/*
+		 * Not a file in the file system, e.g. maybe a file resource inside a JAR/ZIP
+		 */
+		final URL confUrl;
+		try
+		{
+<span class="nc" id="L565">			confUrl = ResourceUtils.getURL(confLocation);</span>
+<span class="nc" id="L566">		} catch (final FileNotFoundException e)</span>
+		{
+<span class="nc" id="L568">			throw new IllegalArgumentException(&quot;Invalid PDP configuration location (neither a file in the file system nor a valid URL): &quot; + confLocation, e);</span>
+<span class="nc" id="L569">		}</span>
+
+		/*
+		 * Leave PARENT_DIR environment property undefined since we cannot get the file's parent directory
+		 */
+<span class="nc" id="L574">		LOGGER.debug(&quot;Property {} = &lt;undefined&gt;&quot;, EnvironmentPropertyName.PARENT_DIR);</span>
+<span class="nc" id="L575">		final EnvironmentProperties envProps = new DefaultEnvironmentProperties();</span>
+<span class="nc" id="L576">		return getInstance(new StreamSource(confUrl.toExternalForm()), modelHandler, envProps);</span>
+	}
+
+	/**
+	 * Create PDP instance. Locations here can be any resource string supported by Spring ResourceLoader. More info: http://docs.spring.io/spring/docs/current/spring-framework-reference/html
+	 * /resources.html
+	 *
+	 * For example: classpath:com/myapp/aaa.xsd, file:///data/bbb.xsd, http://myserver/ccc.xsd...
+	 *
+	 * @param confFile
+	 *            PDP configuration XML file, compliant with the PDP XML schema (pdp.xsd)
+	 * @param extensionXsdLocation
+	 *            location of user-defined extension XSD (may be null if no extension to load), if exists; in such XSD, there must be a XSD namespace import for each extension used in the PDP
+	 *            configuration, for example:
+	 *
+	 *            &lt;pre&gt;
+	 * {@literal
+	 * 		  &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+	 * &lt;xs:schema xmlns:xs=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
+	 * 	&lt;xs:annotation&gt;
+	 * 		&lt;xs:documentation xml:lang=&quot;en&quot;&gt;
+	 * 			Import here the schema(s) of any XSD-defined PDP extension that you want to use in a PDP configuration: attribute finders, policy finders, etc.
+	 * 			Indicate only the namespace here and use the XML catalog to resolve the schema location.
+	 * 		&lt;/xs:documentation&gt;
+	 * 	&lt;/xs:annotation&gt;
+	 * 	&lt;!-- Do not specify schema locations here. Define the schema locations in the XML catalog instead (see file 'catalog.xml'). --&gt;
+	 * 	&lt;!--  Adding TestAttributeProvider extension for example --&gt;
+	 * 	&lt;xs:import namespace=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; /&gt;
+	 * &lt;/xs:schema&gt;
+	 * 			}
+	 *            &lt;/pre&gt;
+	 *
+	 *            In this example, the file at {@code catalogLocation} must define the schemaLocation for the imported namespace above using a line like this (for an XML-formatted catalog):
+	 * 
+	 *            &lt;pre&gt;
+	 *            {@literal
+	 *            &lt;uri name=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; uri=
+	 * 	&quot;classpath:org.ow2.authzforce.core.test.xsd&quot; /&gt;
+	 *            }
+	 *            &lt;/pre&gt;
+	 * 
+	 *            We assume that this XML type is an extension of one the PDP extension base types, 'AbstractAttributeProvider' (that extends 'AbstractPdpExtension' like all other extension base
+	 *            types) in this case.
+	 * @param catalogLocation
+	 *            location of XML catalog for resolving XSDs imported by the extension XSD specified as 'extensionXsdLocation' argument (may be null if 'extensionXsdLocation' is null)
+	 * @return PDP instance
+	 * @throws java.io.IOException
+	 *             I/O error reading from {@code confLocation}
+	 * @throws java.lang.IllegalArgumentException
+	 *             Invalid PDP configuration at {@code confLocation}
+	 */
+	public static PdpEngineConfiguration getInstance(final File confFile, final String catalogLocation, final String extensionXsdLocation) throws IOException, IllegalArgumentException
+	{
+<span class="nc" id="L629">		return getInstance(confFile, new PdpModelHandler(catalogLocation, extensionXsdLocation));</span>
+	}
+
+	/**
+	 * Create PDP instance. Locations here may be any resource string supported by Spring ResourceLoader. More info: http://docs.spring.io/spring/docs/current/spring-framework-reference/html
+	 * /resources.html
+	 *
+	 * For example: classpath:com/myapp/aaa.xsd, file:///data/bbb.xsd, http://myserver/ccc.xsd...
+	 *
+	 * @param confLocation
+	 *            location of PDP configuration XML file, compliant with the PDP XML schema (pdp.xsd)
+	 * @param extensionXsdLocation
+	 *            location of user-defined extension XSD (may be null if no extension to load), if exists; in such XSD, there must be a XSD namespace import for each extension used in the PDP
+	 *            configuration, for example:
+	 *
+	 *            &lt;pre&gt;
+	 * {@literal
+	 * 		  &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+	 * &lt;xs:schema xmlns:xs=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
+	 * 	&lt;xs:annotation&gt;
+	 * 		&lt;xs:documentation xml:lang=&quot;en&quot;&gt;
+	 * 			Import here the schema(s) of any XSD-defined PDP extension that you want to use in a PDP configuration: attribute finders, policy finders, etc.
+	 * 			Indicate only the namespace here and use the XML catalog to resolve the schema location.
+	 * 		&lt;/xs:documentation&gt;
+	 * 	&lt;/xs:annotation&gt;
+	 * 	&lt;!-- Do not specify schema locations here. Define the schema locations in the XML catalog instead (see file 'catalog.xml'). --&gt;
+	 * 	&lt;!--  Adding TestAttributeProvider extension for example --&gt;
+	 * 	&lt;xs:import namespace=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; /&gt;
+	 * &lt;/xs:schema&gt;
+	 * 			}
+	 *            &lt;/pre&gt;
+	 *
+	 *            In this example, the file at {@code catalogLocation} must define the schemaLocation for the imported namespace above using a line like this (for an XML-formatted catalog):
+	 * 
+	 *            &lt;pre&gt;
+	 *            {@literal
+	 *            &lt;uri name=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; uri=
+	 * 	&quot;classpath:org.ow2.authzforce.core.test.xsd&quot; /&gt;
+	 *            }
+	 *            &lt;/pre&gt;
+	 * 
+	 *            We assume that this XML type is an extension of one the PDP extension base types, 'AbstractAttributeProvider' (that extends 'AbstractPdpExtension' like all other extension base
+	 *            types) in this case.
+	 * @param catalogLocation
+	 *            location of XML catalog for resolving XSDs imported by the extension XSD specified as 'extensionXsdLocation' argument (may be null if 'extensionXsdLocation' is null)
+	 * @return PDP instance
+	 * @throws java.io.IOException
+	 *             I/O error reading from {@code confLocation}
+	 * @throws java.lang.IllegalArgumentException
+	 *             Invalid PDP configuration at {@code confLocation}
+	 */
+	public static PdpEngineConfiguration getInstance(final String confLocation, final String catalogLocation, final String extensionXsdLocation) throws IOException, IllegalArgumentException
+	{
+<span class="nc" id="L682">		return getInstance(confLocation, new PdpModelHandler(catalogLocation, extensionXsdLocation));</span>
+	}
+
+	/**
+	 * Create PDP instance.
+	 *
+	 * @param confLocation
+	 *            location of PDP configuration XML file, compliant with the PDP XML schema (pdp.xsd). This location may be any resource string supported by Spring ResourceLoader. For example:
+	 *            classpath:com/myapp/aaa.xsd, file:///data/bbb.xsd, http://myserver/ccc.xsd... More info: http://docs.spring.io/spring/docs/current/spring-framework- reference/html/resources.html
+	 * @return PDP instance
+	 * @throws java.io.IOException
+	 *             I/O error reading from {@code confLocation}
+	 * @throws java.lang.IllegalArgumentException
+	 *             Invalid PDP configuration at {@code confLocation}
+	 */
+	public static PdpEngineConfiguration getInstance(final String confLocation) throws IOException, IllegalArgumentException
+	{
+<span class="nc" id="L699">		return getInstance(confLocation, null, null);</span>
+	}
+
+	/**
+	 * Returns true iff XPath (AttributeSelectors, xpathExpression datatype and xpath functions) support is enabled. For your information, AttributeSelector and xpathExpression datatype support is
+	 * marked as optional in XACML 3.0 core specification.
+	 * 
+	 * @return true iff XPath is supported.
+	 */
+	public boolean isXpathEnabled()
+	{
+<span class="nc" id="L710">		return this.enableXPath;</span>
+	}
+
+	/**
+	 * Returns the registry of attribute value parsers/factories
+	 * 
+	 * @return the registry of attribute value parsers/factories
+	 */
+	public AttributeValueFactoryRegistry getAttributeValueFactoryRegistry()
+	{
+<span class="nc" id="L720">		return this.attValFactoryRegistry;</span>
+	}
+
+	/**
+	 * Returns the XACML Expression parser/factory
+	 * 
+	 * @return the XACML expression factory
+	 */
+	public ExpressionFactory getXacmlExpressionFactory()
+	{
+<span class="nc" id="L730">		return xacmlExpressionFactory;</span>
+	}
+
+	/**
+	 * Returns the Root Policy Provider in charge of providing the root policy where the PDP starts evaluation
+	 * 
+	 * @return the Root Policy Provider
+	 */
+	public RootPolicyProvider getRootPolicyProvider()
+	{
+<span class="nc" id="L740">		return rootPolicyProvider;</span>
+	}
+
+	/**
+	 * Returns true iff strict Attribute Issuer matching is enabled, in which case we require that all AttributeDesignators set the Issuer field.
+	 * &lt;p&gt;
+	 * &quot;Strict Attribute Issuer matching&quot; means that an AttributeDesignator without Issuer only match request Attributes without Issuer. This mode is not fully compliant with XACML 3.0, §5.29, in the
+	 * case that the Issuer is not present in the Attribute Designator, but it performs better and is recommended when all AttributeDesignators have an Issuer (best practice). Indeed, the XACML 3.0
+	 * Attribute Evaluation section §5.29 says: &quot;If the Issuer is not present in the AttributeDesignator, then the matching of the attribute to the named attribute SHALL be governed by AttributeId and
+	 * DataType attributes alone.&quot; Therefore, if {@code strictAttributeIssuerMatch} is false, since policies may use AttributeDesignators without Issuer, if the requests are using matching Attributes
+	 * but with none, one or more different Issuers, this PDP engine has to gather all the values from all the attributes with matching Category/AttributeId but with any Issuer or no Issuer.
+	 * Therefore, in order to stay compliant with §5.29 and still enforce best practice, when {@code strictAttributeIssuerMatch} is true, we also require that all AttributeDesignators set the Issuer
+	 * field.
+	 * 
+	 * @return the strictAttributeIssuerMatch
+	 */
+	public boolean isStrictAttributeIssuerMatchEnabled()
+	{
+<span class="nc" id="L758">		return strictAttributeIssuerMatch;</span>
+	}
+
+	/**
+	 * Returns the type of source for standard Environment attributes specified in §10.2.5: current-time, current-date and current-dateTime. If not defined in original PDP configuration,
+	 * {@link StandardEnvironmentAttributeSource#REQUEST_ELSE_PDP} is returned by default.
+	 * 
+	 * @return the source type
+	 */
+	public StandardEnvironmentAttributeSource getStdEnvAttributeSource()
+	{
+<span class="nc" id="L769">		return stdEnvAttributeSource;</span>
+	}
+
+	/**
+	 * Returns the level of verbosity of the error message trace returned in case of client request errors, e.g. invalid requests. Increasing this value usually helps the clients better pinpoint the
+	 * issue with their Requests. This parameter is relevant to the Result postprocessor ('resultPostproc' parameter) which is expected to enforce this verbosity level when returning Indeterminate
+	 * Results due to client request errors. The Result postprocessor must return all error messages in the Java stacktrace up to the same level as this parameter's value if the stacktrace is bigger,
+	 * else the full stacktrace.
+	 * 
+	 * @return client request error verbosity
+	 */
+	public int getClientRequestErrorVerbosityLevel()
+	{
+<span class="nc" id="L782">		return this.clientReqErrVerbosityLevel;</span>
+	}
+
+	/**
+	 * Returns the Decision Result cache that, for a given request, provides the XACML policy evaluation result from a cache, if there is a cached Result for the given request.
+	 * 
+	 * @return the decision result cache
+	 */
+	public Optional&lt;DecisionCache&gt; getDecisionCache()
+	{
+<span class="nc" id="L792">		return decisionCache;</span>
+	}
+
+	/**
+	 * Returns the processor chains that can be applied to PDP engine input/output, by input type
+	 * 
+	 * @return the non-null PDP engine input/ouput processor chains by input type (empty if none)
+	 */
+	public Map&lt;Class&lt;?&gt;, Entry&lt;DecisionRequestPreprocessor&lt;?, ?&gt;, DecisionResultPostprocessor&lt;?, ?&gt;&gt;&gt; getInOutProcChains()
+	{
+<span class="nc" id="L802">		return this.ioProcChainsByInputType;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

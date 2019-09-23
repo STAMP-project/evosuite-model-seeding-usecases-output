@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StandardCombiningAlgorithm.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">StandardCombiningAlgorithm.java</span></div><h1>StandardCombiningAlgorithm.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.EffectType;
+
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.PdpExtensionRegistry.PdpExtensionComparator;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+
+/**
+ * Utilities to handle the XACML core standard combining algorithms
+ * 
+ * @version $Id: $
+ */
+<span class="nc" id="L45">public enum StandardCombiningAlgorithm</span>
+{
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L50">	XACML_3_0_POLICY_COMBINING_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L55">	XACML_3_0_RULE_COMBINING_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:ordered-deny- overrides
+	 */
+<span class="nc" id="L60">	XACML_3_0_POLICY_COMBINING_ORDERED_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:ordered-deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:ordered-deny- overrides
+	 */
+<span class="nc" id="L65">	XACML_3_0_RULE_COMBINING_ORDERED_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:ordered-deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:permit-overrides
+	 */
+<span class="nc" id="L70">	XACML_3_0_POLICY_COMBINING_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L75">	XACML_3_0_RULE_COMBINING_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:ordered-permit- overrides
+	 */
+<span class="nc" id="L80">	XACML_3_0_POLICY_COMBINING_ORDERED_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:ordered-permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:ordered-deny- overrides
+	 */
+<span class="nc" id="L85">	XACML_3_0_RULE_COMBINING_ORDERED_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:ordered-permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:deny-unless- permit
+	 */
+<span class="nc" id="L90">	XACML_3_0_POLICY_COMBINING_DENY_UNLESS_PERMIT(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:deny-unless-permit&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-unless-permit
+	 */
+<span class="nc" id="L95">	XACML_3_0_RULE_COMBINING_DENY_UNLESS_PERMIT(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:deny-unless-permit&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:permit-unless- deny
+	 */
+<span class="nc" id="L100">	XACML_3_0_POLICY_COMBINING_PERMIT_UNLESS_DENY(&quot;urn:oasis:names:tc:xacml:3.0:policy-combining-algorithm:permit-unless-deny&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-unless-deny
+	 */
+<span class="nc" id="L105">	XACML_3_0_RULE_COMBINING_PERMIT_UNLESS_DENY(&quot;urn:oasis:names:tc:xacml:3.0:rule-combining-algorithm:permit-unless-deny&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:first-applicable
+	 */
+<span class="nc" id="L110">	XACML_1_0_POLICY_COMBINING_FIRST_APPLICABLE(&quot;urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:first-applicable&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable
+	 */
+<span class="nc" id="L115">	XACML_1_0_RULE_COMBINING_FIRST_APPLICABLE(&quot;urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:first-applicable&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:only-one-applicable
+	 */
+<span class="nc" id="L120">	XACML_1_0_POLICY_COMBINING_ONLY_ONE_APPLICABLE(&quot;urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:only-one-applicable&quot;),</span>
+
+	/**
+	 * overridingEffect Legacy/deprecated algorithms
+	 */
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L129">	XACML_1_0_POLICY_COMBINING_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L134">	XACML_1_0_RULE_COMBINING_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.1:policy-combining-algorithm:ordered-deny-overrides
+	 */
+<span class="nc" id="L139">	XACML_1_1_POLICY_COMBINING_ORDERED_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.1:policy-combining-algorithm:ordered-deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.1:rule-combining-algorithm:ordered-deny-overrides
+	 */
+<span class="nc" id="L144">	XACML_1_1_RULE_COMBINING_ORDERED_DENY_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.1:rule-combining-algorithm:ordered-deny-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:permit-overrides
+	 */
+<span class="nc" id="L149">	XACML_1_0_POLICY_COMBINING_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.0:policy-combining-algorithm:permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:deny-overrides
+	 */
+<span class="nc" id="L154">	XACML_1_0_RULE_COMBINING_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.0:rule-combining-algorithm:permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.1:policy-combining-algorithm:ordered-permit-overrides
+	 */
+<span class="nc" id="L159">	XACML_1_1_POLICY_COMBINING_ORDERED_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.1:policy-combining-algorithm:ordered-permit-overrides&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.1:rule-combining-algorithm:ordered-permit-overrides
+	 */
+<span class="nc" id="L164">	XACML_1_1_RULE_COMBINING_ORDERED_PERMIT_OVERRIDES(&quot;urn:oasis:names:tc:xacml:1.1:rule-combining-algorithm:ordered-permit-overrides&quot;);</span>
+
+	private final String id;
+
+	private StandardCombiningAlgorithm(final String id)
+<span class="nc" id="L169">	{</span>
+<span class="nc" id="L170">		this.id = id;</span>
+<span class="nc" id="L171">	}</span>
+
+	/**
+	 * @return standard identifier of the algorithm, as defined in the XACML spec
+	 */
+	public String getId()
+	{
+<span class="nc" id="L178">		return this.id;</span>
+	}
+
+<span class="nc" id="L181">	private static final Logger LOGGER = LoggerFactory.getLogger(StandardCombiningAlgorithm.class);</span>
+
+<span class="nc" id="L183">	private static final PdpExtensionComparator&lt;CombiningAlg&lt;?&gt;&gt; COMPARATOR = new PdpExtensionComparator&lt;&gt;();</span>
+
+	/**
+	 * Singleton immutable instance of combining algorithm registry for standard algorithms
+	 */
+	public static final CombiningAlgRegistry REGISTRY;
+
+	static
+	{
+<span class="nc" id="L192">		final Set&lt;CombiningAlg&lt;? extends Decidable&gt;&gt; standardAlgorithms = HashCollections.newUpdatableSet(StandardCombiningAlgorithm.values().length);</span>
+		// XACML 3.0 algorithms
+		// deny-overrides and ordered-deny-overrides
+<span class="nc" id="L195">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_POLICY_COMBINING_DENY_OVERRIDES.id, PolicyEvaluator.class, EffectType.DENY, false));</span>
+<span class="nc" id="L196">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_RULE_COMBINING_DENY_OVERRIDES.id, RuleEvaluator.class, EffectType.DENY, false));</span>
+
+<span class="nc" id="L198">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(XACML_3_0_POLICY_COMBINING_ORDERED_DENY_OVERRIDES.id, PolicyEvaluator.class, EffectType.DENY, true));</span>
+<span class="nc" id="L199">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(XACML_3_0_RULE_COMBINING_ORDERED_DENY_OVERRIDES.id, RuleEvaluator.class, EffectType.DENY, true));</span>
+
+		// permit-overrides and ordered-permit-overrides
+<span class="nc" id="L202">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_POLICY_COMBINING_PERMIT_OVERRIDES.id, PolicyEvaluator.class, EffectType.PERMIT, false));</span>
+<span class="nc" id="L203">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_RULE_COMBINING_PERMIT_OVERRIDES.id, RuleEvaluator.class, EffectType.PERMIT, false));</span>
+
+<span class="nc" id="L205">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_POLICY_COMBINING_ORDERED_PERMIT_OVERRIDES.id, PolicyEvaluator.class, EffectType.PERMIT, true));</span>
+<span class="nc" id="L206">		standardAlgorithms.add(new DPOverridesCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_RULE_COMBINING_ORDERED_PERMIT_OVERRIDES.id, RuleEvaluator.class, EffectType.PERMIT, true));</span>
+
+		// deny-unless-permit
+<span class="nc" id="L209">		standardAlgorithms.add(new DPUnlessPDCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_POLICY_COMBINING_DENY_UNLESS_PERMIT.id, PolicyEvaluator.class, EffectType.PERMIT));</span>
+<span class="nc" id="L210">		standardAlgorithms.add(new DPUnlessPDCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_RULE_COMBINING_DENY_UNLESS_PERMIT.id, RuleEvaluator.class, EffectType.PERMIT));</span>
+
+		// permit-unless-deny
+<span class="nc" id="L213">		standardAlgorithms.add(new DPUnlessPDCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_POLICY_COMBINING_PERMIT_UNLESS_DENY.id, PolicyEvaluator.class, EffectType.DENY));</span>
+<span class="nc" id="L214">		standardAlgorithms.add(new DPUnlessPDCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_3_0_RULE_COMBINING_PERMIT_UNLESS_DENY.id, RuleEvaluator.class, EffectType.DENY));</span>
+
+		// first-applicable
+<span class="nc" id="L217">		standardAlgorithms.add(new FirstApplicableCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_1_0_POLICY_COMBINING_FIRST_APPLICABLE.id, PolicyEvaluator.class));</span>
+<span class="nc" id="L218">		standardAlgorithms.add(new FirstApplicableCombiningAlg&lt;&gt;(StandardCombiningAlgorithm.XACML_1_0_RULE_COMBINING_FIRST_APPLICABLE.id, RuleEvaluator.class));</span>
+
+		// only-one-applicable
+<span class="nc" id="L221">		standardAlgorithms.add(new OnlyOneApplicableCombiningAlg(StandardCombiningAlgorithm.XACML_1_0_POLICY_COMBINING_ONLY_ONE_APPLICABLE.id));</span>
+
+		//
+		// Legacy
+		// (ordered-)deny-overrides
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		for (final StandardCombiningAlgorithm alg : EnumSet.range(StandardCombiningAlgorithm.XACML_1_0_POLICY_COMBINING_DENY_OVERRIDES,</span>
+				StandardCombiningAlgorithm.XACML_1_1_RULE_COMBINING_ORDERED_DENY_OVERRIDES))
+		{
+<span class="nc" id="L229">			standardAlgorithms.add(new LegacyDenyOverridesCombiningAlg(alg.id));</span>
+<span class="nc" id="L230">		}</span>
+
+		// (orderered-)permit-overrides
+<span class="nc bnc" id="L233" title="All 2 branches missed.">		for (final StandardCombiningAlgorithm alg : EnumSet.range(StandardCombiningAlgorithm.XACML_1_0_POLICY_COMBINING_PERMIT_OVERRIDES,</span>
+				StandardCombiningAlgorithm.XACML_1_1_RULE_COMBINING_ORDERED_PERMIT_OVERRIDES))
+		{
+<span class="nc" id="L236">			standardAlgorithms.add(new LegacyPermitOverridesCombiningAlg(alg.id));</span>
+<span class="nc" id="L237">		}</span>
+
+<span class="nc" id="L239">		REGISTRY = new ImmutableCombiningAlgRegistry(standardAlgorithms);</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">		if (LOGGER.isDebugEnabled())</span>
+		{
+<span class="nc" id="L242">			final TreeSet&lt;CombiningAlg&lt;?&gt;&gt; sortedAlgorithms = new TreeSet&lt;&gt;(COMPARATOR);</span>
+<span class="nc" id="L243">			sortedAlgorithms.addAll(standardAlgorithms);</span>
+<span class="nc" id="L244">			LOGGER.debug(&quot;Loaded XACML standard combining algorithms: {}&quot;, sortedAlgorithms);</span>
+		}
+	}
+
+<span class="nc" id="L248">	private static final Map&lt;String, StandardCombiningAlgorithm&gt; ID_TO_STD_ALG_MAP = Maps.uniqueIndex(Arrays.asList(StandardCombiningAlgorithm.values()),</span>
+			new com.google.common.base.Function&lt;StandardCombiningAlgorithm, String&gt;()
+<span class="nc bnc" id="L250" title="All 2 branches missed.">			{</span>
+
+				@Override
+				public String apply(final StandardCombiningAlgorithm input)
+				{
+<span class="nc bnc" id="L255" title="All 4 branches missed.">					assert input != null;</span>
+<span class="nc" id="L256">					return input.getId();</span>
+				}
+
+			});
+
+	/**
+	 * Get the standard combining algorithm with a given ID
+	 * 
+	 * @param algId
+	 *            standard combining algorithm ID
+	 * @return StandardCombiningAlgorithm with given ID, or null if there is no standard combining algorithm with such ID
+	 */
+	public static StandardCombiningAlgorithm getInstance(final String algId)
+	{
+<span class="nc" id="L270">		return ID_TO_STD_ALG_MAP.get(algId);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

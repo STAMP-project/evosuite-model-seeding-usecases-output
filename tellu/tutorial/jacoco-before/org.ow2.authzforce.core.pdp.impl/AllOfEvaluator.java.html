@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AllOfEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">AllOfEvaluator.java</span></div><h1>AllOfEvaluator.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Match;
+
+/**
+ * XACML AllOf evaluator
+ *
+ * @version $Id: $
+ */
+public final class AllOfEvaluator
+{
+<span class="nc" id="L39">	private static final Logger LOGGER = LoggerFactory.getLogger(AllOfEvaluator.class);</span>
+
+<span class="nc" id="L41">	private static final IllegalArgumentException NO_MATCH_EXCEPTION = new IllegalArgumentException(</span>
+			&quot;&lt;AllOf&gt; empty. Must contain at least one &lt;Match&gt;&quot;);
+
+	// Store the list of Matches as evaluatable Match types to avoid casting
+	// from JAXB MatchType
+	// during evaluation
+	private final transient List&lt;MatchEvaluator&gt; evaluatableMatchList;
+
+	/**
+	 * Instantiates AllOf (evaluator) from XACML-Schema-derived
+	 * &lt;code&gt;AllOf&lt;/code&gt;.
+	 *
+	 * @param jaxbMatches
+	 *            XACML-schema-derived JAXB Match elements
+	 * @param xPathCompiler
+	 *            XPath compiler corresponding to enclosing policy(set) default
+	 *            XPath version
+	 * @param expFactory
+	 *            Expression factory
+	 * @throws java.lang.IllegalArgumentException
+	 *             null {@code expFactory} or null/empty {@code jaxbMatches} or
+	 *             one of the child Match elements in {@code jaxbMatches} is
+	 *             invalid
+	 */
+	public AllOfEvaluator(final List&lt;Match&gt; jaxbMatches, final XPathCompiler xPathCompiler,
+			final ExpressionFactory expFactory) throws IllegalArgumentException
+<span class="nc" id="L67">	{</span>
+<span class="nc bnc" id="L68" title="All 4 branches missed.">		if (jaxbMatches == null || jaxbMatches.isEmpty())</span>
+		{
+<span class="nc" id="L70">			throw NO_MATCH_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L73">		evaluatableMatchList = new ArrayList&lt;&gt;(jaxbMatches.size());</span>
+<span class="nc" id="L74">		int matchIndex = 0;</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">		for (final Match jaxbMatch : jaxbMatches)</span>
+		{
+			final MatchEvaluator matchEvaluator;
+			try
+			{
+<span class="nc" id="L80">				matchEvaluator = new MatchEvaluator(jaxbMatch, xPathCompiler, expFactory);</span>
+			}
+<span class="nc" id="L82">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L84">				throw new IllegalArgumentException(&quot;Invalid &lt;AllOf&gt;'s &lt;Match&gt;#&quot; + matchIndex, e);</span>
+<span class="nc" id="L85">			}</span>
+
+<span class="nc" id="L87">			evaluatableMatchList.add(matchEvaluator);</span>
+<span class="nc" id="L88">			matchIndex++;</span>
+<span class="nc" id="L89">		}</span>
+<span class="nc" id="L90">	}</span>
+
+	/**
+	 * Determines whether this &lt;code&gt;AllOf&lt;/code&gt; matches the input request
+	 * (whether it is applicable).Here is the table shown in the specification:
+	 * &lt;code&gt;
+	 * 		&lt;Match&gt; values 						&lt;AllOf&gt; value
+	 * 		All True				 			“Match�?
+	 * 		No False and at least
+	 * 		one &quot;Indeterminate&quot; 				“Indeterminate�?
+	 * 		At least one False					&quot;No Match&quot;
+	 * &lt;/code&gt;
+	 *
+	 * @param context
+	 *            the representation of the request
+	 * @return true iff Match, else No match
+	 * @throws org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException
+	 *             Indeterminate
+	 */
+	public boolean match(final EvaluationContext context) throws IndeterminateEvaluationException
+	{
+		// atLeastOneIndeterminate = true iff lastIndeterminate != null
+<span class="nc" id="L112">		IndeterminateEvaluationException lastIndeterminate = null;</span>
+
+		// index of the current Match in this AllOf
+<span class="nc" id="L115">		int childIndex = 0;</span>
+
+		// index of last Indeterminate for enhanced error message
+<span class="nc" id="L118">		int lastIndeterminateChildIndex = -1;</span>
+
+		/*
+		 * By construction, there must be at least one Match
+		 */
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		for (final MatchEvaluator matchEvaluator : evaluatableMatchList)</span>
+		{
+			final boolean isMatched;
+			try
+			{
+<span class="nc" id="L128">				isMatched = matchEvaluator.match(context);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">				if (LOGGER.isDebugEnabled())</span>
+				{
+					// Beware of autoboxing which causes call to
+					// Boolean.valueOf(...), Integer.valueOf(...)
+<span class="nc" id="L133">					LOGGER.debug(&quot;AllOf/Match#{} -&gt; {}&quot;, childIndex, isMatched);</span>
+				}
+			}
+<span class="nc" id="L136">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc bnc" id="L138" title="All 2 branches missed.">				if (LOGGER.isDebugEnabled())</span>
+				{
+					// Beware of autoboxing which causes call to
+					// Integer.valueOf(...)
+<span class="nc" id="L142">					LOGGER.debug(&quot;AllOf/Match#{} -&gt; Indeterminate&quot;, childIndex, e);</span>
+				}
+<span class="nc" id="L144">				lastIndeterminate = e;</span>
+<span class="nc" id="L145">				lastIndeterminateChildIndex = childIndex;</span>
+<span class="nc" id="L146">				continue;</span>
+<span class="nc" id="L147">			}</span>
+
+			/*
+			 * At least one False -&gt; No match
+			 */
+<span class="nc bnc" id="L152" title="All 2 branches missed.">			if (!isMatched)</span>
+			{
+<span class="nc" id="L154">				return false;</span>
+			}
+
+			// True (Match) -&gt; continue, all must be true to match
+<span class="nc" id="L158">			childIndex += 1;</span>
+<span class="nc" id="L159">		}</span>
+
+		// No False (=NO_MATCH) occurred
+		// lastIndeterminate == null iff no Indeterminate occurred
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		if (lastIndeterminate == null)</span>
+		{
+			// No False/Indeterminate, i.e. all True -&gt; Match
+<span class="nc" id="L166">			return true;</span>
+		}
+
+		// No False but at least one Indeterminate (lastIndeterminate != null)
+<span class="nc" id="L170">		throw new IndeterminateEvaluationException(&quot;Error evaluating &lt;AllOf&gt;'s &lt;Match&gt;#&quot; + lastIndeterminateChildIndex,</span>
+<span class="nc" id="L171">				lastIndeterminate.getStatusCode(), lastIndeterminate);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

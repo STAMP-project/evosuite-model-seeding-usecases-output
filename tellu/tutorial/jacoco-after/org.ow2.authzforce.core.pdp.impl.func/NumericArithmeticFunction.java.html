@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NumericArithmeticFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">NumericArithmeticFunction.java</span></div><h1>NumericArithmeticFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.ConstantPrimitiveAttributeValueExpression;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall.EagerSinglePrimitiveTypeEval;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.NumericValue;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A class that implements all the numeric *-add functions (as opposed to date/time *-add-* functions).
+ *
+ * @param &lt;AV&gt;
+ *            return and parameter type
+ * 
+ * @version $Id: $
+ */
+final class NumericArithmeticFunction&lt;AV extends NumericValue&lt;?, AV&gt;&gt; extends SingleParameterTypedFirstOrderFunction&lt;AV, AV&gt;
+{
+<span class="fc" id="L51">	private static final Logger LOGGER = LoggerFactory.getLogger(NumericArithmeticFunction.class);</span>
+
+<span class="fc" id="L53">	private static final IllegalArgumentException UNDEF_PARAMETER_TYPES_EXCEPTION = new IllegalArgumentException(&quot;Undefined function parameter types&quot;);</span>
+
+	private static &lt;AV extends Value&gt; List&lt;Datatype&lt;AV&gt;&gt; validate(final List&lt;Datatype&lt;AV&gt;&gt; paramTypes) {
+<span class="pc bpc" id="L56" title="2 of 4 branches missed.">		if (paramTypes == null || paramTypes.isEmpty())</span>
+		{
+<span class="nc" id="L58">			throw UNDEF_PARAMETER_TYPES_EXCEPTION;</span>
+		}
+
+<span class="fc" id="L61">		return paramTypes;</span>
+	}
+
+	interface StaticOperation&lt;V extends NumericValue&lt;?, V&gt;&gt;
+	{
+		V eval(Deque&lt;V&gt; args) throws IllegalArgumentException, ArithmeticException;
+	}
+
+	/**
+	 * Multary/Multiary/Polyadic operator
+	 * 
+	 * @see &quot;https://en.wikipedia.org/wiki/Arity#Other_names&quot;
+	 *
+	 * @param &lt;V&gt;
+	 */
+	interface MultaryOperation&lt;V extends NumericValue&lt;?, V&gt;&gt; extends StaticOperation&lt;V&gt;
+	{
+		boolean isCommutative();
+	}
+
+	private static final class Call&lt;V extends NumericValue&lt;?, V&gt;&gt; extends EagerSinglePrimitiveTypeEval&lt;V, V&gt;
+	{
+		private final String invalidArgsErrMsg;
+		private final StaticOperation&lt;V&gt; op;
+
+		private Call(final SingleParameterTypedFirstOrderFunctionSignature&lt;V, V&gt; functionSig, final StaticOperation&lt;V&gt; op, final List&lt;Expression&lt;?&gt;&gt; args, final Datatype&lt;?&gt;[] remainingArgTypes)
+				throws IllegalArgumentException
+		{
+<span class="fc" id="L89">			super(functionSig, args, remainingArgTypes);</span>
+<span class="fc" id="L90">			this.op = op;</span>
+<span class="fc" id="L91">			this.invalidArgsErrMsg = &quot;Function &quot; + this.functionId + &quot;: invalid argument(s)&quot;;</span>
+<span class="fc" id="L92">		}</span>
+
+		@Override
+		protected V evaluate(final Deque&lt;V&gt; args) throws IndeterminateEvaluationException {
+			try
+			{
+<span class="fc" id="L98">				return op.eval(args);</span>
+<span class="fc" id="L99">			} catch (IllegalArgumentException | ArithmeticException e)</span>
+			{
+<span class="fc" id="L101">				throw new IndeterminateEvaluationException(invalidArgsErrMsg, XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+			}
+		}
+	}
+
+	private final StaticOperation&lt;AV&gt; op;
+
+	/**
+	 * Creates a new Numeric Arithmetic function.
+	 * 
+	 * @param funcURI
+	 *            function URI
+	 * 
+	 * @param paramTypes
+	 *            parameter/return types (all the same)
+	 * @param varArgs
+	 *            whether this is a varargs function (like Java varargs method), i.e. last arg has variable-length
+	 * 
+	 */
+	NumericArithmeticFunction(final String funcURI, final boolean varArgs, final List&lt;Datatype&lt;AV&gt;&gt; paramTypes, final StaticOperation&lt;AV&gt; op) throws IllegalArgumentException
+	{
+<span class="fc" id="L122">		super(funcURI, validate(paramTypes).get(0), varArgs, paramTypes);</span>
+<span class="fc" id="L123">		this.op = op;</span>
+<span class="fc" id="L124">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;AV&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException {
+		/**
+		 * If this.op is a commutative function (e.g. add or multiply function), we can simplify arguments if there are multiple constants. Indeed, if C1,...Cm are constants, then:
+		 * &lt;p&gt;
+		 * op(x1,..., x_{n1-1}, C1, x_n1, ..., x_{n2-1}, C2, x_n2, ..., Cm, x_nm...) = op( C, x1.., x_{n1-1}, x_n1, x_{n2-2}, x_n2...), where C (constant) = op(C1, C2..., Cm)
+		 * &lt;/p&gt;
+		 * In this case, we can pre-compute constant C and replace all constant args with one: C
+		 * 
+		 */
+<span class="pc bpc" id="L137" title="1 of 4 branches missed.">		if (op instanceof MultaryOperation &amp;&amp; ((MultaryOperation&lt;AV&gt;) op).isCommutative())</span>
+		{
+			/*
+			 * Constant argExpressions
+			 */
+<span class="fc" id="L142">			final Deque&lt;AV&gt; constants = new ArrayDeque&lt;&gt;(argExpressions.size());</span>
+			/*
+			 * Remaining variable argExpressions
+			 */
+<span class="fc" id="L146">			final List&lt;Expression&lt;?&gt;&gt; finalArgExpressions = new ArrayList&lt;&gt;(argExpressions.size());</span>
+<span class="fc" id="L147">			final Datatype&lt;AV&gt; paramType = this.functionSignature.getParameterType();</span>
+<span class="fc" id="L148">			final Iterator&lt;Expression&lt;?&gt;&gt; argExpIterator = argExpressions.iterator();</span>
+<span class="fc" id="L149">			int argIndex = 0;</span>
+<span class="fc bfc" id="L150" title="All 2 branches covered.">			while (argExpIterator.hasNext())</span>
+			{
+<span class="fc" id="L152">				final Expression&lt;?&gt; argExp = argExpIterator.next();</span>
+<span class="fc" id="L153">				final Optional&lt;? extends Value&gt; v = argExp.getValue();</span>
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">				if (!v.isPresent())</span>
+				{
+					// variable
+<span class="nc" id="L157">					finalArgExpressions.add(argExp);</span>
+				} else
+				{
+					// constant
+					try
+					{
+<span class="fc" id="L163">						constants.add(paramType.cast(v.get()));</span>
+<span class="nc" id="L164">					} catch (final ClassCastException e)</span>
+					{
+<span class="nc" id="L166">						throw new IllegalArgumentException(</span>
+<span class="nc" id="L167">								&quot;Function &quot; + this.functionSignature + &quot;: invalid arg #&quot; + argIndex + &quot;: bad type: &quot; + argExp.getReturnType() + &quot;. Expected type: &quot; + paramType, e);</span>
+<span class="fc" id="L168">					}</span>
+				}
+
+<span class="fc" id="L171">				argIndex += 1;</span>
+<span class="fc" id="L172">			}</span>
+
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">			if (constants.size() &gt; 1)</span>
+			{
+				/*
+				 * we can replace all constant args C1, C2... with one constant C = op(C1, C2...)
+				 */
+<span class="fc" id="L179">				LOGGER.warn(&quot;Function {}: simplifying args to this commutative function (f): replacing all constant args {} with one that is the constant result of f(constant_args)&quot;,</span>
+						this.functionSignature, constants);
+<span class="fc" id="L181">				final AV constantResult = op.eval(constants);</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">				if (finalArgExpressions.isEmpty())</span>
+				{
+					/*
+					 * There aren't any other args, i.e. all are constant. The result is constantResult.
+					 */
+<span class="fc" id="L187">					return new ConstantResultFirstOrderFunctionCall&lt;&gt;(constantResult, paramType);</span>
+				}
+
+				/*
+				 * finalArgExpressions is not empty. There is at least one variable arg.
+				 */
+<span class="nc" id="L193">				finalArgExpressions.add(new ConstantPrimitiveAttributeValueExpression&lt;&gt;(paramType, constantResult));</span>
+<span class="nc" id="L194">				return new Call&lt;&gt;(functionSignature, op, finalArgExpressions, remainingArgTypes);</span>
+			}
+
+		}
+
+<span class="fc" id="L199">		return new Call&lt;&gt;(functionSignature, op, argExpressions, remainingArgTypes);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SchemaHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">SchemaHandler.java</span></div><h1>SchemaHandler.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+
+import javax.xml.XMLConstants;
+import javax.xml.transform.Source;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
+import org.apache.xml.resolver.Catalog;
+import org.apache.xml.resolver.CatalogManager;
+import org.apache.xml.resolver.tools.CatalogResolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.ResourceUtils;
+import org.w3c.dom.ls.LSInput;
+import org.w3c.dom.ls.LSResourceResolver;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXNotRecognizedException;
+import org.xml.sax.SAXNotSupportedException;
+import org.xml.sax.SAXParseException;
+
+/**
+ *
+ * XML schema handler that can load schema file(s) from location(s) supported by {@link ResourceUtils} using any OASIS catalog at any location supported by {@link ResourceUtils} as well.
+ *
+ * @version $Id: $
+ */
+<span class="nc" id="L63">public final class SchemaHandler</span>
+{
+	private static final class XmlSchemaResourceResolver implements LSResourceResolver
+	{
+<span class="nc" id="L67">		private final static Logger _LOGGER = LoggerFactory.getLogger(XmlSchemaResourceResolver.class);</span>
+
+		private final String catalogLocation;
+		private final OASISCatalogManager catalogResolver;
+
+		private XmlSchemaResourceResolver(final String catalogLocation, final OASISCatalogManager catalogResolver)
+<span class="nc" id="L73">		{</span>
+<span class="nc" id="L74">			this.catalogLocation = catalogLocation;</span>
+<span class="nc" id="L75">			this.catalogResolver = catalogResolver;</span>
+<span class="nc" id="L76">		}</span>
+
+		@Override
+		public LSInput resolveResource(final String type, final String namespaceURI, final String publicId, final String systemId, final String baseURI)
+		{
+<span class="nc" id="L81">			_LOGGER.debug(&quot;resolveResource(type = {}, namespaceURI = {}, publicId = {}, systemId = {}, baseURI = {}) -&gt; {}&quot;, type, namespaceURI, publicId, systemId, baseURI);</span>
+			try
+			{
+<span class="nc" id="L84">				String resolvedLocation = null;</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">				if (systemId != null)</span>
+				{
+<span class="nc" id="L87">					resolvedLocation = catalogResolver.resolveSystem(systemId);</span>
+<span class="nc" id="L88">					_LOGGER.debug(&quot;resolveSystem(systemId = {}) -&gt; {}&quot;, systemId, resolvedLocation);</span>
+				}
+
+<span class="nc bnc" id="L91" title="All 4 branches missed.">				if (resolvedLocation == null &amp;&amp; namespaceURI != null)</span>
+				{
+<span class="nc" id="L93">					resolvedLocation = catalogResolver.resolveURI(namespaceURI);</span>
+<span class="nc" id="L94">					_LOGGER.debug(&quot;resolveURI(namespaceURI = {}) -&gt; {}&quot;, namespaceURI, resolvedLocation);</span>
+				}
+<span class="nc bnc" id="L96" title="All 4 branches missed.">				if (resolvedLocation == null &amp;&amp; publicId != null)</span>
+				{
+<span class="nc" id="L98">					resolvedLocation = catalogResolver.resolvePublic(publicId, systemId);</span>
+<span class="nc" id="L99">					_LOGGER.debug(&quot;resolvePublic(publicId = {}, systemId = {}) -&gt; {}&quot;, publicId, systemId, resolvedLocation);</span>
+				}
+<span class="nc bnc" id="L101" title="All 2 branches missed.">				if (resolvedLocation != null)</span>
+				{
+<span class="nc" id="L103">					final URL resourceURL = ResourceUtils.getURL(resolvedLocation);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">					if (resourceURL != null)</span>
+					{
+<span class="nc" id="L106">						return new LSInputImpl(publicId, systemId, resourceURL.openStream());</span>
+					}
+				}
+			}
+<span class="nc" id="L110">			catch (final IOException ex)</span>
+			{
+<span class="nc" id="L112">				final String errMsg = &quot;Unable to resolve schema-required entity with XML catalog (location='&quot; + catalogLocation + &quot;'): type=&quot; + type + &quot;, namespaceURI=&quot; + namespaceURI</span>
+						+ &quot;, publicId='&quot; + publicId + &quot;', systemId='&quot; + systemId + &quot;', baseURI='&quot; + baseURI + &quot;'&quot;;
+<span class="nc" id="L114">				throw new RuntimeException(errMsg, ex);</span>
+<span class="nc" id="L115">			}</span>
+
+<span class="nc" id="L117">			return null;</span>
+		}
+	}
+
+<span class="nc" id="L121">	private static final ErrorHandler SCHEMA_PARSING_ERROR_HANDLER = new ErrorHandler()</span>
+<span class="nc" id="L122">	{</span>
+
+		@Override
+		public final void warning(final SAXParseException exception) throws SAXException
+		{
+<span class="nc" id="L127">			throw exception;</span>
+		}
+
+		@Override
+		public final void error(final SAXParseException exception) throws SAXException
+		{
+<span class="nc" id="L133">			throw exception;</span>
+		}
+
+		@Override
+		public final void fatalError(final SAXParseException exception) throws SAXException
+		{
+<span class="nc" id="L139">			throw exception;</span>
+		}
+	};
+
+	/**
+	 * This is quite similar to org.apache.cxf.catalog.OASISCatalogManager, except it is much simplified as we don't need as many features. We are not using CXF's OASISCatalogManager class directly
+	 * because it is part of cxf-core which drags many classes and dependencies on CXF we don't need. It would make more sense if OASISCatalogManager was part of a cxf common utility package, but it
+	 * is not the case as of writing (December 2014).
+	 * &lt;p&gt;
+	 * WARNING: this is not immutable since getCatalog() gives access to internal catalog which is mutable.
+	 * &lt;/p&gt;
+	 */
+<span class="nc bnc" id="L151" title="All 2 branches missed.">	private static final class OASISCatalogManager</span>
+	{
+<span class="nc" id="L153">		private static final IllegalArgumentException ERROR_CREATING_CATALOG_RESOLVER_EXCEPTION = new IllegalArgumentException(</span>
+				&quot;Error creating org.apache.xml.resolver.tools.CatalogResolver for OASIS CatalogManager&quot;);
+
+<span class="nc" id="L156">		private static final Logger _LOGGER = LoggerFactory.getLogger(OASISCatalogManager.class);</span>
+
+		private static CatalogResolver getResolver()
+		{
+			try
+			{
+<span class="nc" id="L162">				final CatalogManager catalogManager = new CatalogManager();</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">				if (_LOGGER.isDebugEnabled())</span>
+				{
+					// lowest debug level for logging all messages
+<span class="nc" id="L166">					catalogManager.debug.setDebug(0);</span>
+				}
+
+<span class="nc" id="L169">				catalogManager.setUseStaticCatalog(false);</span>
+<span class="nc" id="L170">				catalogManager.setIgnoreMissingProperties(true);</span>
+<span class="nc" id="L171">				final CatalogResolver catalogResolver = new CatalogResolver(catalogManager)</span>
+<span class="nc" id="L172">				{</span>
+					@Override
+					public String getResolvedEntity(final String publicId, final String systemId)
+					{
+<span class="nc" id="L176">						final String s = super.getResolvedEntity(publicId, systemId);</span>
+<span class="nc bnc" id="L177" title="All 4 branches missed.">						if (s != null &amp;&amp; s.startsWith(&quot;classpath:&quot;))</span>
+						{
+							try
+							{
+<span class="nc" id="L181">								final URL resourceURL = ResourceUtils.getURL(s);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">								if (resourceURL != null)</span>
+								{
+<span class="nc" id="L184">									return resourceURL.toExternalForm();</span>
+								}
+							}
+<span class="nc" id="L187">							catch (final IOException e)</span>
+							{
+<span class="nc" id="L189">								_LOGGER.warn(&quot;Error resolving resource needed by org.apache.xml.resolver.CatalogResolver for OASIS CatalogManager with URL: {}&quot;, e);</span>
+<span class="nc" id="L190">							}</span>
+						}
+<span class="nc" id="L192">						return s;</span>
+					}
+				};
+<span class="nc" id="L195">				return catalogResolver;</span>
+			}
+<span class="nc" id="L197">			catch (final Throwable t)</span>
+			{
+<span class="nc" id="L199">				_LOGGER.error(&quot;Error getting org.apache.xml.resolver.CatalogResolver for OASIS CatalogManager&quot;, t);</span>
+			}
+<span class="nc" id="L201">			return null;</span>
+		}
+
+		private final CatalogResolver resolver;
+		private final Catalog catalog;
+<span class="nc" id="L206">		private final Set&lt;String&gt; loadedCatalogs = new CopyOnWriteArraySet&lt;&gt;();</span>
+
+		private OASISCatalogManager()
+<span class="nc" id="L209">		{</span>
+<span class="nc" id="L210">			resolver = getResolver();</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">			if (resolver == null)</span>
+			{
+<span class="nc" id="L213">				throw ERROR_CREATING_CATALOG_RESOLVER_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L216">			catalog = resolver.getCatalog();</span>
+<span class="nc" id="L217">		}</span>
+
+		private void loadCatalog(final URL catalogURL) throws IOException
+		{
+<span class="nc bnc" id="L221" title="All 4 branches missed.">			assert catalogURL != null;</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">			if (!loadedCatalogs.contains(catalogURL.toString()))</span>
+			{
+<span class="nc bnc" id="L224" title="All 2 branches missed.">				if (&quot;file&quot;.equals(catalogURL.getProtocol()))</span>
+				{
+					try
+					{
+<span class="nc" id="L228">						final Path filePath = Paths.get(catalogURL.toURI());</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">						if (!Files.exists(filePath))</span>
+						{
+<span class="nc" id="L231">							throw new FileNotFoundException(filePath.toString());</span>
+						}
+					}
+<span class="nc" id="L234">					catch (final URISyntaxException e)</span>
+					{
+<span class="nc" id="L236">						_LOGGER.warn(&quot;Error resolving XML catalog URL ({}) to a file&quot;, catalogURL, e);</span>
+<span class="nc" id="L237">					}</span>
+				}
+
+<span class="nc bnc" id="L240" title="All 2 branches missed.">				if (catalog == null)</span>
+				{
+<span class="nc" id="L242">					_LOGGER.warn(&quot;Catalog found at {} but no org.apache.xml.resolver.CatalogManager was found. Check the classpatch for an xmlresolver jar.&quot;, catalogURL);</span>
+				}
+				else
+				{
+<span class="nc" id="L246">					catalog.parseCatalog(catalogURL);</span>
+<span class="nc" id="L247">					loadedCatalogs.add(catalogURL.toString());</span>
+				}
+			}
+<span class="nc" id="L250">		}</span>
+
+		private String resolveSystem(final String sys) throws MalformedURLException, IOException
+		{
+<span class="nc bnc" id="L254" title="All 4 branches missed.">			assert sys != null;</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			if (catalog == null)</span>
+			{
+<span class="nc" id="L257">				return null;</span>
+			}
+<span class="nc" id="L259">			return catalog.resolveSystem(sys);</span>
+		}
+
+		private String resolveURI(final String uri) throws MalformedURLException, IOException
+		{
+<span class="nc bnc" id="L264" title="All 4 branches missed.">			assert uri != null;</span>
+<span class="nc bnc" id="L265" title="All 2 branches missed.">			if (catalog == null)</span>
+			{
+<span class="nc" id="L267">				return null;</span>
+			}
+<span class="nc" id="L269">			return catalog.resolveURI(uri);</span>
+		}
+
+		private String resolvePublic(final String uri, final String parent) throws MalformedURLException, IOException
+		{
+<span class="nc bnc" id="L274" title="All 4 branches missed.">			assert uri != null;</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">			if (resolver == null)</span>
+			{
+<span class="nc" id="L277">				return null;</span>
+			}
+<span class="nc" id="L279">			return catalog.resolvePublic(uri, parent);</span>
+		}
+	}
+
+	private static final class LSInputImpl implements LSInput
+	{
+
+<span class="nc" id="L286">		private static final UnsupportedOperationException UNSUPPORTED_OPERATION_EXCEPTION = new UnsupportedOperationException();</span>
+		private final String publicId;
+		private final String systemId;
+		private final InputStream byteStream;
+
+		private LSInputImpl(final String publicId, final String systemId, final InputStream byteStream)
+<span class="nc" id="L292">		{</span>
+<span class="nc" id="L293">			this.publicId = publicId;</span>
+<span class="nc" id="L294">			this.systemId = systemId;</span>
+<span class="nc" id="L295">			this.byteStream = byteStream;</span>
+<span class="nc" id="L296">		}</span>
+
+		@Override
+		public InputStream getByteStream()
+		{
+<span class="nc" id="L301">			return byteStream;</span>
+		}
+
+		@Override
+		public String getSystemId()
+		{
+<span class="nc" id="L307">			return systemId;</span>
+		}
+
+		@Override
+		public String getPublicId()
+		{
+<span class="nc" id="L313">			return publicId;</span>
+		}
+
+		@Override
+		public Reader getCharacterStream()
+		{
+			/*
+			 * No character stream, only byte streams are allowed. Do not throw exception, otherwise the resolution of the resource fails, even if byte stream OK
+			 */
+<span class="nc" id="L322">			return null;</span>
+			// throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setCharacterStream(final Reader characterStream)
+		{
+<span class="nc" id="L329">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public void setByteStream(final InputStream byteStream)
+		{
+<span class="nc" id="L335">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public String getStringData()
+		{
+			/*
+			 * Not supported. Do not throw exception, otherwise the resolution of the resource fails.
+			 */
+<span class="nc" id="L344">			return null;</span>
+			// throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setStringData(final String stringData)
+		{
+<span class="nc" id="L351">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public void setSystemId(final String systemId)
+		{
+<span class="nc" id="L357">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public void setPublicId(final String publicId)
+		{
+<span class="nc" id="L363">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public String getBaseURI()
+		{
+			/*
+			 * No base URI, only absolute URIs are allowed. Do not throw exception if no base URI, otherwise the resolution of the resource fails, even for absolute URIs
+			 */
+<span class="nc" id="L372">			return null;</span>
+			// throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setBaseURI(final String baseURI)
+		{
+<span class="nc" id="L379">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public String getEncoding()
+		{
+			/*
+			 * No encoding override, only absolute URIs are allowed. Do not throw exception if no base URI, otherwise the resolution of the resource fails, even if encoding specified in other way
+			 */
+<span class="nc" id="L388">			return null;</span>
+			// throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setEncoding(final String encoding)
+		{
+<span class="nc" id="L395">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public boolean getCertifiedText()
+		{
+<span class="nc" id="L401">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+		@Override
+		public void setCertifiedText(final boolean certifiedText)
+		{
+<span class="nc" id="L407">			throw UNSUPPORTED_OPERATION_EXCEPTION;</span>
+		}
+
+	}
+
+	private Schema schema;
+	private String catalogLocation;
+
+	/**
+	 * Sets (Spring-supported) locations to XML schema files
+	 *
+	 * @param locations
+	 *            XML schema locations
+	 */
+	public void setSchemaLocations(final List&lt;String&gt; locations)
+	{
+<span class="nc" id="L423">		schema = createSchema(locations, catalogLocation);</span>
+<span class="nc" id="L424">	}</span>
+
+	/**
+	 * Sets (Spring-supported) locations to XML catalog files
+	 *
+	 * @param location
+	 *            XML catalog location
+	 */
+	public void setCatalogLocation(final String location)
+	{
+<span class="nc" id="L434">		this.catalogLocation = location;</span>
+<span class="nc" id="L435">	}</span>
+
+	/**
+	 * Get schema used by this handler
+	 *
+	 * @return XML schema
+	 */
+	public Schema getSchema()
+	{
+<span class="nc" id="L444">		return schema;</span>
+	}
+
+	/**
+	 * Creates schema from locations to XML schema files and catalog file
+	 *
+	 * @param schemaLocations
+	 *            XML schema locations
+	 * @param catalogLocation
+	 *            XML catalog location
+	 * @return XML validation schema
+	 */
+	public static Schema createSchema(final List&lt;String&gt; schemaLocations, final String catalogLocation)
+	{
+		/*
+		 * This is mostly similar to org.apache.cxf.jaxrs.utils.schemas.SchemaHandler#createSchema(), except we are using Spring ResourceUtils class to get Resource URLs and we don't use any Bus
+		 * object. We are not using CXF's SchemaHandler class directly because it is part of cxf-rt-frontend-jaxrs which drags many dependencies on CXF we don't need, the full CXF JAX-RS framework
+		 * actually. It would make more sense if SchemaHandler was part of some cxf common utility package, but it is not the case as of writing (December 2014).
+		 */
+
+<span class="nc" id="L464">		final SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);</span>
+		try
+		{
+<span class="nc" id="L467">			factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);</span>
+		}
+<span class="nc" id="L469">		catch (final SAXNotRecognizedException e)</span>
+		{
+<span class="nc" id="L471">			throw new RuntimeException(&quot;Error configuring the XML schema factory for secure processing&quot;, e);</span>
+		}
+<span class="nc" id="L473">		catch (final SAXNotSupportedException e)</span>
+		{
+<span class="nc" id="L475">			throw new RuntimeException(&quot;Error configuring the XML schema factory for secure processing&quot;, e);</span>
+<span class="nc" id="L476">		}</span>
+
+<span class="nc" id="L478">		factory.setErrorHandler(SCHEMA_PARSING_ERROR_HANDLER);</span>
+<span class="nc" id="L479">		final List&lt;Source&gt; sources = new ArrayList&lt;&gt;(schemaLocations.size());</span>
+		try
+		{
+<span class="nc bnc" id="L482" title="All 2 branches missed.">			for (final String schemaLocation : schemaLocations)</span>
+			{
+				final URL schemaURL;
+				try
+				{
+<span class="nc" id="L487">					schemaURL = ResourceUtils.getURL(schemaLocation);</span>
+				}
+<span class="nc" id="L489">				catch (final FileNotFoundException e)</span>
+				{
+<span class="nc" id="L491">					throw new RuntimeException(&quot;No resource found for XML schema location: &quot; + schemaLocation, e);</span>
+<span class="nc" id="L492">				}</span>
+
+<span class="nc" id="L494">				final Reader r = new BufferedReader(new InputStreamReader(schemaURL.openStream(), &quot;UTF-8&quot;));</span>
+<span class="nc" id="L495">				final StreamSource source = new StreamSource(r);</span>
+<span class="nc" id="L496">				source.setSystemId(schemaURL.toString());</span>
+<span class="nc" id="L497">				sources.add(source);</span>
+<span class="nc" id="L498">			}</span>
+		}
+<span class="nc" id="L500">		catch (final IOException ex)</span>
+		{
+<span class="nc" id="L502">			throw new RuntimeException(&quot;Failed to load XML schemas: &quot; + schemaLocations, ex);</span>
+<span class="nc" id="L503">		}</span>
+
+<span class="nc bnc" id="L505" title="All 2 branches missed.">		if (sources.isEmpty())</span>
+		{
+<span class="nc" id="L507">			return null;</span>
+		}
+
+<span class="nc bnc" id="L510" title="All 2 branches missed.">		if (catalogLocation != null)</span>
+		{
+<span class="nc" id="L512">			final OASISCatalogManager catalogResolver = new OASISCatalogManager();</span>
+			final URL catalogURL;
+			try
+			{
+<span class="nc" id="L516">				catalogURL = ResourceUtils.getURL(catalogLocation);</span>
+			}
+<span class="nc" id="L518">			catch (final FileNotFoundException e)</span>
+			{
+<span class="nc" id="L520">				throw new RuntimeException(&quot;No resource found for XML catalog file location: &quot; + catalogLocation, e);</span>
+<span class="nc" id="L521">			}</span>
+
+			try
+			{
+<span class="nc" id="L525">				catalogResolver.loadCatalog(catalogURL);</span>
+<span class="nc" id="L526">				factory.setResourceResolver(new XmlSchemaResourceResolver(catalogLocation, catalogResolver));</span>
+			}
+<span class="nc" id="L528">			catch (final IOException ex)</span>
+			{
+<span class="nc" id="L530">				throw new RuntimeException(&quot;Catalog located at '&quot; + catalogLocation + &quot;' can not be loaded&quot;, ex);</span>
+<span class="nc" id="L531">			}</span>
+		}
+
+		final Schema s;
+		try
+		{
+<span class="nc" id="L537">			s = factory.newSchema(sources.toArray(new Source[sources.size()]));</span>
+		}
+<span class="nc" id="L539">		catch (final SAXException e)</span>
+		{
+<span class="nc" id="L541">			throw new RuntimeException(&quot;Failed to load XML schemas: &quot; + schemaLocations, e);</span>
+<span class="nc" id="L542">		}</span>
+
+<span class="nc" id="L544">		return s;</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

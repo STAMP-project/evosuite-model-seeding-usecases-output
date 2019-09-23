@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>XPathNodeCountFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">XPathNodeCountFunction.java</span></div><h1>XPathNodeCountFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.XPathValue;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+import net.sf.saxon.s9api.XdmValue;
+
+/**
+ * A class that implements the optional XACML 3.0 xpath-node-count function.
+ * &lt;p&gt;
+ * From XACML core specification of function 'urn:oasis:names:tc:xacml:3.0:function:xpath-node-count': This function SHALL take an 'urn:oasis:names:tc:xacml:3.0:data-type:xpathExpression' as an
+ * argument and evaluates to an 'http://www.w3.org/2001/XMLSchema#integer'. The value returned from the function SHALL be the count of the nodes within the node-set that match the given XPath
+ * expression. If the &amp;lt;Content&amp;gt; element of the category to which the XPath expression applies to is not present in the request, this function SHALL return a value of zero.
+ *
+ * 
+ * @version $Id: $
+ */
+final class XPathNodeCountFunction extends SingleParameterTypedFirstOrderFunction&lt;IntegerValue, XPathValue&gt;
+{
+
+	private static final class CallFactory
+	{
+		private static final class Call extends BaseFirstOrderFunctionCall&lt;IntegerValue&gt;
+		{
+			private final String invalidArgTypeMsg;
+			private final String indeterminateArgMsg;
+			private final String indeterminateArgEvalMsg;
+			private final List&lt;Expression&lt;?&gt;&gt; checkedArgExpressions;
+
+			private Call(final FirstOrderFunctionSignature&lt;IntegerValue&gt; functionSig, final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+			{
+<span class="nc" id="L65">				super(functionSig, argExpressions, remainingArgTypes);</span>
+<span class="nc" id="L66">				this.checkedArgExpressions = argExpressions;</span>
+<span class="nc" id="L67">				invalidArgTypeMsg = &quot;Function &quot; + functionSig.getName() + &quot;: Invalid type of arg #0. Expected: &quot; + StandardDatatypes.XPATH;</span>
+<span class="nc" id="L68">				indeterminateArgMsg = &quot;Function &quot; + functionSig.getName() + &quot;: Indeterminate arg #0&quot;;</span>
+<span class="nc" id="L69">				indeterminateArgEvalMsg = &quot;Function &quot; + functionSig.getName() + &quot;: Error evaluating xpathExpression arg #0&quot;;</span>
+<span class="nc" id="L70">			}</span>
+
+			@Override
+			public IntegerValue evaluate(final EvaluationContext context, final AttributeValue... remainingArgs) throws IndeterminateEvaluationException
+			{
+				// Evaluate the argument
+				final XPathValue xpathVal;
+
+<span class="nc bnc" id="L78" title="All 2 branches missed.">				if (checkedArgExpressions.isEmpty())</span>
+				{
+					try
+					{
+<span class="nc" id="L82">						xpathVal = XPathValue.class.cast(remainingArgs[0]);</span>
+<span class="nc" id="L83">					} catch (final ClassCastException e)</span>
+					{
+<span class="nc" id="L85">						throw new IndeterminateEvaluationException(invalidArgTypeMsg, XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L86">					}</span>
+				} else
+				{
+<span class="nc" id="L89">					final Expression&lt;?&gt; arg = checkedArgExpressions.get(0);</span>
+					try
+					{
+<span class="nc" id="L92">						xpathVal = Expressions.eval(arg, context, StandardDatatypes.XPATH);</span>
+
+<span class="nc" id="L94">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L96">						throw new IndeterminateEvaluationException(indeterminateArgMsg, e.getStatusCode(), e);</span>
+<span class="nc" id="L97">					}</span>
+				}
+
+				final XdmValue xdmResult;
+				try
+				{
+<span class="nc" id="L103">					xdmResult = xpathVal.evaluate(context);</span>
+<span class="nc" id="L104">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+<span class="nc" id="L106">					throw new IndeterminateEvaluationException(indeterminateArgEvalMsg, e.getStatusCode(), e);</span>
+<span class="nc" id="L107">				}</span>
+
+<span class="nc" id="L109">				return IntegerValue.valueOf(xdmResult.size());</span>
+			}
+		}
+
+		private final SingleParameterTypedFirstOrderFunctionSignature&lt;IntegerValue, XPathValue&gt; funcSig;
+
+		private CallFactory(final SingleParameterTypedFirstOrderFunctionSignature&lt;IntegerValue, XPathValue&gt; functionSignature)
+<span class="fc" id="L116">		{</span>
+<span class="fc" id="L117">			this.funcSig = functionSignature;</span>
+<span class="fc" id="L118">		}</span>
+
+		protected FirstOrderFunctionCall&lt;IntegerValue&gt; getInstance(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;[] remainingArgTypes)
+		{
+<span class="nc" id="L122">			return new Call(funcSig, argExpressions, remainingArgTypes);</span>
+		}
+	}
+
+	private final CallFactory funcCallFactory;
+
+	XPathNodeCountFunction(final String functionId)
+	{
+<span class="fc" id="L130">		super(functionId, StandardDatatypes.INTEGER, true, Arrays.asList(StandardDatatypes.XPATH));</span>
+<span class="fc" id="L131">		this.funcCallFactory = new CallFactory(this.functionSignature);</span>
+<span class="fc" id="L132">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;IntegerValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException
+	{
+<span class="nc" id="L138">		return this.funcCallFactory.getInstance(argExpressions, remainingArgTypes);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

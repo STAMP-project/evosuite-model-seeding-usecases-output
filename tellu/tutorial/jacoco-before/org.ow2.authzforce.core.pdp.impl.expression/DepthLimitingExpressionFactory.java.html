@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DepthLimitingExpressionFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.expression</a> &gt; <span class="el_source">DepthLimitingExpressionFactory.java</span></div><h1>DepthLimitingExpressionFactory.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.expression;
+
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.CloseableNamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.ConstantExpression;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.expression.FunctionExpression;
+import org.ow2.authzforce.core.pdp.api.expression.GenericAttributeProviderBasedAttributeDesignatorExpression;
+import org.ow2.authzforce.core.pdp.api.expression.VariableReference;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactory;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactoryRegistry;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.core.pdp.impl.CloseableAttributeProvider;
+import org.ow2.authzforce.core.pdp.impl.func.FunctionRegistry;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ApplyType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeDesignatorType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeSelectorType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeValueType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ExpressionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.FunctionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.VariableDefinition;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.VariableReferenceType;
+
+/**
+ * Implementation of ExpressionFactory that supports the Expressions defined in VariableDefinitions in order to resolve VariableReferences. In particular, it makes sure the depth of recursivity of
+ * VariableDefinition does not exceed a value (to avoid inconveniences such as stackoverflow or very negative performance impact) defined by {@code maxVarRefDef} parameter to
+ * {@link #DepthLimitingExpressionFactory(AttributeValueFactoryRegistry, FunctionRegistry, List, int, boolean, boolean)}. Note that reference loops are avoided by the fact that a VariableReference can
+ * reference only a VariableDefinition defined previously to the VariableReference in this implementation.
+ *
+ * 
+ * @version $Id: $
+ */
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">public final class DepthLimitingExpressionFactory implements ExpressionFactory</span>
+{
+	/**
+	 * Base class for evaluating XACML VariableReferences that holds the variable ID and longest VariableReference chain found in the referenced variable's expression, in order to detect abuse of such
+	 * chains, which is unsafe.
+	 *
+	 * @param &lt;V&gt;
+	 *            evaluation's return type
+	 * 
+	 * @version $Id: $
+	 */
+<span class="nc bnc" id="L79" title="All 2 branches missed.">	private static abstract class BaseVariableReference&lt;V extends Value&gt; implements VariableReference&lt;V&gt;</span>
+	{
+
+		protected final String variableId;
+		private final transient Deque&lt;String&gt; longestVariableReferenceChain;
+
+		/**
+		 * Constructor that takes a variable identifier
+		 *
+		 * @param varId
+		 *            variable ID
+		 * @param longestVarRefChain
+		 *            longest chain of VariableReference Reference in &lt;code&gt;expr&lt;/code&gt; (V1 -&gt; V2 -&gt; ... -&gt; Vn, where &quot;V1 -&gt; V2&quot; means VariableReference V1's expression contains one or more
+		 *            VariableReferences to V2)
+		 */
+		private BaseVariableReference(final String varId, final Deque&lt;String&gt; longestVarRefChain)
+<span class="nc" id="L95">		{</span>
+<span class="nc bnc" id="L96" title="All 4 branches missed.">			assert varId != null;</span>
+<span class="nc" id="L97">			this.variableId = varId;</span>
+<span class="nc" id="L98">			this.longestVariableReferenceChain = longestVarRefChain;</span>
+<span class="nc" id="L99">		}</span>
+
+		/** {@inheritDoc} */
+		@Override
+		public final String getVariableId()
+		{
+<span class="nc" id="L105">			return this.variableId;</span>
+		}
+
+		/**
+		 * &lt;p&gt;
+		 * Getter for the field &lt;code&gt;longestVariableReferenceChain&lt;/code&gt;.
+		 * &lt;/p&gt;
+		 *
+		 * @return the longestVariableReferenceChain
+		 */
+		private final Deque&lt;String&gt; getLongestVariableReferenceChain()
+		{
+<span class="nc" id="L117">			return longestVariableReferenceChain;</span>
+		}
+	}
+
+<span class="nc bnc" id="L121" title="All 2 branches missed.">	private static final class ConstantVariableReference&lt;V extends Value&gt; extends BaseVariableReference&lt;V&gt;</span>
+	{
+		private final transient Optional&lt;V&gt; alwaysPresentVarValue;
+		private final transient Datatype&lt;V&gt; varDatatype;
+
+		/**
+		 * Constructor that takes a variable identifier
+		 *
+		 * @param varId
+		 *            variable ID
+		 * @param varValue
+		 *            constant value (for constant variable)
+		 * @param varDatatype
+		 *            variable datatype
+		 * @param longestVarRefChain
+		 *            longest chain of VariableReference Reference in &lt;code&gt;expr&lt;/code&gt; (V1 -&gt; V2 -&gt; ... -&gt; Vn, where &quot;V1 -&gt; V2&quot; means VariableReference V1's expression contains one or more
+		 *            VariableReferences to V2)
+		 */
+		private ConstantVariableReference(final String varId, final V varValue, final Datatype&lt;V&gt; varDatatype, final Deque&lt;String&gt; longestVarRefChain)
+		{
+<span class="nc" id="L141">			super(varId, longestVarRefChain);</span>
+<span class="nc bnc" id="L142" title="All 6 branches missed.">			assert varValue != null &amp;&amp; varDatatype != null;</span>
+<span class="nc" id="L143">			this.alwaysPresentVarValue = Optional.of(varValue);</span>
+<span class="nc" id="L144">			this.varDatatype = varDatatype;</span>
+<span class="nc" id="L145">		}</span>
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 * Returns the type of the referenced expression.
+		 */
+		@Override
+		public Datatype&lt;V&gt; getReturnType()
+		{
+<span class="nc" id="L155">			return this.varDatatype;</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see com.thalesgroup.authzforce.core.eval.Expression#isStatic()
+		 */
+		/** {@inheritDoc} */
+		@Override
+		public Optional&lt;V&gt; getValue()
+		{
+<span class="nc" id="L167">			return this.alwaysPresentVarValue;</span>
+		}
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 * Evaluates the referenced expression using the given context, and either returns an error or a resulting value. If this doesn't reference an evaluatable expression (eg, a single Function)
+		 * then this will throw an exception.
+		 * &lt;p&gt;
+		 * The policy evaluator should call this when starting the evaluation of the policy where the VariableDefinition occurs, then cache the value in the evaluation context with
+		 * {@link EvaluationContext#putVariableIfAbsent(String, Value)}.
+		 */
+		@Override
+		public V evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L182">			return this.alwaysPresentVarValue.get();</span>
+		}
+	}
+
+<span class="nc bnc" id="L186" title="All 2 branches missed.">	private static final class DynamicVariableReference&lt;V extends Value&gt; extends BaseVariableReference&lt;V&gt;</span>
+	{
+		private final transient Expression&lt;V&gt; expression;
+		private final transient IndeterminateEvaluationException nullContextException;
+
+		/**
+		 * Constructor that takes a variable identifier
+		 *
+		 * @param varId
+		 *            input VariableReference from XACML model
+		 * @param varExpr
+		 *            Expression of referenced VariableDefinition
+		 * @param longestVarRefChain
+		 *            longest chain of VariableReference Reference in &lt;code&gt;expr&lt;/code&gt; (V1 -&gt; V2 -&gt; ... -&gt; Vn, where &quot;V1 -&gt; V2&quot; means VariableReference V1's expression contains one or more
+		 *            VariableReferences to V2)
+		 */
+		private DynamicVariableReference(final String varId, final Expression&lt;V&gt; varExpr, final Deque&lt;String&gt; longestVarRefChain)
+		{
+<span class="nc" id="L204">			super(varId, longestVarRefChain);</span>
+<span class="nc bnc" id="L205" title="All 4 branches missed.">			assert varExpr != null;</span>
+<span class="nc" id="L206">			this.expression = varExpr;</span>
+<span class="nc" id="L207">			this.nullContextException = new IndeterminateEvaluationException(</span>
+			        &quot;VariableReference[VariableId='&quot; + this.variableId + &quot;']: evaluate(context = null) not allowed because the variable requires context for evaluation (not constant)&quot;,
+<span class="nc" id="L209">			        XacmlStatusCode.PROCESSING_ERROR.value());</span>
+<span class="nc" id="L210">		}</span>
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 * Returns the type of the referenced expression.
+		 */
+		@Override
+		public Datatype&lt;V&gt; getReturnType()
+		{
+<span class="nc" id="L220">			return expression.getReturnType();</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see com.thalesgroup.authzforce.core.eval.Expression#isStatic()
+		 */
+		/** {@inheritDoc} */
+		@Override
+		public Optional&lt;V&gt; getValue()
+		{
+<span class="nc" id="L232">			return Optional.empty();</span>
+		}
+
+		/**
+		 * {@inheritDoc}
+		 *
+		 * Evaluates the referenced expression using the given context, and either returns an error or a resulting value. If this doesn't reference an evaluatable expression (eg, a single Function)
+		 * then this will throw an exception.
+		 * &lt;p&gt;
+		 * The policy evaluator should call this when starting the evaluation of the policy where the VariableDefinition occurs, then cache the value in the evaluation context with
+		 * {@link EvaluationContext#putVariableIfAbsent(String, Value)}.
+		 */
+		@Override
+		public V evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc bnc" id="L247" title="All 2 branches missed.">			if (context == null)</span>
+			{
+<span class="nc" id="L249">				throw nullContextException;</span>
+			}
+
+<span class="nc" id="L252">			final V ctxVal = context.getVariableValue(this.variableId, expression.getReturnType());</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			if (ctxVal != null)</span>
+			{
+<span class="nc" id="L255">				return ctxVal;</span>
+			}
+
+			// ctxVal == null: not evaluated yet in this context -&gt; evaluate now
+<span class="nc" id="L259">			final V result = expression.evaluate(context);</span>
+<span class="nc" id="L260">			context.putVariableIfAbsent(this.variableId, result);</span>
+<span class="nc" id="L261">			return result;</span>
+		}
+	}
+
+<span class="fc" id="L265">	private static final Logger LOGGER = LoggerFactory.getLogger(DepthLimitingExpressionFactory.class);</span>
+
+<span class="fc" id="L267">	private static final IllegalArgumentException MISSING_ATTRIBUTE_DESIGNATOR_ISSUER_EXCEPTION = new IllegalArgumentException(</span>
+	        &quot;Missing Issuer that is required on AttributeDesignators by PDP configuration&quot;);
+
+<span class="fc" id="L270">	private static final IllegalArgumentException UNSUPPORTED_ATTRIBUTE_SELECTOR_EXCEPTION = new IllegalArgumentException(&quot;Unsupported Expression type (optional XACML feature): AttributeSelector&quot;);</span>
+
+<span class="fc" id="L272">	private static final IllegalArgumentException NULL_FUNCTION_REGISTRY_EXCEPTION = new IllegalArgumentException(&quot;Undefined function registry&quot;);</span>
+
+<span class="fc" id="L274">	private static final IllegalArgumentException NULL_ATTRIBUTE_DATATYPE_REGISTRY_EXCEPTION = new IllegalArgumentException(&quot;Undefined attribute datatype registry&quot;);</span>
+
+<span class="fc" id="L276">	private static final IllegalArgumentException UNSUPPORTED_ATTRIBUTE_DESIGNATOR_OR_SELECTOR_BECAUSE_OF_NULL_ATTRIBUTE_PROVIDER_EXCEPTION = new IllegalArgumentException(</span>
+	        &quot;Unsupported Expression type 'AttributeDesignator' and 'AttributeSelector' because no attribute Provider defined&quot;);
+
+	private static final int UNLIMITED_MAX_VARIABLE_REF_DEPTH = -1;
+
+	private final AttributeValueFactoryRegistry datatypeFactoryRegistry;
+	private final FunctionRegistry functionRegistry;
+	private final CloseableAttributeProvider attributeProvider;
+	private final int maxVariableReferenceDepth;
+	// the map from identifiers to internal data
+<span class="fc" id="L286">	private final Map&lt;String, BaseVariableReference&lt;?&gt;&gt; idToVariableMap = HashCollections.newMutableMap();</span>
+	private final boolean allowAttributeSelectors;
+
+	private final boolean issuerRequiredOnAttributeDesignators;
+
+	/**
+	 * Maximum VariableReference depth allowed for VariableDefinitions to be managed. Examples:
+	 * &lt;ul&gt;
+	 * &lt;li&gt;A VariableDefinition V1 that does not use any VariableReference has a reference depth of 0.&lt;/li&gt;
+	 * &lt;li&gt;A VariableDefinition V1 that uses a VariableReference to VariableDefinition V2 with no further VariableReference, has a reference depth of 1&lt;/li&gt;
+	 * &lt;li&gt;etc.&lt;/li&gt;
+	 * &lt;/ul&gt;
+	 *
+	 * @param attributeFactory
+	 *            attribute value factory (not null)
+	 * @param functionRegistry
+	 *            function registry (not null)
+	 * @param attributeProviderFactories
+	 *            Attribute Provider factories (Attribute Providers resolve values of attributes absent from the request context). Empty if none.
+	 * @param maxVariableRefDepth
+	 *            max depth of VariableReference chaining: VariableDefinition -&gt; VariableDefinition -&gt;... ('-&gt;' represents a VariableReference); strictly negative value means unlimited
+	 * @param allowAttributeSelectors
+	 *            allow use of AttributeSelectors (experimental, not for production, use with caution)
+	 * @param strictAttributeIssuerMatch
+	 *            true iff we want strict Attribute Issuer matching and we require that all AttributeDesignators set the Issuer field.
+	 *            &lt;p&gt;
+	 *            &quot;Strict Attribute Issuer matching&quot; means that an AttributeDesignator without Issuer only matches request Attributes without Issuer. This mode is not fully compliant with XACML 3.0,
+	 *            §5.29, in the case that the Issuer is not present in the Attribute Designator, but it performs better and is recommended when all AttributeDesignators have an Issuer (best practice).
+	 *            Indeed, the XACML 3.0 Attribute Evaluation section §5.29 says: &quot;If the Issuer is not present in the AttributeDesignator, then the matching of the attribute to the named attribute
+	 *            SHALL be governed by AttributeId and DataType attributes alone.&quot; Therefore, if {@code strictAttributeIssuerMatch} is false, since policies may use AttributeDesignators without
+	 *            Issuer, if the requests are using matching Attributes but with none, one or more different Issuers, this PDP engine has to gather all the values from all the attributes with matching
+	 *            Category/AttributeId but with any Issuer or no Issuer. Therefore, in order to stay compliant with §5.29 and still enforce best practice, when {@code strictAttributeIssuerMatch} is
+	 *            true, we also require that all AttributeDesignators set the Issuer field.
+	 * @throws java.lang.IllegalArgumentException
+	 *             If {@code attributeFactory == null || functionRegistry == null} OR any Attribute Provider created from {@code attributeProviderFactories} does not provide any attribute.
+	 * @throws java.io.IOException
+	 *             error closing the Attribute Providers created from {@code attributeProviderFactories}, when a {@link IllegalArgumentException} is raised
+	 */
+	public DepthLimitingExpressionFactory(final AttributeValueFactoryRegistry attributeFactory, final FunctionRegistry functionRegistry,
+	        final List&lt;CloseableNamedAttributeProvider.DependencyAwareFactory&gt; attributeProviderFactories, final int maxVariableRefDepth, final boolean allowAttributeSelectors,
+	        final boolean strictAttributeIssuerMatch) throws IllegalArgumentException, IOException
+<span class="fc" id="L327">	{</span>
+<span class="pc bpc" id="L328" title="1 of 2 branches missed.">		if (attributeFactory == null)</span>
+		{
+<span class="nc" id="L330">			throw NULL_ATTRIBUTE_DATATYPE_REGISTRY_EXCEPTION;</span>
+		}
+
+<span class="pc bpc" id="L333" title="1 of 2 branches missed.">		if (functionRegistry == null)</span>
+		{
+<span class="nc" id="L335">			throw NULL_FUNCTION_REGISTRY_EXCEPTION;</span>
+		}
+
+<span class="fc" id="L338">		this.datatypeFactoryRegistry = attributeFactory;</span>
+<span class="fc" id="L339">		this.functionRegistry = functionRegistry;</span>
+<span class="pc bpc" id="L340" title="1 of 2 branches missed.">		this.maxVariableReferenceDepth = maxVariableRefDepth &lt; 0 ? UNLIMITED_MAX_VARIABLE_REF_DEPTH : maxVariableRefDepth;</span>
+		/*
+		 * finally create the global attribute Provider used to resolve AttributeDesignators
+		 */
+<span class="fc" id="L344">		this.attributeProvider = CloseableAttributeProvider.getInstance(attributeProviderFactories, attributeFactory, strictAttributeIssuerMatch);</span>
+<span class="fc" id="L345">		this.allowAttributeSelectors = allowAttributeSelectors;</span>
+<span class="fc" id="L346">		this.issuerRequiredOnAttributeDesignators = strictAttributeIssuerMatch;</span>
+<span class="fc" id="L347">	}</span>
+
+	private static &lt;V extends Value&gt; BaseVariableReference&lt;?&gt; newVariableReference(final String variableId, final Expression&lt;V&gt; variableExpression, final Deque&lt;String&gt; longestVarRefChainInExpression)
+	{
+<span class="nc bnc" id="L351" title="All 6 branches missed.">		assert variableId != null &amp;&amp; variableExpression != null;</span>
+
+<span class="nc" id="L353">		final Optional&lt;V&gt; constant = variableExpression.getValue();</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">		if (constant.isPresent())</span>
+		{
+			/*
+			 * Variable expression is constant
+			 */
+<span class="nc bnc" id="L359" title="All 4 branches missed.">			if (LOGGER.isWarnEnabled() &amp;&amp; !(variableExpression instanceof ConstantExpression))</span>
+			{
+<span class="nc" id="L361">				LOGGER.warn(&quot;Expression of Variable {} is constant '{}', therefore should be replaced with a equivalent AttributeValue.&quot;, variableId, constant);</span>
+			}
+
+<span class="nc" id="L364">			return new ConstantVariableReference&lt;&gt;(variableId, constant.get(), variableExpression.getReturnType(), longestVarRefChainInExpression);</span>
+		}
+
+<span class="nc" id="L367">		return new DynamicVariableReference&lt;&gt;(variableId, variableExpression, longestVarRefChainInExpression);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public VariableReference&lt;?&gt; addVariable(final VariableDefinition varDef, final XPathCompiler xPathCompiler, final Deque&lt;String&gt; inoutLongestVarRefChain) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L374" title="All 4 branches missed.">		assert varDef != null;</span>
+
+<span class="nc" id="L376">		final String varId = varDef.getVariableId();</span>
+		/*
+		 * Initialize the longest variable reference chain from this VariableDefinition (varDef -&gt; VarDef2 -&gt; ..., where &quot;v1 -&gt; v2&quot; means: v1's expression contains a VariableReference to v2) as empty
+		 * for later update by this#getVariable() when resolving a VariableReference within this varDef's expression (being parsed just after). The goal is to detect chains longer than
+		 * this.maxVariableReferenceDepth to limit abuse of VariableReferences. There may be multiple VariableReferences in a VariableDefinition's expression, such as an Apply, and each may be
+		 * referencing a different VariableDefinition; but we are interested only in the one with the longest chain of references. Note that circular references are prevented by the fact that, in our
+		 * implementation, a VariableReference can only reference a Variable previously declared.
+		 */
+		/*
+		 * inoutLongestVarRefChain == null means that the longest VarRef chain will not be computed nor checked
+		 */
+<span class="nc bnc" id="L387" title="All 2 branches missed.">		final Deque&lt;String&gt; longestVarRefChainInCurrentVarExpression = inoutLongestVarRefChain == null ? null : new ArrayDeque&lt;&gt;();</span>
+<span class="nc" id="L388">		final Expression&lt;?&gt; varExpr = getInstance(varDef.getExpression().getValue(), xPathCompiler, longestVarRefChainInCurrentVarExpression);</span>
+		/*
+		 * if not null, longestVarRefChainInCurrentVarExpression has now been updated to longest VariableReference chain in varExpr
+		 */
+<span class="nc bnc" id="L392" title="All 4 branches missed.">		if (inoutLongestVarRefChain != null &amp;&amp; longestVarRefChainInCurrentVarExpression != null)</span>
+		{
+			/*
+			 * Check size only if there is a limit
+			 */
+<span class="nc bnc" id="L397" title="All 4 branches missed.">			if (maxVariableReferenceDepth != UNLIMITED_MAX_VARIABLE_REF_DEPTH &amp;&amp; longestVarRefChainInCurrentVarExpression.size() &gt; this.maxVariableReferenceDepth)</span>
+			{
+<span class="nc" id="L399">				throw new IllegalArgumentException(&quot;Max allowed VariableReference depth (&quot; + this.maxVariableReferenceDepth + &quot;) exceeded by length (&quot; + longestVarRefChainInCurrentVarExpression.size()</span>
+				        + &quot;) of longest VariableReference Reference chain found in Expression of Variable '&quot; + varId + &quot;': &quot; + longestVarRefChainInCurrentVarExpression);
+			}
+
+			/*
+			 * Update inoutLongestVarRefChain if this variable's expression constains bigger chain
+			 */
+<span class="nc bnc" id="L406" title="All 2 branches missed.">			if (longestVarRefChainInCurrentVarExpression.size() &gt; inoutLongestVarRefChain.size())</span>
+			{
+				// current longest is no longer the longest, so replace with new
+				// longest's content
+<span class="nc" id="L410">				inoutLongestVarRefChain.clear();</span>
+				/*
+				 * This is a VariableDefinition we are looking at here, but there may not be any VariableReference to it; if there is, it will taken into account in #getVariable(). So at this point,
+				 * we do not include it in the chain.
+				 */
+<span class="nc" id="L415">				inoutLongestVarRefChain.addAll(longestVarRefChainInCurrentVarExpression);</span>
+			}
+
+		}
+
+<span class="nc" id="L420">		final BaseVariableReference&lt;?&gt; var = newVariableReference(varId, varExpr, longestVarRefChainInCurrentVarExpression);</span>
+<span class="nc" id="L421">		return idToVariableMap.putIfAbsent(varId, var);</span>
+	}
+
+	@Override
+	public VariableReference&lt;?&gt; getVariableExpression(final String varId)
+	{
+<span class="nc" id="L427">		return idToVariableMap.get(varId);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public VariableReference&lt;?&gt; removeVariable(final String varId)
+	{
+<span class="nc" id="L434">		return idToVariableMap.remove(varId);</span>
+	}
+
+	/**
+	 * Resolves a VariableReference to the corresponding VariableReference(Definition) and validates the depth of VariableReference, i.e. the length of VariableReference chain. A chain of variable
+	 * references is a list of VariableIds, such that V1 -&gt; V2 -&gt;... -&gt; Vn, where 'V1 -&gt; V2' means: V1's Expression contains a VariableReference to V2.
+	 * 
+	 * @param jaxbVarRef
+	 *            the JAXB/XACML VariableReference with merely identifying a VariableDefinition by its VariableId
+	 * 
+	 * @return VariableReference containing the resolved VariableDefinition's expression referenced by &lt;code&gt;jaxbVarRef&lt;/code&gt; as known by this factory, or null if unknown
+	 * @param inoutLongestVarRefChain
+	 *            If we are resolving a VariableReference in a VariableDefinition's expression (may be null if not), this is the longest chain of VariableReferences starting from a one in this
+	 *            VariableDefinition. If we are not resolving a VariableReference in a VariableDefinition's expression, this may be null.This is used to detect exceeding reference depth (see
+	 *            {@link #ExpressionFactoryImpl(int)} for the limit. In a Expression such as an Apply, we can have multiple VariableReferences referencing different VariableDefinitions. So we can have
+	 *            different depths of VariableReference references. We compare the length of the current longest chain with the one we would get by adding the longest one in the referenced
+	 *            VariableDefinition and &lt;code&gt;jaxbVarRef&lt;/code&gt;'s VariableId. If the latter is longer, its content becomes the content &lt;code&gt;longestVarRefChain&lt;/code&gt;.
+	 * @throws UnknownIdentifierException
+	 *             if VariableReference's VariableId is unknown by this factory
+	 */
+	private BaseVariableReference&lt;?&gt; getVariable(final VariableReferenceType jaxbVarRef, final Deque&lt;String&gt; inoutLongestVarRefChain) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L456" title="All 4 branches missed.">		assert jaxbVarRef != null;</span>
+
+<span class="nc" id="L458">		final String varId = jaxbVarRef.getVariableId();</span>
+<span class="nc" id="L459">		final BaseVariableReference&lt;?&gt; var = idToVariableMap.get(varId);</span>
+<span class="nc bnc" id="L460" title="All 2 branches missed.">		if (var == null)</span>
+		{
+<span class="nc" id="L462">			throw new IllegalArgumentException(&quot;VariableReference's VariableId=&quot; + varId + &quot; unknown in the current context, i.e. does not match any prior VariableDefinition's VariableId&quot;);</span>
+		}
+
+		/*
+		 * inoutLongestVarRefChain == null means that the longest VarRef chain will not be computed nor checked
+		 */
+<span class="nc bnc" id="L468" title="All 2 branches missed.">		if (inoutLongestVarRefChain != null)</span>
+		{
+			/*
+			 * Check whether the chain formed by [the Variable's Expression's longest VariableReference chain, and the VariableReference that we currently resolving in this method] is not too big
+			 */
+<span class="nc" id="L473">			final Deque&lt;String&gt; referencedVarLongestRefChain = var.getLongestVariableReferenceChain();</span>
+			/*
+			 * Make sure longestVarRefChain is set to the biggest one
+			 */
+<span class="nc bnc" id="L477" title="All 4 branches missed.">			if (referencedVarLongestRefChain != null &amp;&amp; referencedVarLongestRefChain.size() + 1 &gt; inoutLongestVarRefChain.size())</span>
+			{
+				// current longest is no longer the longest, so replace with new
+				// longest's content
+<span class="nc" id="L481">				inoutLongestVarRefChain.clear();</span>
+<span class="nc" id="L482">				inoutLongestVarRefChain.add(varId);</span>
+<span class="nc" id="L483">				inoutLongestVarRefChain.addAll(referencedVarLongestRefChain);</span>
+			}
+
+<span class="nc bnc" id="L486" title="All 4 branches missed.">			if (maxVariableReferenceDepth != UNLIMITED_MAX_VARIABLE_REF_DEPTH &amp;&amp; inoutLongestVarRefChain.size() &gt; this.maxVariableReferenceDepth)</span>
+			{
+<span class="nc" id="L488">				throw new IllegalArgumentException(&quot;Max allowed VariableReference depth (&quot; + this.maxVariableReferenceDepth + &quot;) exceeded by length (&quot; + inoutLongestVarRefChain.size()</span>
+				        + &quot;) of VariableReference Reference chain: &quot; + inoutLongestVarRefChain);
+			}
+		}
+
+<span class="nc" id="L493">		return var;</span>
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Create a function instance using the function registry passed as parameter to
+	 * {@link #DepthLimitingExpressionFactory(AttributeValueFactoryRegistry, FunctionRegistry, List, int, boolean, boolean)} .
+	 */
+	@Override
+	public FunctionExpression getFunction(final String functionId)
+	{
+<span class="fc" id="L505">		final Function&lt;?&gt; f = this.functionRegistry.getFunction(functionId);</span>
+<span class="pc bpc" id="L506" title="1 of 2 branches missed.">		if (f == null)</span>
+		{
+<span class="nc" id="L508">			return null;</span>
+		}
+
+<span class="fc" id="L511">		return new FunctionExpression(f);</span>
+	}
+
+	/**
+	 * {@inheritDoc}
+	 *
+	 * Create a function instance using the function registry passed as parameter to
+	 * {@link #DepthLimitingExpressionFactory(AttributeValueFactoryRegistry, FunctionRegistry, List, int, boolean, boolean)} .
+	 */
+	@Override
+	public FunctionExpression getFunction(final String functionId, final Datatype&lt;? extends AttributeValue&gt; subFunctionReturnType) throws IllegalArgumentException
+	{
+<span class="fc bfc" id="L523" title="All 2 branches covered.">		if (subFunctionReturnType == null)</span>
+		{
+<span class="fc" id="L525">			return getFunction(functionId);</span>
+		}
+
+<span class="fc" id="L528">		final Function&lt;?&gt; f = this.functionRegistry.getFunction(functionId, subFunctionReturnType);</span>
+<span class="pc bpc" id="L529" title="1 of 2 branches missed.">		if (f == null)</span>
+		{
+<span class="nc" id="L531">			return null;</span>
+		}
+
+<span class="fc" id="L534">		return new FunctionExpression(f);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public Expression&lt;?&gt; getInstance(final ExpressionType expr, final XPathCompiler xPathCompiler, final Deque&lt;String&gt; longestVarRefChain) throws IllegalArgumentException
+	{
+		final Expression&lt;?&gt; expression;
+		/*
+		 * We check all types of Expression: &lt;Apply&gt;, &lt;AttributeSelector&gt;, &lt;AttributeValue&gt;, &lt;Function&gt;, &lt;VariableReference&gt; and &lt;AttributeDesignator&gt;
+		 */
+<span class="nc bnc" id="L545" title="All 2 branches missed.">		if (expr instanceof ApplyType)</span>
+		{
+<span class="nc" id="L547">			expression = ApplyExpressions.newInstance((ApplyType) expr, xPathCompiler, this, longestVarRefChain);</span>
+		}
+<span class="nc bnc" id="L549" title="All 2 branches missed.">		else if (expr instanceof AttributeDesignatorType)</span>
+		{
+<span class="nc bnc" id="L551" title="All 2 branches missed.">			if (this.attributeProvider == null)</span>
+			{
+<span class="nc" id="L553">				throw UNSUPPORTED_ATTRIBUTE_DESIGNATOR_OR_SELECTOR_BECAUSE_OF_NULL_ATTRIBUTE_PROVIDER_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L556">			final AttributeDesignatorType jaxbAttrDes = (AttributeDesignatorType) expr;</span>
+<span class="nc bnc" id="L557" title="All 4 branches missed.">			if (this.issuerRequiredOnAttributeDesignators &amp;&amp; jaxbAttrDes.getIssuer() == null)</span>
+			{
+<span class="nc" id="L559">				throw MISSING_ATTRIBUTE_DESIGNATOR_ISSUER_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L562">			final AttributeValueFactory&lt;?&gt; attrFactory = datatypeFactoryRegistry.getExtension(jaxbAttrDes.getDataType());</span>
+<span class="nc bnc" id="L563" title="All 2 branches missed.">			if (attrFactory == null)</span>
+			{
+<span class="nc" id="L565">				throw new IllegalArgumentException(&quot;Unsupported Datatype used in AttributeDesignator: &quot; + jaxbAttrDes.getDataType());</span>
+			}
+
+<span class="nc" id="L568">			expression = new GenericAttributeProviderBasedAttributeDesignatorExpression&lt;&gt;(jaxbAttrDes, attrFactory.getDatatype().getBagDatatype(), attributeProvider);</span>
+<span class="nc" id="L569">		}</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">		else if (expr instanceof AttributeSelectorType)</span>
+		{
+<span class="nc bnc" id="L572" title="All 2 branches missed.">			if (!allowAttributeSelectors)</span>
+			{
+<span class="nc" id="L574">				throw UNSUPPORTED_ATTRIBUTE_SELECTOR_EXCEPTION;</span>
+			}
+
+<span class="nc bnc" id="L577" title="All 2 branches missed.">			if (this.attributeProvider == null)</span>
+			{
+<span class="nc" id="L579">				throw UNSUPPORTED_ATTRIBUTE_DESIGNATOR_OR_SELECTOR_BECAUSE_OF_NULL_ATTRIBUTE_PROVIDER_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L582">			final AttributeSelectorType jaxbAttrSelector = (AttributeSelectorType) expr;</span>
+<span class="nc" id="L583">			final AttributeValueFactory&lt;?&gt; attrFactory = datatypeFactoryRegistry.getExtension(jaxbAttrSelector.getDataType());</span>
+<span class="nc bnc" id="L584" title="All 2 branches missed.">			if (attrFactory == null)</span>
+			{
+<span class="nc" id="L586">				throw new IllegalArgumentException(&quot;Unsupported Datatype used in AttributeSelector: &quot; + jaxbAttrSelector.getDataType());</span>
+			}
+
+			// Check whether default XPath compiler/version specified for the
+			// XPath evaluator
+<span class="nc bnc" id="L591" title="All 2 branches missed.">			if (xPathCompiler == null)</span>
+			{
+<span class="nc" id="L593">				throw new IllegalArgumentException(&quot;AttributeSelector found but missing Policy(Set)Defaults/XPathVersion required for XPath evaluation in AttributeSelector&quot;);</span>
+			}
+
+<span class="nc" id="L596">			expression = AttributeSelectorExpressions.newInstance(jaxbAttrSelector, xPathCompiler, attributeProvider, attrFactory);</span>
+<span class="nc" id="L597">		}</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">		else if (expr instanceof AttributeValueType)</span>
+		{
+<span class="nc" id="L600">			expression = getInstance((AttributeValueType) expr, xPathCompiler);</span>
+		}
+<span class="nc bnc" id="L602" title="All 2 branches missed.">		else if (expr instanceof FunctionType)</span>
+		{
+<span class="nc" id="L604">			final FunctionType jaxbFunc = (FunctionType) expr;</span>
+<span class="nc" id="L605">			final FunctionExpression funcExp = getFunction(jaxbFunc.getFunctionId());</span>
+<span class="nc bnc" id="L606" title="All 2 branches missed.">			if (funcExp != null)</span>
+			{
+<span class="nc" id="L608">				expression = funcExp;</span>
+			}
+			else
+			{
+<span class="nc" id="L612">				throw new IllegalArgumentException(&quot;Function &quot; + jaxbFunc.getFunctionId()</span>
+				        + &quot; is not supported (at least) as standalone Expression: either a generic higher-order function supported only as Apply FunctionId, or function completely unknown.&quot;);
+			}
+<span class="nc" id="L615">		}</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">		else if (expr instanceof VariableReferenceType)</span>
+		{
+<span class="nc" id="L618">			final VariableReferenceType varRefElt = (VariableReferenceType) expr;</span>
+<span class="nc" id="L619">			expression = getVariable(varRefElt, longestVarRefChain);</span>
+<span class="nc" id="L620">		}</span>
+		else
+		{
+<span class="nc" id="L623">			throw new IllegalArgumentException(&quot;Expressions of type &quot; + expr.getClass().getSimpleName()</span>
+			        + &quot; are not supported. Expected: one of Apply, AttributeDesignator, AttributeSelector, AttributeValue, Function or VariableReference.&quot;);
+		}
+
+<span class="nc" id="L627">		return expression;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public ConstantExpression&lt;? extends AttributeValue&gt; getInstance(final AttributeValueType jaxbAttrVal, final XPathCompiler xPathCompiler) throws IllegalArgumentException
+	{
+<span class="nc" id="L634">		return this.datatypeFactoryRegistry.newExpression(jaxbAttrVal.getDataType(), jaxbAttrVal.getContent(), jaxbAttrVal.getOtherAttributes(), xPathCompiler);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public void close() throws IOException
+	{
+<span class="nc bnc" id="L641" title="All 2 branches missed.">		if (attributeProvider != null)</span>
+		{
+<span class="nc" id="L643">			attributeProvider.close();</span>
+		}
+<span class="nc" id="L645">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableCombiningAlgRegistry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">ImmutableCombiningAlgRegistry.java</span></div><h1>ImmutableCombiningAlgRegistry.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.BasePdpExtensionRegistry;
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+
+import com.google.common.base.Preconditions;
+
+/**
+ * This is an immutable &lt;code&gt;CombiningAlgRegistry&lt;/code&gt;.
+ *
+ * @version $Id: $
+ */
+public final class ImmutableCombiningAlgRegistry extends BasePdpExtensionRegistry&lt;CombiningAlg&lt;?&gt;&gt; implements CombiningAlgRegistry
+{
+	/**
+	 * &lt;p&gt;
+	 * Constructor for BaseCombiningAlgRegistry.
+	 * &lt;/p&gt;
+	 *
+	 * @param algorithms
+	 *            combining algorithms.
+	 */
+	public ImmutableCombiningAlgRegistry(Set&lt;CombiningAlg&lt;?&gt;&gt; algorithms)
+	{
+<span class="nc" id="L48">		super(CombiningAlg.class, Preconditions.checkNotNull(algorithms, &quot;Input Combining Algorithms undefined (algorithms == null)&quot;));</span>
+<span class="nc" id="L49">	}</span>
+
+	private static String toString(Class&lt;? extends Decidable&gt; combinedElementType) {
+<span class="nc bnc" id="L52" title="All 4 branches missed.">		return combinedElementType == PolicyEvaluator.class ? &quot;Policy(Set)&quot; : combinedElementType == RuleEvaluator.class ? &quot;Rule&quot; : combinedElementType.getCanonicalName();</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public &lt;T extends Decidable&gt; CombiningAlg&lt;T&gt; getAlgorithm(String algId, Class&lt;T&gt; combinedEltType) throws IllegalArgumentException {
+<span class="nc" id="L58">		final CombiningAlg&lt;? extends Decidable&gt; alg = this.getExtension(algId);</span>
+<span class="nc bnc" id="L59" title="All 2 branches missed.">		if (alg == null)</span>
+		{
+<span class="nc" id="L61">			throw new IllegalArgumentException(&quot;Unsupported combining algorithm: '&quot; + algId + &quot;'&quot;);</span>
+		}
+
+<span class="nc bnc" id="L64" title="All 2 branches missed.">		if (alg.getCombinedElementType().isAssignableFrom(combinedEltType))</span>
+		{
+<span class="nc" id="L66">			return (CombiningAlg&lt;T&gt;) alg;</span>
+		}
+
+		// wrong type of alg
+<span class="nc" id="L70">		alg.getCombinedElementType();</span>
+<span class="nc" id="L71">		throw new IllegalArgumentException(</span>
+<span class="nc" id="L72">				&quot;Combining algorithm '&quot; + algId + &quot;': invalid type of input elements (to be combined): &quot; + toString(combinedEltType) + &quot;; expected: &quot; + toString(alg.getCombinedElementType()) + &quot;.&quot;);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

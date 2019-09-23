@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MatchEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">MatchEvaluator.java</span></div><h1>MatchEvaluator.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.Arrays;
+import java.util.List;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeDesignatorType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeSelectorType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeValueType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Match;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.expression.FunctionExpression;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.func.FunctionCall;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.impl.func.StandardFunction;
+
+/**
+ * XACML Match evaluator. This is the part of the Target that actually evaluates whether the specified attribute values in the Target match the corresponding attribute values in the request context.
+ *
+ * @version $Id: $
+ */
+public final class MatchEvaluator
+{
+
+<span class="nc" id="L48">	private static final IllegalArgumentException NULL_XACML_MATCH_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined input XACML Match element&quot;);</span>
+<span class="nc" id="L49">	private static final IllegalArgumentException NULL_XACML_EXPRESSION_FACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined input XACML Expression parser&quot;);</span>
+
+	/**
+	 * Any-of function call equivalent to this Match:
+	 * &lt;p&gt;
+	 * Match(matchFunction, attributeValue, bagExpression) = anyOf(matchFunction, attributeValue, bagExpression)
+	 */
+	private final transient FunctionCall&lt;BooleanValue&gt; anyOfFuncCall;
+
+	/**
+	 * Instantiates Match evaluator from XACML-Schema-derived JAXB Match
+	 *
+	 * @param jaxbMatch
+	 *            XACML-Schema-derived JAXB Match
+	 * @param expFactory
+	 *            bagExpression factory
+	 * @param xPathCompiler
+	 *            XPath compiler corresponding to enclosing policy(set) default XPath version
+	 * @throws java.lang.IllegalArgumentException
+	 *             null {@code expFactory} or null/empty {@code jaxbMatch}
+	 */
+	public MatchEvaluator(final Match jaxbMatch, final XPathCompiler xPathCompiler, final ExpressionFactory expFactory) throws IllegalArgumentException
+<span class="nc" id="L71">	{</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if (jaxbMatch == null)</span>
+		{
+<span class="nc" id="L74">			throw NULL_XACML_MATCH_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L77" title="All 2 branches missed.">		if (expFactory == null)</span>
+		{
+<span class="nc" id="L79">			throw NULL_XACML_EXPRESSION_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+		// get the matchFunction type, making sure that it's really a correct
+		// Target matchFunction
+<span class="nc" id="L84">		final String matchId = jaxbMatch.getMatchId();</span>
+<span class="nc" id="L85">		final FunctionExpression matchFunction = expFactory.getFunction(matchId);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		if (matchFunction == null)</span>
+		{
+<span class="nc" id="L88">			throw new IllegalArgumentException(&quot;Unsupported function for MatchId: '&quot; + matchId + &quot;'&quot;);</span>
+		}
+
+		// next, get the designator or selector being used, and the attribute
+		// value paired with it
+<span class="nc" id="L93">		final AttributeDesignatorType attributeDesignator = jaxbMatch.getAttributeDesignator();</span>
+<span class="nc" id="L94">		final AttributeSelectorType attributeSelector = jaxbMatch.getAttributeSelector();</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		final Expression&lt;?&gt; bagExpression = expFactory.getInstance(attributeDesignator == null ? attributeSelector : attributeDesignator, xPathCompiler, null);</span>
+
+<span class="nc" id="L97">		final AttributeValueType attributeValue = jaxbMatch.getAttributeValue();</span>
+		final Expression&lt;? extends AttributeValue&gt; attrValueExpr;
+		try
+		{
+<span class="nc" id="L101">			attrValueExpr = expFactory.getInstance(attributeValue, xPathCompiler);</span>
+		}
+<span class="nc" id="L103">		catch (final IllegalArgumentException e)</span>
+		{
+<span class="nc" id="L105">			throw new IllegalArgumentException(&quot;Invalid &lt;Match&gt;'s &lt;AttributeValue&gt;&quot;, e);</span>
+<span class="nc" id="L106">		}</span>
+
+		/*
+		 * Match(matchFunction, attributeValue, bagExpression) = anyOf(matchFunction, attributeValue, bagExpression)
+		 */
+<span class="nc" id="L111">		final FunctionExpression funcExp = expFactory.getFunction(StandardFunction.ANY_OF.getId());</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		if (funcExp == null)</span>
+		{
+<span class="nc" id="L114">			throw new IllegalArgumentException(&quot;Unsupported function '&quot; + StandardFunction.ANY_OF.getId() + &quot;' required for Match evaluation&quot;);</span>
+		}
+
+<span class="nc" id="L117">		final Function&lt;BooleanValue&gt; anyOfFunc = funcExp.getValue().get();</span>
+<span class="nc" id="L118">		final List&lt;Expression&lt;?&gt;&gt; anyOfFuncInputs = Arrays.&lt;Expression&lt;?&gt;&gt; asList(matchFunction, attrValueExpr, bagExpression);</span>
+		try
+		{
+<span class="nc" id="L121">			this.anyOfFuncCall = anyOfFunc.newCall(anyOfFuncInputs);</span>
+		}
+<span class="nc" id="L123">		catch (final IllegalArgumentException e)</span>
+		{
+<span class="nc" id="L125">			throw new IllegalArgumentException(&quot;Invalid inputs (Expressions) to the Match (validated using the equivalent standard 'any-of' function definition): &quot; + anyOfFuncInputs, e);</span>
+<span class="nc" id="L126">		}</span>
+<span class="nc" id="L127">	}</span>
+
+	/**
+	 * Determines whether this &lt;code&gt;Match&lt;/code&gt; matches the input request (whether it is applicable)
+	 *
+	 * @param context
+	 *            the evaluation context
+	 * @return true iff the context matches
+	 * @throws org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException
+	 *             error occurred evaluating the Match element in this evaluation {@code context}
+	 */
+	public boolean match(final EvaluationContext context) throws IndeterminateEvaluationException
+	{
+		final BooleanValue anyOfFuncCallResult;
+		try
+		{
+<span class="nc" id="L143">			anyOfFuncCallResult = anyOfFuncCall.evaluate(context);</span>
+		}
+<span class="nc" id="L145">		catch (final IndeterminateEvaluationException e)</span>
+		{
+<span class="nc" id="L147">			throw new IndeterminateEvaluationException(&quot;Error evaluating Match (with equivalent 'any-of' function)&quot;, e.getStatusCode(), e);</span>
+<span class="nc" id="L148">		}</span>
+
+<span class="nc" id="L150">		return anyOfFuncCallResult.getUnderlyingValue().booleanValue();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

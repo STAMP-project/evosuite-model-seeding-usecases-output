@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PdpModelHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">PdpModelHandler.java</span></div><h1>PdpModelHandler.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.beans.ConstructorProperties;
+import java.io.File;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.Source;
+import javax.xml.validation.Schema;
+
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.xmlns.pdp.Pdp;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractPdpExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * PDP Engine XML configuration handler
+ *
+ * @version $Id: $
+ */
+public final class PdpModelHandler
+{
+	/**
+	 * Location of PDP configuration schema
+	 */
+	public final static String CORE_XSD_LOCATION = &quot;classpath:pdp.xsd&quot;;
+
+	/**
+	 * Default location of XML catalog to resolve imported XML schemas in {@value #CORE_XSD_LOCATION}
+	 */
+	public final static String DEFAULT_CATALOG_LOCATION = &quot;classpath:catalog.xml&quot;;
+
+<span class="nc" id="L59">	private final static Logger LOGGER = LoggerFactory.getLogger(PdpModelHandler.class);</span>
+
+	/**
+	 * Supported JAXB type for root elements of XML configuration documents (e.g. files)
+	 */
+<span class="nc" id="L64">	public final static Class&lt;?&gt; SUPPORTED_ROOT_CONF_ELEMENT_JAXB_TYPE = Pdp.class;</span>
+
+	private final Schema confSchema;
+	private final JAXBContext confJaxbCtx;
+
+	/**
+	 * Load Configuration model handler. Parameters here are locations to XSD files. Locations can be any resource string supported by Spring ResourceLoader. More info:
+	 * http://docs.spring.io/spring/docs/current/spring-framework-reference/html/resources.html
+	 *
+	 * For example: classpath:com/myapp/aaa.xsd, file:///data/bbb.xsd, http://myserver/ccc.xsd...
+	 *
+	 * @param extensionXsdLocation
+	 *            location of user-defined extension XSD (may be null if no extension to load), if exists; in such XSD, there must be a XSD namespace import for each extension used in the PDP
+	 *            configuration, for example:
+	 *
+	 *            &lt;pre&gt;
+	 * {@literal
+	 * 		  &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+	 * &lt;xs:schema xmlns:xs=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
+	 * 	&lt;xs:annotation&gt;
+	 * 		&lt;xs:documentation xml:lang=&quot;en&quot;&gt;
+	 * 			Import here the schema(s) of any XSD-defined PDP extension that you want to use in a PDP configuration: attribute finders, policy finders, etc.
+	 * 			Indicate only the namespace here and use the XML catalog to resolve the schema location.
+	 * 		&lt;/xs:documentation&gt;
+	 * 	&lt;/xs:annotation&gt;
+	 * 	&lt;!-- Do not specify schema locations here. Define the schema locations in the XML catalog instead (see file 'catalog.xml'). --&gt;
+	 * 	&lt;!--  Adding TestAttributeProvider extension for example --&gt;
+	 * 	&lt;xs:import namespace=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; /&gt;
+	 * &lt;/xs:schema&gt;
+	 * 			}
+	 * &lt;/pre&gt;
+	 *
+	 *            In this example, the file at {@code catalogLocation} must define the schemaLocation for the imported namespace above using a line like this (for an XML-formatted catalog):
+	 * 
+	 *            &lt;pre&gt;
+	 *            {@literal
+	 *            &lt;uri name=&quot;http://authzforce.github.io/core/xmlns/test/3&quot; uri=
+	 * 	&quot;classpath:org.ow2.authzforce.core.test.xsd&quot; /&gt;
+	 *            }
+	 * &lt;/pre&gt;
+	 * 
+	 *            We assume that this XML type is an extension of one the PDP extension base types, 'AbstractAttributeProvider' (that extends 'AbstractPdpExtension' like all other extension base
+	 *            types) in this case.
+	 * @param catalogLocation
+	 *            location of XML catalog for resolving XSDs imported by the pdp.xsd (PDP configuration schema) and the extensions XSD specified as 'extensionXsdLocation' argument (may be null)
+	 */
+	@ConstructorProperties({ &quot;catalogLocation&quot;, &quot;extensionXsdLocation&quot; })
+	public PdpModelHandler(final String catalogLocation, final String extensionXsdLocation)
+<span class="nc" id="L112">	{</span>
+		final List&lt;String&gt; schemaLocations;
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (extensionXsdLocation == null)</span>
+		{
+<span class="nc" id="L116">			schemaLocations = Collections.singletonList(CORE_XSD_LOCATION);</span>
+		}
+		else
+		{
+<span class="nc" id="L120">			schemaLocations = Arrays.asList(extensionXsdLocation, CORE_XSD_LOCATION);</span>
+		}
+
+		/*
+		 * JAXB classes of extensions are generated separately from the extension base type XSD. Therefore no @XmlSeeAlso to link to the base type. Therefore any JAXB provider cannot (un)marshall
+		 * documents using the extension base type XSD, unless it is provided with the list of the extra JAXB classes based on the new extension XSD. For instance, this is the case for JAXB providers
+		 * used by REST/SOAP frameworks: Apache CXF, Metro, etc. So we need to add to the JAXBContext all the extensions' model (JAXB-generated) classes. These have been collected by the
+		 * PdpExtensionLoader.
+		 */
+<span class="nc" id="L129">		final Set&lt;Class&lt;? extends AbstractPdpExtension&gt;&gt; extJaxbClasses = PdpExtensions.getExtensionJaxbClasses();</span>
+<span class="nc" id="L130">		final Set&lt;Class&lt;?&gt;&gt; jaxbBoundClassSet = HashCollections.&lt;Class&lt;?&gt;&gt; newUpdatableSet(extJaxbClasses.size() + 1);</span>
+<span class="nc" id="L131">		jaxbBoundClassSet.addAll(extJaxbClasses);</span>
+<span class="nc" id="L132">		LOGGER.debug(&quot;Final list of loaded extension models (JAXB classes): {}&quot;, jaxbBoundClassSet);</span>
+
+		// Classes to be bound when creating new instance of JAXB context
+<span class="nc" id="L135">		jaxbBoundClassSet.add(SUPPORTED_ROOT_CONF_ELEMENT_JAXB_TYPE);</span>
+		try
+		{
+<span class="nc" id="L138">			confJaxbCtx = JAXBContext.newInstance(jaxbBoundClassSet.toArray(new Class&lt;?&gt;[jaxbBoundClassSet.size()]));</span>
+<span class="nc" id="L139">			LOGGER.debug(&quot;JAXB context for PDP configuration (un)marshalling: {}&quot;, confJaxbCtx);</span>
+		}
+<span class="nc" id="L141">		catch (final JAXBException e)</span>
+		{
+<span class="nc" id="L143">			throw new RuntimeException(&quot;Failed to initialize configuration unmarshaller&quot;, e);</span>
+<span class="nc" id="L144">		}</span>
+
+		// Load schema for validating XML configurations
+		final String schemaHandlerCatalogLocation;
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		if (catalogLocation == null)</span>
+		{
+<span class="nc" id="L150">			LOGGER.debug(&quot;No XML catalog location specified for PDP schema handler, using default: {}&quot;, DEFAULT_CATALOG_LOCATION);</span>
+<span class="nc" id="L151">			schemaHandlerCatalogLocation = DEFAULT_CATALOG_LOCATION;</span>
+		}
+		else
+		{
+<span class="nc" id="L155">			LOGGER.debug(&quot;XML catalog location specified for PDP schema handler: {}&quot;, catalogLocation);</span>
+<span class="nc" id="L156">			schemaHandlerCatalogLocation = catalogLocation;</span>
+		}
+
+<span class="nc" id="L159">		confSchema = SchemaHandler.createSchema(schemaLocations, schemaHandlerCatalogLocation);</span>
+<span class="nc" id="L160">	}</span>
+
+	/**
+	 * Unmarshall object from XML source
+	 *
+	 * @param src
+	 *            XML source
+	 * @param clazz
+	 *            Class of object to be unmarshalled, must be a subclass (or the class itself) of the one defined by {@link #SUPPORTED_ROOT_CONF_ELEMENT_JAXB_TYPE}, i.e. {@link Pdp}
+	 * @return object of class clazz
+	 * @throws javax.xml.bind.JAXBException
+	 *             if an error was encountered while unmarshalling the XML document in {@code src} into an instance of {@code clazz}
+	 * @param &lt;T&gt;
+	 *            a T object.
+	 */
+	public &lt;T&gt; T unmarshal(final Source src, final Class&lt;T&gt; clazz) throws JAXBException
+	{
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		if (!SUPPORTED_ROOT_CONF_ELEMENT_JAXB_TYPE.isAssignableFrom(clazz))</span>
+		{
+<span class="nc" id="L179">			throw new UnsupportedOperationException(&quot;XML configuration unmarshalling is not supported for &quot; + clazz + &quot;; supported JAXB type for root configuration elements is: &quot;</span>
+					+ SUPPORTED_ROOT_CONF_ELEMENT_JAXB_TYPE);
+		}
+
+<span class="nc" id="L183">		final Unmarshaller unmarshaller = confJaxbCtx.createUnmarshaller();</span>
+<span class="nc" id="L184">		unmarshaller.setSchema(confSchema);</span>
+<span class="nc" id="L185">		final JAXBElement&lt;T&gt; confRootElt = unmarshaller.unmarshal(src, clazz);</span>
+<span class="nc" id="L186">		return confRootElt.getValue();</span>
+	}
+
+	/**
+	 * Saves full configuration (XML)
+	 *
+	 * @param conf
+	 *            configuration
+	 * @param os
+	 *            output stream where to save
+	 * @throws javax.xml.bind.JAXBException
+	 *             error when marshalling the XML configuration to the output stream
+	 */
+	public void marshal(final Pdp conf, final OutputStream os) throws JAXBException
+	{
+<span class="nc" id="L201">		final Marshaller marshaller = confJaxbCtx.createMarshaller();</span>
+<span class="nc" id="L202">		marshaller.setSchema(confSchema);</span>
+<span class="nc" id="L203">		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);</span>
+<span class="nc" id="L204">		marshaller.marshal(conf, os);</span>
+<span class="nc" id="L205">	}</span>
+
+	/**
+	 * Saves full configuration (XML)
+	 *
+	 * @param conf
+	 *            configuration
+	 * @param f
+	 *            output file where to save
+	 * @throws javax.xml.bind.JAXBException
+	 *             error when marshalling the XML configuration to file
+	 */
+	public void marshal(final Pdp conf, final File f) throws JAXBException
+	{
+<span class="nc" id="L219">		final Marshaller marshaller = confJaxbCtx.createMarshaller();</span>
+<span class="nc" id="L220">		marshaller.setSchema(confSchema);</span>
+<span class="nc" id="L221">		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);</span>
+<span class="nc" id="L222">		marshaller.marshal(conf, f);</span>
+<span class="nc" id="L223">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

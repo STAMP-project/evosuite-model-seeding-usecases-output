@@ -1,0 +1,915 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StandardHigherOrderBagFunctions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">StandardHigherOrderBagFunctions.java</span></div><h1>StandardHigherOrderBagFunctions.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.HigherOrderBagFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Bag;
+import org.ow2.authzforce.core.pdp.api.value.BagDatatype;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+
+/**
+ * Set of higher-order bag functions
+ *
+ * 
+ * @version $Id: $
+ */
+final class StandardHigherOrderBagFunctions
+{
+
+	private static abstract class BooleanHigherOrderBagFunction extends HigherOrderBagFunction&lt;BooleanValue, BooleanValue&gt;
+	{
+
+		protected final String subFunctionCallErrorMessagePrefix;
+
+		private BooleanHigherOrderBagFunction(final String functionId)
+		{
+<span class="fc" id="L62">			super(functionId, StandardDatatypes.BOOLEAN, StandardDatatypes.BOOLEAN);</span>
+<span class="fc" id="L63">			this.subFunctionCallErrorMessagePrefix = &quot;Function '&quot; + functionId + &quot;': Error evaluating sub-function with arguments (evaluated to): &quot;;</span>
+<span class="fc" id="L64">		}</span>
+	}
+
+	/**
+	 * Higher-order boolean function taking three arguments: sub-function and two bags
+	 * 
+	 */
+	private static abstract class BooleanHigherOrderTwoBagFunction extends BooleanHigherOrderBagFunction
+	{
+<span class="fc" id="L73">		private final IllegalArgumentException invalidLastArgTypeException = new IllegalArgumentException(&quot;Function&quot; + this + &quot;: Invalid last argument type: primitive (not a bag). Required: a bag&quot;);</span>
+
+		private BooleanHigherOrderTwoBagFunction(final String functionId)
+		{
+<span class="fc" id="L77">			super(functionId);</span>
+<span class="fc" id="L78">		}</span>
+
+		@Override
+		protected final void checkNumberOfArgs(final int numInputs) {
+<span class="fc bfc" id="L82" title="All 2 branches covered.">			if (numInputs != 3)</span>
+			{
+<span class="fc" id="L84">				throw new IllegalArgumentException(&quot;Function &quot; + this + &quot;: Invalid number of arguments (&quot; + numInputs + &quot;). Required: 3&quot;);</span>
+			}
+<span class="fc" id="L86">		}</span>
+
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">		private static abstract class Call implements FunctionCall&lt;BooleanValue&gt;</span>
+		{
+			protected final FirstOrderFunctionCall&lt;BooleanValue&gt; subFuncCall;
+			private final String errorEvalArg1Message;
+			private final String errorEvalArg2Message;
+			private final Expression&lt;? extends Bag&lt;?&gt;&gt; bagArgExpr0;
+			private final Expression&lt;? extends Bag&lt;?&gt;&gt; bagArgExpr1;
+
+			private Call(final String functionId, final FirstOrderFunction&lt;BooleanValue&gt; subFunc, final Expression&lt;? extends Bag&lt;?&gt;&gt; input0, final Expression&lt;? extends Bag&lt;?&gt;&gt; input1)
+<span class="fc" id="L97">			{</span>
+<span class="fc" id="L98">				final Optional&lt;? extends Datatype&lt;?&gt;&gt; bagElementType0 = input0.getReturnType().getTypeParameter();</span>
+<span class="fc" id="L99">				final Optional&lt;? extends Datatype&lt;?&gt;&gt; bagElementType1 = input1.getReturnType().getTypeParameter();</span>
+<span class="pc bpc" id="L100" title="3 of 6 branches missed.">				assert bagElementType0.isPresent() &amp;&amp; bagElementType1.isPresent();</span>
+
+<span class="fc" id="L102">				final Datatype&lt;?&gt;[] subFuncArgTypes = { bagElementType0.get(), bagElementType1.get() };</span>
+<span class="fc" id="L103">				this.subFuncCall = subFunc.newCall(Collections.&lt;Expression&lt;?&gt;&gt;emptyList(), subFuncArgTypes);</span>
+<span class="fc" id="L104">				this.bagArgExpr0 = input0;</span>
+<span class="fc" id="L105">				this.bagArgExpr1 = input1;</span>
+<span class="fc" id="L106">				this.errorEvalArg1Message = &quot;Function '&quot; + functionId + &quot;': Error evaluating second arg #1&quot;;</span>
+<span class="fc" id="L107">				this.errorEvalArg2Message = &quot;Function '&quot; + functionId + &quot;': Error evaluating arg #2&quot;;</span>
+<span class="fc" id="L108">			}</span>
+
+			protected abstract BooleanValue evaluate(Bag&lt;?&gt; bag0, Bag&lt;?&gt; bag1, EvaluationContext context) throws IndeterminateEvaluationException;
+
+			@Override
+			public final BooleanValue evaluate(final EvaluationContext context) throws IndeterminateEvaluationException {
+				final Bag&lt;?&gt; bag0;
+				try
+				{
+<span class="fc" id="L117">					bag0 = bagArgExpr0.evaluate(context);</span>
+<span class="nc" id="L118">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+<span class="nc" id="L120">					throw new IndeterminateEvaluationException(errorEvalArg1Message, e.getStatusCode());</span>
+<span class="fc" id="L121">				}</span>
+
+				/*
+				 * If result bag empty, returns False as there will be no possibility for a Predicate that is &quot;True&quot;. AttributeDesignator/AttributeSelector with MustBePresent=False may evaluate to
+				 * empty bags (Indeterminate Exception if MustBePresent=True). empty bag.
+				 */
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">				if (bag0.isEmpty())</span>
+				{
+<span class="nc" id="L129">					return BooleanValue.FALSE;</span>
+				}
+
+				final Bag&lt;?&gt; bag1;
+				try
+				{
+<span class="fc" id="L135">					bag1 = bagArgExpr1.evaluate(context);</span>
+<span class="nc" id="L136">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+<span class="nc" id="L138">					throw new IndeterminateEvaluationException(errorEvalArg2Message, e.getStatusCode());</span>
+<span class="fc" id="L139">				}</span>
+
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">				if (bag1.isEmpty())</span>
+				{
+<span class="nc" id="L143">					return BooleanValue.FALSE;</span>
+				}
+
+<span class="fc" id="L146">				return evaluate(bag0, bag1, context);</span>
+			}
+
+			@Override
+			public final Datatype&lt;BooleanValue&gt; getReturnType() {
+<span class="nc" id="L151">				return StandardDatatypes.BOOLEAN;</span>
+			}
+
+		}
+
+		protected abstract BooleanValue evaluate(FirstOrderFunctionCall&lt;BooleanValue&gt; subFunctionCall, Bag&lt;?&gt; bag0, Bag&lt;?&gt; bag1, EvaluationContext context) throws IndeterminateEvaluationException;
+
+		@Override
+		protected final FunctionCall&lt;BooleanValue&gt; createFunctionCallFromSubFunction(final FirstOrderFunction&lt;BooleanValue&gt; subFunc, final List&lt;Expression&lt;?&gt;&gt; inputsAfterSubFunc) {
+
+<span class="fc" id="L161">			final Iterator&lt;Expression&lt;?&gt;&gt; inputsAfterSubfuncIterator = inputsAfterSubFunc.iterator();</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">			while (inputsAfterSubfuncIterator.hasNext())</span>
+			{
+				// all must be bag
+<span class="fc bfc" id="L165" title="All 2 branches covered.">				if (!inputsAfterSubfuncIterator.next().getReturnType().getTypeParameter().isPresent())</span>
+				{
+<span class="fc" id="L167">					throw invalidLastArgTypeException;</span>
+				}
+			}
+
+<span class="fc" id="L171">			final Expression&lt;? extends Bag&lt;?&gt;&gt; input0 = (Expression&lt;? extends Bag&lt;?&gt;&gt;) inputsAfterSubFunc.get(0);</span>
+<span class="fc" id="L172">			final Expression&lt;? extends Bag&lt;?&gt;&gt; input1 = (Expression&lt;? extends Bag&lt;?&gt;&gt;) inputsAfterSubFunc.get(1);</span>
+<span class="fc" id="L173">			return new BooleanHigherOrderTwoBagFunction.Call(this.getId(), subFunc, input0, input1)</span>
+<span class="fc" id="L174">			{</span>
+
+				@Override
+				protected BooleanValue evaluate(final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1, final EvaluationContext context) throws IndeterminateEvaluationException {
+<span class="fc" id="L178">					return BooleanHigherOrderTwoBagFunction.this.evaluate(subFuncCall, bag0, bag1, context);</span>
+				}
+			};
+		}
+	}
+
+	/**
+	 * one-bag-only functions (one and only one arg is bag): any-of, all-of, map. For the map function, the (only) bag argument can be any arg following the sub-function.
+	 * 
+	 */
+	static abstract class OneBagOnlyHigherOrderFunction&lt;RETURN_T extends Value, SUB_RETURN_T extends AttributeValue&gt; extends HigherOrderBagFunction&lt;RETURN_T, SUB_RETURN_T&gt;
+	{
+<span class="fc" id="L190">		private final String invalidArityMsgPrefix = &quot;Function '&quot; + this + &quot;': Invalid number of arguments: expected: &gt;= 2; actual: &quot;;</span>
+<span class="fc" id="L191">		private final IllegalArgumentException missingBagInputErrorMsg = new IllegalArgumentException(&quot;Function '&quot; + this + &quot;': Invalid args (expected: one and only one bag; actual: none)&quot;);</span>
+<span class="fc" id="L192">		private final String invalidArgTypeErrorMsg = &quot;Function '&quot; + this + &quot;': Invalid argument type (expected: primitive; actual: bag) for arg #&quot;;</span>
+
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">		static abstract class Call&lt;RETURN extends Value, SUB_RETURN extends AttributeValue&gt; implements FunctionCall&lt;RETURN&gt;</span>
+		{
+			private final String errorEvalBagArgMsg;
+			private final Expression&lt;?&gt; bagArgExpr;
+			private final BagDatatype&lt;?&gt; bagArgDatatype;
+			private final Datatype&lt;RETURN&gt; returnType;
+			protected final int bagArgIndex;
+			protected final List&lt;Expression&lt;?&gt;&gt; primitiveArgExprsAfterBag;
+			protected final int numOfArgsAfterBagInclusive;
+			protected final FirstOrderFunctionCall&lt;SUB_RETURN&gt; subFuncCall;
+
+			protected Call(final String functionId, final Datatype&lt;RETURN&gt; returnType, final FirstOrderFunction&lt;SUB_RETURN&gt; subFunction, final List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag,
+					final Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput, final List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag)
+<span class="fc" id="L207">			{</span>
+<span class="fc" id="L208">				final Datatype&lt;? extends Bag&lt;?&gt;&gt; bagInputType = bagInput.getReturnType();</span>
+				/*
+				 * BagDatatype is expected to be the only Datatype implementation for Datatype&lt;Bag&lt;?&gt;&gt;
+				 */
+<span class="pc bpc" id="L212" title="2 of 4 branches missed.">				assert bagInputType instanceof BagDatatype;</span>
+
+<span class="fc" id="L214">				bagArgDatatype = (BagDatatype&lt;?&gt;) bagInputType;</span>
+<span class="fc" id="L215">				bagArgExpr = bagInput;</span>
+<span class="fc" id="L216">				bagArgIndex = 1 + primitiveInputsBeforeBag.size();</span>
+<span class="fc" id="L217">				primitiveArgExprsAfterBag = primitiveInputsAfterBag;</span>
+				/*
+				 * Number of args starting with the bag (inclusive)
+				 */
+<span class="fc" id="L221">				numOfArgsAfterBagInclusive = 1 + primitiveInputsAfterBag.size();</span>
+
+				/*
+				 * Prepare args to sub-function Each actual value that comes from the bag and that is passed to the sub-function is not yet known; but we know the expected datatype that is the type of
+				 * each element in the bag.
+				 */
+<span class="fc" id="L227">				final Datatype&lt;?&gt;[] typesOfArgsAfterBagInclusive = new Datatype&lt;?&gt;[numOfArgsAfterBagInclusive];</span>
+<span class="fc" id="L228">				typesOfArgsAfterBagInclusive[0] = bagArgDatatype.getElementType();</span>
+<span class="fc" id="L229">				int i = 1;</span>
+<span class="fc bfc" id="L230" title="All 2 branches covered.">				for (final Expression&lt;?&gt; primitiveInputAfterBag : primitiveInputsAfterBag)</span>
+				{
+<span class="fc" id="L232">					typesOfArgsAfterBagInclusive[i] = primitiveInputAfterBag.getReturnType();</span>
+<span class="fc" id="L233">					i++;</span>
+<span class="fc" id="L234">				}</span>
+
+<span class="fc" id="L236">				this.subFuncCall = subFunction.newCall(primitiveInputsBeforeBag, typesOfArgsAfterBagInclusive);</span>
+<span class="fc" id="L237">				this.errorEvalBagArgMsg = &quot;Function '&quot; + functionId + &quot;': Error evaluating bag arg (arg #&quot; + bagArgIndex + &quot;)&quot;;</span>
+<span class="fc" id="L238">				this.returnType = returnType;</span>
+<span class="fc" id="L239">			}</span>
+
+			/**
+			 * Evaluates the function call. The evaluation combines the results of all &lt;i&gt;eval&lt;sub&gt;i&lt;/sub&gt;&lt;/i&gt; for &lt;i&gt;i&lt;/i&gt; in [0..p-1], where &lt;i&gt;eval&lt;sub&gt;i&lt;/sub&gt;&lt;/i&gt; is the evaluation of the
+			 * sub-function (in this higher-order function call, i.e. first arg) with the following arguments, except for the one that is a bag, we take the i-th value in the bag as actual
+			 * sub-function arg, with p the size of the bag.
+			 * 
+			 * @param bagArg
+			 *            the bag of which each value is used successively as the primitive argument to the sub-function in the same position
+			 * @param context
+			 *            evaluation context in which arguments are evaluated
+			 * @return result combined result (depending on the implementation)
+			 * @throws IndeterminateEvaluationException
+			 *             if any error occurred during evaluation
+			 */
+			protected abstract RETURN evaluate(Bag&lt;?&gt; bagArg, EvaluationContext context) throws IndeterminateEvaluationException;
+
+			@Override
+			public final RETURN evaluate(final EvaluationContext context) throws IndeterminateEvaluationException {
+				final Bag&lt;?&gt; bagArg;
+				try
+				{
+<span class="fc" id="L261">					bagArg = Expressions.eval(bagArgExpr, context, bagArgDatatype);</span>
+<span class="nc" id="L262">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+<span class="nc" id="L264">					throw new IndeterminateEvaluationException(errorEvalBagArgMsg, e.getStatusCode(), e);</span>
+<span class="fc" id="L265">				}</span>
+
+<span class="fc" id="L267">				return evaluate(bagArg, context);</span>
+			}
+
+			@Override
+			public final Datatype&lt;RETURN&gt; getReturnType() {
+<span class="nc" id="L272">				return returnType;</span>
+			}
+		}
+
+		/*
+		 * 'protected' because used by separate MapFunction class
+		 */
+		protected OneBagOnlyHigherOrderFunction(final String functionName, final Datatype&lt;RETURN_T&gt; returnType, final Datatype&lt;SUB_RETURN_T&gt; subFunctionReturnType)
+		{
+<span class="fc" id="L281">			super(functionName, returnType, subFunctionReturnType);</span>
+<span class="fc" id="L282">		}</span>
+
+		@Override
+		protected final void checkNumberOfArgs(final int numInputs) {
+<span class="fc bfc" id="L286" title="All 2 branches covered.">			if (numInputs &lt; 2)</span>
+			{
+<span class="fc" id="L288">				throw new IllegalArgumentException(invalidArityMsgPrefix + numInputs);</span>
+			}
+<span class="fc" id="L290">		}</span>
+
+		/**
+		 * Creates function call
+		 * 
+		 * @param subFunc
+		 *            sub-function
+		 * @param primitiveInputsBeforeBag
+		 *            all primitive arguments before bag (datatype already checked).
+		 * @param bagInput
+		 *            bag argument (datatype already checked)
+		 * @param primitiveInputsBeforeBag
+		 *            all primitive arguments after bag (datatype already checked).
+		 * @return function call
+		 */
+		protected abstract Call&lt;RETURN_T, SUB_RETURN_T&gt; newFunctionCall(FirstOrderFunction&lt;SUB_RETURN_T&gt; subFunc, List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag, Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput,
+				final List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag);
+
+		@Override
+		protected final FunctionCall&lt;RETURN_T&gt; createFunctionCallFromSubFunction(final FirstOrderFunction&lt;SUB_RETURN_T&gt; subFunc, final List&lt;Expression&lt;?&gt;&gt; inputsAfterSubFunc) {
+			/*
+			 * Inputs that we can parse/validate for the sub-function are the primitive inputs, i.e. all except last one which is a bag
+			 */
+<span class="fc" id="L313">			final List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L314">			Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput = null;</span>
+<span class="fc" id="L315">			final List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag = new ArrayList&lt;&gt;();</span>
+			/*
+			 * Arg index of input after sub-function (= arg #0 of this higher-order function)
+			 */
+<span class="fc" id="L319">			int argIndex = 1;</span>
+<span class="fc bfc" id="L320" title="All 2 branches covered.">			for (final Expression&lt;?&gt; input : inputsAfterSubFunc)</span>
+			{
+<span class="fc" id="L322">				final Datatype&lt;?&gt; inputType = input.getReturnType();</span>
+<span class="fc" id="L323">				final Optional&lt;? extends Datatype&lt;?&gt;&gt; typeParam = inputType.getTypeParameter();</span>
+<span class="fc bfc" id="L324" title="All 2 branches covered.">				if (bagInput == null)</span>
+				{
+					/*
+					 * No bag arg found yet
+					 */
+<span class="fc bfc" id="L329" title="All 2 branches covered.">					if (typeParam.isPresent())</span>
+					{
+						/*
+						 * Not primitive but bag
+						 */
+<span class="fc" id="L334">						bagInput = (Expression&lt;? extends Bag&lt;?&gt;&gt;) input;</span>
+					} else
+					{
+						/*
+						 * Primitive before the bag
+						 */
+<span class="fc" id="L340">						primitiveInputsBeforeBag.add(input);</span>
+					}
+				} else
+				{
+					/*
+					 * Bag arg already found -&gt; this arg must be a primitive as there can be only one bag arg
+					 */
+<span class="fc bfc" id="L347" title="All 2 branches covered.">					if (typeParam.isPresent())</span>
+					{
+						/*
+						 * Bag again!
+						 */
+<span class="fc" id="L352">						throw new IllegalArgumentException(invalidArgTypeErrorMsg + argIndex);</span>
+					}
+
+					/*
+					 * Primitive after the bag
+					 */
+<span class="fc" id="L358">					primitiveInputsAfterBag.add(input);</span>
+
+				}
+
+<span class="fc" id="L362">				argIndex++;</span>
+<span class="fc" id="L363">			}</span>
+
+<span class="fc bfc" id="L365" title="All 2 branches covered.">			if (bagInput == null)</span>
+			{
+<span class="fc" id="L367">				throw missingBagInputErrorMsg;</span>
+			}
+
+<span class="fc" id="L370">			return newFunctionCall(subFunc, primitiveInputsBeforeBag, bagInput, primitiveInputsAfterBag);</span>
+		}
+
+	}
+
+	static final class BooleanOneBagOnlyFunction extends OneBagOnlyHigherOrderFunction&lt;BooleanValue, BooleanValue&gt;
+	{
+		private static abstract class CallFactory
+		{
+			private final String functionId;
+			private final String subFuncCallWithLastArgErrMsgPrefix;
+
+			private CallFactory(final String functionId)
+<span class="fc" id="L383">			{</span>
+<span class="fc" id="L384">				this.functionId = functionId;</span>
+<span class="fc" id="L385">				this.subFuncCallWithLastArgErrMsgPrefix = &quot;Function '&quot; + functionId + &quot;': Error calling sub-function (specified as first argument) with last arg=&quot;;</span>
+<span class="fc" id="L386">			}</span>
+
+			/**
+			 * Get the final result of this higher-order function, based on one of the sub-function evaluation result
+			 * 
+			 * @param subFunctionResult
+			 *            result of evaluating sub-function one arg in the bag
+			 * @return final result if the subFunctionResult is sufficient to know the final result, else null
+			 */
+			protected abstract BooleanValue getFinalResult(BooleanValue subFunctionResult);
+
+			/**
+			 * Get default final result of this higher-order function, i.e. the final result when {@link #getFinalResult(BooleanValue)} returned null for all sub-function evaluations (one per arg in
+			 * the bag)
+			 * 
+			 * @return default final result
+			 */
+			protected abstract BooleanValue defaultFinalResult();
+
+			private OneBagOnlyHigherOrderFunction.Call&lt;BooleanValue, BooleanValue&gt; getInstance(final FirstOrderFunction&lt;BooleanValue&gt; subFunc, final List&lt;Expression&lt;?&gt;&gt; primitiveInputs,
+					final Expression&lt;? extends Bag&lt;?&gt;&gt; lastInputBag) {
+<span class="fc" id="L407">				return new OneBagOnlyHigherOrderFunction.Call&lt;BooleanValue, BooleanValue&gt;(functionId, StandardDatatypes.BOOLEAN, subFunc, primitiveInputs, lastInputBag, Collections.emptyList())</span>
+<span class="fc" id="L408">				{</span>
+
+					@Override
+					protected BooleanValue evaluate(final Bag&lt;?&gt; lastArgBag, final EvaluationContext context) throws IndeterminateEvaluationException {
+<span class="fc bfc" id="L412" title="All 2 branches covered.">						for (final AttributeValue attrVal : lastArgBag)</span>
+						{
+							final BooleanValue subResult;
+							try
+							{
+<span class="fc" id="L417">								subResult = subFuncCall.evaluate(context, attrVal);</span>
+<span class="nc" id="L418">							} catch (final IndeterminateEvaluationException e)</span>
+							{
+<span class="nc" id="L420">								throw new IndeterminateEvaluationException(subFuncCallWithLastArgErrMsgPrefix + attrVal, e.getStatusCode(), e);</span>
+<span class="fc" id="L421">							}</span>
+
+<span class="fc" id="L423">							final BooleanValue finalResult = getFinalResult(subResult);</span>
+<span class="fc bfc" id="L424" title="All 2 branches covered.">							if (finalResult != null)</span>
+							{
+<span class="fc" id="L426">								return finalResult;</span>
+							}
+<span class="fc" id="L428">						}</span>
+
+<span class="fc" id="L430">						return defaultFinalResult();</span>
+					}
+
+				};
+			}
+		}
+
+		private final CallFactory funcCallFactory;
+
+		protected BooleanOneBagOnlyFunction(final String functionId, final CallFactory functionCallFactory)
+		{
+<span class="fc" id="L441">			super(functionId, StandardDatatypes.BOOLEAN, StandardDatatypes.BOOLEAN);</span>
+<span class="fc" id="L442">			this.funcCallFactory = functionCallFactory;</span>
+<span class="fc" id="L443">		}</span>
+
+		@Override
+		protected OneBagOnlyHigherOrderFunction.Call&lt;BooleanValue, BooleanValue&gt; newFunctionCall(FirstOrderFunction&lt;BooleanValue&gt; subFunc, List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag,
+				Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput, final List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag) {
+<span class="fc" id="L448">			return funcCallFactory.getInstance(subFunc, primitiveInputsBeforeBag, bagInput);</span>
+		}
+
+	}
+
+	/**
+	 * any-of function
+	 * 
+	 */
+	static final class AnyOfCallFactory extends BooleanOneBagOnlyFunction.CallFactory
+	{
+
+		AnyOfCallFactory(final String functionId)
+		{
+<span class="fc" id="L462">			super(functionId);</span>
+<span class="fc" id="L463">		}</span>
+
+		@Override
+		protected BooleanValue getFinalResult(final BooleanValue subFunctionResult) {
+<span class="fc bfc" id="L467" title="All 2 branches covered.">			if (subFunctionResult.getUnderlyingValue().booleanValue())</span>
+			{
+<span class="fc" id="L469">				return BooleanValue.TRUE;</span>
+			}
+
+<span class="fc" id="L472">			return null;</span>
+		}
+
+		@Override
+		protected BooleanValue defaultFinalResult() {
+<span class="fc" id="L477">			return BooleanValue.FALSE;</span>
+		}
+
+	}
+
+	/**
+	 * all-of function
+	 * 
+	 */
+	static final class AllOfCallFactory extends BooleanOneBagOnlyFunction.CallFactory
+	{
+
+		AllOfCallFactory(final String functionId)
+		{
+<span class="fc" id="L491">			super(functionId);</span>
+<span class="fc" id="L492">		}</span>
+
+		@Override
+		protected BooleanValue getFinalResult(final BooleanValue subFunctionResult) {
+<span class="fc bfc" id="L496" title="All 2 branches covered.">			if (!subFunctionResult.getUnderlyingValue().booleanValue())</span>
+			{
+<span class="fc" id="L498">				return BooleanValue.FALSE;</span>
+			}
+
+<span class="fc" id="L501">			return null;</span>
+		}
+
+		@Override
+		protected BooleanValue defaultFinalResult() {
+<span class="fc" id="L506">			return BooleanValue.TRUE;</span>
+		}
+
+	}
+
+	/**
+	 * any-of-any function
+	 * 
+	 */
+	static final class AnyOfAny extends BooleanHigherOrderBagFunction
+	{
+		private final String subFuncArgEvalErrMsg;
+
+		/**
+		 * Default constructor
+		 * 
+		 * @param functionId
+		 */
+		AnyOfAny(final String functionId)
+		{
+<span class="fc" id="L526">			super(functionId);</span>
+<span class="fc" id="L527">			this.subFuncArgEvalErrMsg = &quot;Function '&quot; + functionId + &quot;': Error evaluating one of the arguments after sub-function&quot;;</span>
+<span class="fc" id="L528">		}</span>
+
+		@Override
+		protected void checkNumberOfArgs(final int numInputs) {
+<span class="fc bfc" id="L532" title="All 2 branches covered.">			if (numInputs &lt; 2)</span>
+			{
+<span class="fc" id="L534">				throw new IllegalArgumentException(&quot;Function &quot; + this + &quot;: Invalid number of arguments (&quot; + numInputs + &quot;). Required: &gt;= 2&quot;);</span>
+			}
+<span class="fc" id="L536">		}</span>
+
+		@Override
+		protected FunctionCall&lt;BooleanValue&gt; createFunctionCallFromSubFunction(final FirstOrderFunction&lt;BooleanValue&gt; subFunc, final List&lt;Expression&lt;?&gt;&gt; inputsAfterSubFunc) {
+<span class="fc" id="L540">			return new AnyOfAnyFunctionCall(subFunc, inputsAfterSubFunc);</span>
+		}
+
+		private final class AnyOfAnyFunctionCall implements FunctionCall&lt;BooleanValue&gt;
+		{
+			private final FirstOrderFunctionCall&lt;BooleanValue&gt; subFuncCall;
+			private final int subFuncArity;
+			private final List&lt;Expression&lt;?&gt;&gt; inputsAfterSubFunc;
+
+			protected AnyOfAnyFunctionCall(final FirstOrderFunction&lt;BooleanValue&gt; subFunc, final List&lt;Expression&lt;?&gt;&gt; inputsAfterSubFunc)
+<span class="fc" id="L550">			{</span>
+				/*
+				 * According to spec of an-of-any function, the remaining arguments (inputsAfterSubFunc here) are either primitive data types or bags of primitive types. The expression SHALL be
+				 * evaluated as if the function named in the &lt;Function&gt; argument (subFunc here) was applied between every tuple of the cross product on all bags and the primitive values.
+				 */
+<span class="fc" id="L555">				this.subFuncArity = inputsAfterSubFunc.size();</span>
+<span class="fc" id="L556">				final Datatype&lt;?&gt;[] subFuncArgTypes = new Datatype&lt;?&gt;[subFuncArity];</span>
+<span class="fc" id="L557">				int i = 0;</span>
+<span class="fc bfc" id="L558" title="All 2 branches covered.">				for (final Expression&lt;?&gt; input : inputsAfterSubFunc)</span>
+				{
+<span class="fc" id="L560">					final Datatype&lt;?&gt; inputDatatype = input.getReturnType();</span>
+					/*
+					 * Always primitive datatype are used in the sub-function call (typeParameter of the datatype if it is a generic/bag datatype, else the datatype itself (already primitive))
+					 */
+<span class="fc" id="L564">					final Optional&lt;? extends Datatype&lt;?&gt;&gt; typeParam = inputDatatype.getTypeParameter();</span>
+<span class="fc bfc" id="L565" title="All 2 branches covered.">					subFuncArgTypes[i] = typeParam.isPresent() ? typeParam.get() : inputDatatype;</span>
+<span class="fc" id="L566">					i++;</span>
+<span class="fc" id="L567">				}</span>
+
+<span class="fc" id="L569">				this.subFuncCall = subFunc.newCall(Collections.&lt;Expression&lt;?&gt;&gt;emptyList(), subFuncArgTypes);</span>
+<span class="fc" id="L570">				this.inputsAfterSubFunc = inputsAfterSubFunc;</span>
+<span class="fc" id="L571">			}</span>
+
+			private BooleanValue eval(final Iterator&lt;Expression&lt;?&gt;&gt; argExpressionsAfterSubFuncIterator, final ListIterator&lt;Value&gt; argValuesAfterSubFuncIterator,
+					final Deque&lt;AttributeValue&gt; subFuncArgsStack, final EvaluationContext context) throws IndeterminateEvaluationException {
+				final Value argVal;
+<span class="fc bfc" id="L576" title="All 2 branches covered.">				if (argExpressionsAfterSubFuncIterator.hasNext())</span>
+				{
+					// we are still evaluating argument expressions for the first time
+					try
+					{
+<span class="fc" id="L581">						argVal = argExpressionsAfterSubFuncIterator.next().evaluate(context);</span>
+
+<span class="nc" id="L583">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L585">						throw new IndeterminateEvaluationException(subFuncArgEvalErrMsg, e.getStatusCode(), e);</span>
+<span class="fc" id="L586">					}</span>
+					// save the result for reuse when building the next list of sub-function
+					// arguments to avoid re-evaluation
+<span class="fc" id="L589">					argValuesAfterSubFuncIterator.add(argVal);</span>
+				} else
+				{
+					/*
+					 * No more arg expression to evaluate, but we may have evaluated them all with results put in argValuesAfterSubFuncIterator, then started a new combination of arguments from the
+					 * start, working with argValuesAfterSubFuncIterator only after that. So check where we are with argValuesAfterSubFuncIterator
+					 */
+<span class="fc bfc" id="L596" title="All 2 branches covered.">					if (argValuesAfterSubFuncIterator.hasNext())</span>
+					{
+<span class="fc" id="L598">						argVal = argValuesAfterSubFuncIterator.next();</span>
+					} else
+					{
+						// no more argument to add to the list of sub-function arguments
+<span class="fc" id="L602">						argVal = null;</span>
+					}
+				}
+
+<span class="fc bfc" id="L606" title="All 2 branches covered.">				if (argVal == null)</span>
+				{
+					// we finished a list of sub-function arguments, so we can call the sub-function
+					// with it
+<span class="fc" id="L610">					final AttributeValue[] subFuncArgValues = subFuncArgsStack.toArray(new AttributeValue[subFuncArity]);</span>
+					try
+					{
+<span class="fc" id="L613">						return subFuncCall.evaluate(context, subFuncArgValues);</span>
+<span class="nc" id="L614">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L616">						throw new IndeterminateEvaluationException(subFunctionCallErrorMessagePrefix + subFuncArgsStack, e.getStatusCode(), e);</span>
+					}
+				}
+
+				// argVal != null
+<span class="pc bpc" id="L621" title="1 of 2 branches missed.">				if (argVal instanceof Bag)</span>
+				{
+					// arg value is a bag
+					/*
+					 * If bag empty, returns False as there will be no possibility for a predicate to be &quot;True&quot;; in particular if AttributeDesignator/AttributeSelector with MustBePresent=False
+					 * evaluates to empty bag.
+					 */
+<span class="fc" id="L628">					final Bag&lt;?&gt; argBag = (Bag&lt;?&gt;) argVal;</span>
+<span class="pc bpc" id="L629" title="1 of 2 branches missed.">					if (argBag.isEmpty())</span>
+					{
+<span class="nc" id="L631">						return BooleanValue.FALSE;</span>
+					}
+					/*
+					 * For each value in the arg bag, add it to the sub-function argument stack and call eval()
+					 */
+
+<span class="fc bfc" id="L637" title="All 2 branches covered.">					for (final AttributeValue argBagVal : argBag)</span>
+					{
+<span class="fc" id="L639">						subFuncArgsStack.add(argBagVal);</span>
+<span class="fc" id="L640">						final BooleanValue subResult = eval(argExpressionsAfterSubFuncIterator, argValuesAfterSubFuncIterator, subFuncArgsStack, context);</span>
+<span class="fc bfc" id="L641" title="All 2 branches covered.">						if (subResult.getUnderlyingValue().booleanValue())</span>
+						{
+<span class="fc" id="L643">							return BooleanValue.TRUE;</span>
+						}
+
+						/*
+						 * Remove the arg we just added at the start of the iteration, to leave the place for the new arg in the next iteration
+						 */
+<span class="fc" id="L649">						subFuncArgsStack.removeLast();</span>
+<span class="fc" id="L650">					}</span>
+
+<span class="fc" id="L652">				} else</span>
+				{
+					// arg value is primitive
+					// add it to the sub-function call's argument stack
+<span class="nc" id="L656">					subFuncArgsStack.add((AttributeValue) argVal);</span>
+					// evaluate with the new arg stack
+<span class="nc" id="L658">					final BooleanValue subResult = eval(argExpressionsAfterSubFuncIterator, argValuesAfterSubFuncIterator, subFuncArgsStack, context);</span>
+<span class="nc bnc" id="L659" title="All 2 branches missed.">					if (subResult.getUnderlyingValue().booleanValue())</span>
+					{
+<span class="nc" id="L661">						return BooleanValue.TRUE;</span>
+					}
+
+					/*
+					 * Remove the arg we just added at the start of the iteration, to leave the place for the new arg in the next iteration
+					 */
+<span class="nc" id="L667">					subFuncArgsStack.removeLast();</span>
+				}
+
+				/*
+				 * argVal != null and either argValuesAfterSubFuncIterator.next() or argValuesAfterSubFuncIterator.add(...) was called so we need to go backwards now to prepare next eval().
+				 */
+<span class="fc" id="L673">				argValuesAfterSubFuncIterator.previous();</span>
+<span class="fc" id="L674">				return BooleanValue.FALSE;</span>
+
+			}
+
+			@Override
+			public BooleanValue evaluate(final EvaluationContext context) throws IndeterminateEvaluationException {
+				/*
+				 * For each input expression coming from inputsAfterSubFunc, the evaluation result will be added to the following list, to avoid evaluating the same expression again as each one will
+				 * be reused in multiple combination of arguments:
+				 */
+<span class="fc" id="L684">				final List&lt;Value&gt; inputsAfterSubFuncEvalResults = new ArrayList&lt;&gt;(inputsAfterSubFunc.size());</span>
+
+				/*
+				 * We build the stack (Deque) of sub-function argument values (extracted progressively from inputsAfterSubFuncEvalResults). Deque provides LIFO stack which is convenient for managing
+				 * the sub-function arguments because we will be pushing/popping for each value in each bag argument, to make the list of the sub-function's arguments before we can make each
+				 * sub-function call.
+				 */
+<span class="fc" id="L691">				final Deque&lt;AttributeValue&gt; subFuncArgsStack = new ArrayDeque&lt;&gt;(subFuncArity);</span>
+
+				// the subsequent logic is put in separated method because we need to call it
+				// recursively over nonFirstArgExpsIterator
+<span class="fc" id="L695">				return eval(inputsAfterSubFunc.iterator(), inputsAfterSubFuncEvalResults.listIterator(), subFuncArgsStack, context);</span>
+			}
+
+			@Override
+			public Datatype&lt;BooleanValue&gt; getReturnType() {
+<span class="nc" id="L700">				return StandardDatatypes.BOOLEAN;</span>
+			}
+
+		}
+
+	}
+
+	/**
+	 * Class for common behavior between all-of-any and any-of-all
+	 */
+	private static abstract class BooleanHigherOrderTwoBagAnyFunction extends BooleanHigherOrderTwoBagFunction
+	{
+		private interface ArgSelector
+		{
+			/**
+			 * Get bag used for the &quot;all&quot; part
+			 * 
+			 * @param arg0
+			 * @param arg1
+			 * @return bag for &quot;all&quot;
+			 */
+			Bag&lt;?&gt; getBagForAll(Bag&lt;?&gt; arg0, Bag&lt;?&gt; arg1);
+
+			/**
+			 * Get bag used for the &quot;any&quot; part
+			 * 
+			 * @param arg0
+			 * @param arg1
+			 * @return bag for &quot;any&quot;
+			 */
+			Bag&lt;?&gt; getBagForAny(Bag&lt;?&gt; arg0, Bag&lt;?&gt; arg1);
+		}
+
+<span class="fc" id="L733">		private static final ArgSelector FIRST_BAG_FOR_ALL_ARGSELECTOR = new ArgSelector()</span>
+<span class="fc" id="L734">		{</span>
+
+			@Override
+			public Bag&lt;?&gt; getBagForAll(final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1) {
+<span class="fc" id="L738">				return bag0;</span>
+			}
+
+			@Override
+			public Bag&lt;?&gt; getBagForAny(final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1) {
+<span class="fc" id="L743">				return bag1;</span>
+			}
+
+		};
+
+<span class="fc" id="L748">		private static final ArgSelector SECOND_BAG_FOR_ALL_ARGSELECTOR = new ArgSelector()</span>
+<span class="fc" id="L749">		{</span>
+
+			@Override
+			public Bag&lt;?&gt; getBagForAll(final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1) {
+<span class="fc" id="L753">				return bag1;</span>
+			}
+
+			@Override
+			public Bag&lt;?&gt; getBagForAny(final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1) {
+<span class="fc" id="L758">				return bag0;</span>
+			}
+
+		};
+
+		private final int bagForAllArgIndex;
+		private final int bagForAnyArgIndex;
+		private final ArgSelector argSelector;
+
+		private BooleanHigherOrderTwoBagAnyFunction(final String functionId, final boolean useAllFirstBag)
+		{
+<span class="fc" id="L769">			super(functionId);</span>
+<span class="fc bfc" id="L770" title="All 2 branches covered.">			if (useAllFirstBag)</span>
+			{
+				// the bag for &quot;all&quot; part is the first arg to the sub-function
+<span class="fc" id="L773">				bagForAllArgIndex = 0;</span>
+<span class="fc" id="L774">				bagForAnyArgIndex = 1;</span>
+<span class="fc" id="L775">				argSelector = FIRST_BAG_FOR_ALL_ARGSELECTOR;</span>
+			} else
+			{
+				/*
+				 * the bag for &quot;all&quot; part is the second arg to the sub-function, so reverse
+				 */
+<span class="fc" id="L781">				bagForAllArgIndex = 1;</span>
+<span class="fc" id="L782">				bagForAnyArgIndex = 0;</span>
+<span class="fc" id="L783">				argSelector = SECOND_BAG_FOR_ALL_ARGSELECTOR;</span>
+			}
+<span class="fc" id="L785">		}</span>
+
+		@Override
+		protected BooleanValue evaluate(final FirstOrderFunctionCall&lt;BooleanValue&gt; subFunctionCall, final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1, final EvaluationContext context)
+				throws IndeterminateEvaluationException {
+<span class="fc" id="L790">			final AttributeValue[] subFuncArgs = new AttributeValue[2];</span>
+<span class="fc bfc" id="L791" title="All 2 branches covered.">			for (final AttributeValue bagAllUsed : argSelector.getBagForAll(bag0, bag1))</span>
+			{
+<span class="fc" id="L793">				boolean isAnyTrue = false;</span>
+<span class="fc" id="L794">				subFuncArgs[bagForAllArgIndex] = bagAllUsed;</span>
+<span class="fc bfc" id="L795" title="All 2 branches covered.">				for (final AttributeValue otherBag : argSelector.getBagForAny(bag0, bag1))</span>
+				{
+<span class="fc" id="L797">					subFuncArgs[bagForAnyArgIndex] = otherBag;</span>
+					final BooleanValue subResult;
+					try
+					{
+<span class="fc" id="L801">						subResult = subFunctionCall.evaluate(context, subFuncArgs);</span>
+<span class="nc" id="L802">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L804">						throw new IndeterminateEvaluationException(subFunctionCallErrorMessagePrefix + Arrays.toString(subFuncArgs), e.getStatusCode());</span>
+<span class="fc" id="L805">					}</span>
+
+<span class="fc bfc" id="L807" title="All 2 branches covered.">					if (subResult.getUnderlyingValue().booleanValue())</span>
+					{
+<span class="fc" id="L809">						isAnyTrue = true;</span>
+<span class="fc" id="L810">						break;</span>
+					}
+<span class="fc" id="L812">				}</span>
+
+<span class="fc bfc" id="L814" title="All 2 branches covered.">				if (!isAnyTrue)</span>
+				{
+<span class="fc" id="L816">					return BooleanValue.FALSE;</span>
+				}
+<span class="fc" id="L818">			}</span>
+
+<span class="fc" id="L820">			return BooleanValue.TRUE;</span>
+		}
+	}
+
+	/**
+	 * all-of-any function
+	 * 
+	 */
+	static final class AllOfAny extends BooleanHigherOrderTwoBagAnyFunction
+	{
+		/**
+		 * Default constructor
+		 * 
+		 * @param id
+		 */
+		AllOfAny(final String functionId)
+		{
+<span class="fc" id="L837">			super(functionId, true);</span>
+<span class="fc" id="L838">		}</span>
+	}
+
+	/**
+	 * any-of-all function
+	 * 
+	 */
+	static final class AnyOfAll extends BooleanHigherOrderTwoBagAnyFunction
+	{
+		/**
+		 * Default constructor
+		 */
+		AnyOfAll(final String functionId)
+		{
+<span class="fc" id="L852">			super(functionId, false);</span>
+<span class="fc" id="L853">		}</span>
+	}
+
+	/**
+	 * any-of-all function
+	 * 
+	 */
+	static final class AllOfAll extends BooleanHigherOrderTwoBagFunction
+	{
+
+		/**
+		 * Default constructor
+		 */
+		AllOfAll(final String functionId)
+		{
+<span class="fc" id="L868">			super(functionId);</span>
+<span class="fc" id="L869">		}</span>
+
+		@Override
+		protected BooleanValue evaluate(final FirstOrderFunctionCall&lt;BooleanValue&gt; subFunctionCall, final Bag&lt;?&gt; bag0, final Bag&lt;?&gt; bag1, final EvaluationContext context)
+				throws IndeterminateEvaluationException {
+<span class="fc" id="L874">			final AttributeValue[] subFuncArgs = new AttributeValue[2];</span>
+<span class="fc bfc" id="L875" title="All 2 branches covered.">			for (final AttributeValue bag0Val : bag0)</span>
+			{
+<span class="fc" id="L877">				subFuncArgs[0] = bag0Val;</span>
+<span class="fc" id="L878">				boolean areAllTrue = true;</span>
+<span class="fc bfc" id="L879" title="All 2 branches covered.">				for (final AttributeValue bag1Val : bag1)</span>
+				{
+<span class="fc" id="L881">					subFuncArgs[1] = bag1Val;</span>
+					final BooleanValue subResult;
+					try
+					{
+<span class="fc" id="L885">						subResult = subFunctionCall.evaluate(context, subFuncArgs);</span>
+<span class="nc" id="L886">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L888">						throw new IndeterminateEvaluationException(subFunctionCallErrorMessagePrefix + Arrays.toString(subFuncArgs), e.getStatusCode());</span>
+<span class="fc" id="L889">					}</span>
+
+<span class="fc bfc" id="L891" title="All 2 branches covered.">					if (!subResult.getUnderlyingValue().booleanValue())</span>
+					{
+<span class="fc" id="L893">						areAllTrue = false;</span>
+<span class="fc" id="L894">						break;</span>
+					}
+<span class="fc" id="L896">				}</span>
+
+<span class="fc bfc" id="L898" title="All 2 branches covered.">				if (!areAllTrue)</span>
+				{
+<span class="fc" id="L900">					return BooleanValue.FALSE;</span>
+				}
+<span class="fc" id="L902">			}</span>
+
+<span class="fc" id="L904">			return BooleanValue.TRUE;</span>
+		}
+
+	}
+
+	private StandardHigherOrderBagFunctions()
+	{
+		// empty private constructor to prevent instantiation
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

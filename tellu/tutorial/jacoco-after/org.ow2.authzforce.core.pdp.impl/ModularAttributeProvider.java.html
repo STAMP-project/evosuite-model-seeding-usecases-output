@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ModularAttributeProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">ModularAttributeProvider.java</span></div><h1>ModularAttributeProvider.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.Optional;
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.AttributeFqn;
+import org.ow2.authzforce.core.pdp.api.AttributeFqns;
+import org.ow2.authzforce.core.pdp.api.AttributeProvider;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.NamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.value.AttributeBag;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Bags;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ListMultimap;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AttributeDesignatorType;
+
+/**
+ * AttributeProvider that tries to resolve attributes in current request context first, else delegates to {@link DesignatedAttributeProvider}s.
+ *
+ * @version $Id: $
+ */
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">public class ModularAttributeProvider implements AttributeProvider</span>
+{
+
+<span class="fc" id="L52">	private static final IndeterminateEvaluationException INDETERMINATE_EXCEPTION_NO_VALUE_FROM_ATTRIBUTE_PROVIDERS = new IndeterminateEvaluationException(</span>
+<span class="fc" id="L53">	        &quot;No value found by any attribute provider module&quot;, XacmlStatusCode.PROCESSING_ERROR.value());</span>
+
+	private interface IssuedToNonIssuedAttributeCopyMode
+	{
+		void process(AttributeFqn attributeFqn, AttributeBag&lt;?&gt; result, EvaluationContext context);
+	}
+
+<span class="fc" id="L60">	private static final Logger LOGGER = LoggerFactory.getLogger(ModularAttributeProvider.class);</span>
+
+<span class="fc" id="L62">	private static final IssuedToNonIssuedAttributeCopyMode ISSUED_TO_NON_ISSUED_ATTRIBUTE_COPY_ENABLED_MODE = (attributeFqn, result, context) -&gt; {</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (!attributeFqn.getIssuer().isPresent())</span>
+		{
+			// Attribute already without Issuer -&gt; nothing to copy
+<span class="nc" id="L66">			return;</span>
+		}
+		/*
+		 * Attribute with Issuer -&gt; make Issuer-less copy and put same result in context for match by Issuer-less AttributeDesignator
+		 */
+<span class="nc" id="L71">		final AttributeFqn issuerLessAttributeFqn = AttributeFqns.newInstance(attributeFqn.getCategory(), Optional.empty(), attributeFqn.getId());</span>
+
+		/*
+		 * Cache the attribute value(s) for the issuer-less attribute in context in case there is a matching Issuer-less AttributeDesignator to evaluate
+		 */
+<span class="nc" id="L76">		context.putNamedAttributeValueIfAbsent(issuerLessAttributeFqn, result);</span>
+<span class="nc" id="L77">		LOGGER.debug(&quot;strictAttributeIssuerMatch=false -&gt; Cached values of attribute {}, type={}, derived, by removing Issuer, from attribute {} provided by AttributeProvider module: values= {}&quot;,</span>
+<span class="nc" id="L78">		        attributeFqn, result.getElementDatatype(), attributeFqn, result);</span>
+<span class="nc" id="L79">	};</span>
+
+<span class="fc" id="L81">	private static final IssuedToNonIssuedAttributeCopyMode ISSUED_TO_NON_ISSUED_ATTRIBUTE_COPY_DISABLED_MODE = (attributeFqn, result, context) -&gt; {</span>
+		// do not copy the result to any Issuer-less attribute
+<span class="nc" id="L83">	};</span>
+
+	/*
+	 * AttributeDesignator Provider modules by supported/provided attribute ID (global ID: category, issuer, AttributeId)
+	 */
+	private final ImmutableListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; designatorModsByAttrId;
+
+	private final IssuedToNonIssuedAttributeCopyMode issuedToNonIssuedAttributeCopyMode;
+
+	protected ModularAttributeProvider(final ImmutableListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; attributeProviderModulesByAttributeId,
+	        final Set&lt;AttributeDesignatorType&gt; selectedAttributeSupport, final boolean strictAttributeIssuerMatch)
+<span class="fc" id="L94">	{</span>
+<span class="pc bpc" id="L95" title="2 of 4 branches missed.">		assert attributeProviderModulesByAttributeId != null;</span>
+
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">		if (selectedAttributeSupport == null)</span>
+		{
+<span class="fc" id="L99">			designatorModsByAttrId = attributeProviderModulesByAttributeId;</span>
+		} else
+		{
+<span class="nc" id="L102">			final ListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; mutableModsByAttrIdMap = ArrayListMultimap.create(selectedAttributeSupport.size(), 1);</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			for (final AttributeDesignatorType requiredAttr : selectedAttributeSupport)</span>
+			{
+<span class="nc" id="L105">				final AttributeFqn requiredAttrGUID = AttributeFqns.newInstance(requiredAttr);</span>
+<span class="nc" id="L106">				final ImmutableList&lt;NamedAttributeProvider&gt; requiredAttrProviderMods = attributeProviderModulesByAttributeId.get(requiredAttrGUID);</span>
+				/*
+				 * According to doc, a non-null empty list is returned if no mappings
+				 */
+<span class="nc bnc" id="L110" title="All 4 branches missed.">				assert requiredAttrProviderMods != null;</span>
+				/*
+				 * Empty requiredAttrProviderMod means it should be provided by the request context (in the initial request from PEP)
+				 */
+<span class="nc bnc" id="L114" title="All 2 branches missed.">				if (!requiredAttrProviderMods.isEmpty())</span>
+				{
+
+<span class="nc" id="L117">					mutableModsByAttrIdMap.putAll(requiredAttrGUID, requiredAttrProviderMods);</span>
+				}
+<span class="nc" id="L119">			}</span>
+
+<span class="nc" id="L121">			designatorModsByAttrId = ImmutableListMultimap.copyOf(mutableModsByAttrIdMap);</span>
+		}
+
+<span class="pc bpc" id="L124" title="1 of 2 branches missed.">		this.issuedToNonIssuedAttributeCopyMode = strictAttributeIssuerMatch ? ISSUED_TO_NON_ISSUED_ATTRIBUTE_COPY_DISABLED_MODE : ISSUED_TO_NON_ISSUED_ATTRIBUTE_COPY_ENABLED_MODE;</span>
+<span class="fc" id="L125">	}</span>
+
+	/**
+	 * Get instance of modular Attribute Provider that tries to find attribute values in evaluation context, then, if not there, query sub-modules providing the requested attribute ID, if any.
+	 *
+	 * @param attributeProviderModulesByAttributeId
+	 *            attribute Provider modules sorted by supported attribute ID; may be null if none
+	 * @param selectedAttributeSupport
+	 *            (optional) selection of attributes to be supported, i.e. only attributes from this set may be supported/resolved by this attribute Provider; therefore, only the part of
+	 *            {@code attributeProviderModulesByAttributeId} matching these attributes are to be used by this Provider.
+	 * @param strictAttributeIssuerMatch
+	 *            true iff it is required that AttributeDesignator without Issuer only match request Attributes without Issuer. This mode is not fully compliant with XACML 3.0, §5.29, in the case that
+	 *            the Issuer is not present; but it performs better and is recommended when all AttributeDesignators have an Issuer (best practice). Set it to false, if you want full compliance with
+	 *            the XACML 3.0 Attribute Evaluation: &quot;If the Issuer is not present in the AttributeDesignator, then the matching of the attribute to the named attribute SHALL be governed by
+	 *            AttributeId and DataType attributes alone.&quot;
+	 * @return modular attribute provider instance; {@link #EVALUATION_CONTEXT_ONLY_SCOPED_ATTRIBUTE_PROVIDER} iff
+	 *         {@code attributeProviderModulesByAttributeId == null || attributeProviderModulesByAttributeId.isEmpty()},
+	 */
+	public static ModularAttributeProvider getInstance(final ImmutableListMultimap&lt;AttributeFqn, NamedAttributeProvider&gt; attributeProviderModulesByAttributeId,
+	        final Set&lt;AttributeDesignatorType&gt; selectedAttributeSupport, final boolean strictAttributeIssuerMatch)
+	{
+<span class="nc bnc" id="L146" title="All 4 branches missed.">		if (attributeProviderModulesByAttributeId == null || attributeProviderModulesByAttributeId.isEmpty())</span>
+		{
+<span class="nc" id="L148">			return EVALUATION_CONTEXT_ONLY_SCOPED_ATTRIBUTE_PROVIDER;</span>
+		}
+
+<span class="nc" id="L151">		return new ModularAttributeProvider(attributeProviderModulesByAttributeId, selectedAttributeSupport, strictAttributeIssuerMatch);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public final &lt;AV extends AttributeValue&gt; AttributeBag&lt;AV&gt; get(final AttributeFqn attributeFqn, final Datatype&lt;AV&gt; datatype, final EvaluationContext context) throws IndeterminateEvaluationException
+	{
+		try
+		{
+<span class="nc" id="L160">			final AttributeBag&lt;AV&gt; contextBag = context.getNamedAttributeValue(attributeFqn, datatype);</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">			if (contextBag != null)</span>
+			{
+<span class="nc" id="L163">				LOGGER.debug(&quot;Values of attribute {}, type={} found in evaluation context: {}&quot;, attributeFqn, datatype, contextBag);</span>
+<span class="nc" id="L164">				return contextBag;</span>
+			}
+
+			// else attribute not found in context, ask the Provider modules, if any
+<span class="nc" id="L168">			LOGGER.debug(&quot;Requesting attribute {} from Provider modules (by provided attribute ID): {}&quot;, attributeFqn, designatorModsByAttrId);</span>
+<span class="nc" id="L169">			final ImmutableList&lt;NamedAttributeProvider&gt; attrProviders = designatorModsByAttrId.get(attributeFqn);</span>
+			/*
+			 * According to doc, a non-null empty list is returned if no mappings
+			 */
+<span class="nc bnc" id="L173" title="All 4 branches missed.">			assert attrProviders != null;</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">			if (attrProviders.isEmpty())</span>
+			{
+<span class="nc" id="L176">				LOGGER.debug(&quot;No value found for required attribute {}, type={} in evaluation context and not supported by any Attribute Provider module&quot;, attributeFqn, datatype);</span>
+<span class="nc" id="L177">				throw new IndeterminateEvaluationException(&quot;Not in context and no Attribute Provider module supporting requested attribute: &quot; + attributeFqn,</span>
+<span class="nc" id="L178">				        XacmlStatusCode.MISSING_ATTRIBUTE.value());</span>
+			}
+
+<span class="nc" id="L181">			AttributeBag&lt;AV&gt; result = null;</span>
+			/*
+			 * Try all modules supporting this attribute until value found
+			 */
+<span class="nc bnc" id="L185" title="All 2 branches missed.">			for (final NamedAttributeProvider attrProvider : attrProviders)</span>
+			{
+<span class="nc" id="L187">				result = attrProvider.get(attributeFqn, datatype, context);</span>
+<span class="nc bnc" id="L188" title="All 4 branches missed.">				if (result != null &amp;&amp; !result.isEmpty())</span>
+				{
+<span class="nc" id="L190">					break;</span>
+				}
+<span class="nc" id="L192">			}</span>
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			if (result == null)</span>
+			{
+				/*
+				 * If no attribute provider can provide the attribute, it is as if it was a request attribute with no value, therefore implicitly setting AttributeSource to REQUEST.
+				 */
+<span class="nc" id="L199">				result = Bags.emptyAttributeBag(datatype, INDETERMINATE_EXCEPTION_NO_VALUE_FROM_ATTRIBUTE_PROVIDERS);</span>
+			}
+
+			/*
+			 * Cache the attribute value(s) in context to avoid waste of time querying the module twice for same attribute
+			 */
+<span class="nc" id="L205">			context.putNamedAttributeValueIfAbsent(attributeFqn, result);</span>
+<span class="nc" id="L206">			LOGGER.debug(&quot;Values of attribute {}, type={} returned by attribute Provider module #{} (cached in context): {}&quot;, attributeFqn, datatype, attrProviders, result);</span>
+<span class="nc" id="L207">			issuedToNonIssuedAttributeCopyMode.process(attributeFqn, result, context);</span>
+<span class="nc" id="L208">			return result;</span>
+<span class="nc" id="L209">		} catch (final IndeterminateEvaluationException e)</span>
+		{
+			/*
+			 * This error does not necessarily matter, it depends on whether the attribute is required, i.e. MustBePresent=true for AttributeDesignator/Selector So we let
+			 * AttributeDesignator/Select#evaluate() method log the errors if MustBePresent=true. Here debug level is enough
+			 */
+<span class="nc" id="L215">			LOGGER.debug(&quot;Error finding attribute {}, type={}&quot;, attributeFqn, datatype, e);</span>
+
+			/**
+			 * If error occurred, we put the empty value to prevent retry in the same context, which may succeed at another time in the same context, resulting in different value of the same attribute
+			 * at different times during evaluation within the same context, therefore inconsistencies. The value(s) must remain constant during the evaluation context, as explained in section 7.3.5
+			 * Attribute Retrieval of XACML core spec:
+			 * &lt;p&gt;
+			 * Regardless of any dynamic modifications of the request context during policy evaluation, the PDP SHALL behave as if each bag of attribute values is fully populated in the context before
+			 * it is first tested, and is thereafter immutable during evaluation. (That is, every subsequent test of that attribute shall use 3313 the same bag of values that was initially tested.)
+			 * &lt;/p&gt;
+			 * Therefore, if no value found, we keep it that way until evaluation is done for the current request context.
+			 * &lt;p&gt;
+			 * We could put the null value to indicate the evaluation error, instead of an empty Bag, but it would make the result of the code used at the start of this method ambiguous/confusing:
+			 * &lt;p&gt;
+			 * &lt;code&gt;
+			 * final Bag&lt;T&gt; contextBag = context.getAttributeDesignatorResult(AttributeFqn,...)
+			 * &lt;/code&gt;
+			 * &lt;/p&gt;
+			 * &lt;p&gt;
+			 * Indeed, contextBag could be null for one of these two reasons:
+			 * &lt;ol&gt;
+			 * &lt;li&gt;The attribute ('attributeFqn') has never been requested in this context;
+			 * &lt;li&gt;It has been requested before in this context but could not be found: error occurred (IndeterminateEvaluationException)&lt;/li&gt;
+			 * &lt;/ol&gt;
+			 * To avoid this confusion, we put an empty Bag (with some error info saying why this is empty).
+			 * &lt;/p&gt;
+			 */
+<span class="nc" id="L242">			final AttributeBag&lt;AV&gt; result = Bags.emptyAttributeBag(datatype, e);</span>
+			/*
+			 * NOTE: It might happen - e.g. in conformance test IIB033 (Request's resource-id attribute datatype is different from datatype used in Policy) - that
+			 * context.getAttributeDesignatorResult(AttributeFqn, bagDatatype) threw IndeterminateEvaluationException although a value for 'attributeFqn' exists in context, because the existing
+			 * datatype is different from requested 'bagDatatype'. In this case, the call below will return false (the value should not be overridden). We don't care about the result; what matters is
+			 * that the value is set to an empty bag if there was no value.
+			 */
+<span class="nc" id="L249">			context.putNamedAttributeValueIfAbsent(attributeFqn, result);</span>
+<span class="nc" id="L250">			return result;</span>
+<span class="nc" id="L251">		} catch (final UnsupportedOperationException e)</span>
+		{
+			/*
+			 * Should not happen, this is highly unexpected and should be considered a fatal error (it means the AttributeProvider does not respect its contract)
+			 */
+<span class="nc" id="L256">			throw new RuntimeException(&quot;Inconsistent AttributeProvider: throwing UnsupportedOperationException for an attribute (name=&quot; + attributeFqn + &quot;, type=&quot; + datatype</span>
+			        + &quot;) that should be supported according to the provider's contract (getProvidedAttributes() result) &quot;, e);
+		}
+	}
+
+	/**
+	 * Attribute Provider based only on the evaluation context, i.e. it does not used any extra attribute provider module to get attribute values if not found in the context
+	 */
+<span class="fc" id="L264">	public static final ModularAttributeProvider EVALUATION_CONTEXT_ONLY_SCOPED_ATTRIBUTE_PROVIDER = new ModularAttributeProvider(ImmutableListMultimap.of(), null, true);</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

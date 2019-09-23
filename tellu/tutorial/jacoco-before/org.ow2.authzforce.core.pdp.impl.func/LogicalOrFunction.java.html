@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicalOrFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">LogicalOrFunction.java</span></div><h1>LogicalOrFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+/**
+ * A class that implements the logical functions &quot;or&quot;
+ * &lt;p&gt;
+ * From XACML core specification of function 'urn:oasis:names:tc:xacml:1.0:function:or': This function SHALL return &quot;False&quot; if it has no arguments and SHALL return &quot;True&quot; if at least one of its
+ * arguments evaluates to &quot;True&quot;. The order of evaluation SHALL be from first argument to last. The evaluation SHALL stop with a result of &quot;True&quot; if any argument evaluates to &quot;True&quot;, leaving the rest
+ * of the arguments unevaluated.
+ *
+ * 
+ * @version $Id: $
+ */
+final class LogicalOrFunction extends SingleParameterTypedFirstOrderFunction&lt;BooleanValue, BooleanValue&gt;
+{
+
+	private static final class Call extends BaseFirstOrderFunctionCall&lt;BooleanValue&gt;
+	{
+		private final String indeterminateArgMsgPrefix;
+		private final String invalidArgTypeMsgPrefix;
+
+		private final List&lt;Expression&lt;?&gt;&gt; checkedArgExpressions;
+
+		private Call(final FirstOrderFunctionSignature&lt;BooleanValue&gt; functionSig, final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+		{
+<span class="fc" id="L59">			super(functionSig, argExpressions, remainingArgTypes);</span>
+<span class="fc" id="L60">			this.checkedArgExpressions = argExpressions;</span>
+<span class="fc" id="L61">			indeterminateArgMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Indeterminate arg #&quot;;</span>
+<span class="fc" id="L62">			invalidArgTypeMsgPrefix = &quot;Function &quot; + functionSig.getName() + &quot;: Invalid type (expected = &quot; + StandardDatatypes.BOOLEAN + &quot;) of arg#&quot;;</span>
+<span class="fc" id="L63">		}</span>
+
+		@Override
+		public BooleanValue evaluate(final EvaluationContext context, final AttributeValue... checkedRemainingArgs) throws IndeterminateEvaluationException
+		{
+<span class="fc" id="L68">			IndeterminateEvaluationException indeterminateException = null;</span>
+<span class="fc" id="L69">			int argIndex = 0;</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">			for (final Expression&lt;?&gt; arg : checkedArgExpressions)</span>
+			{
+				// Evaluate the argument
+				final BooleanValue attrVal;
+				try
+				{
+<span class="fc" id="L76">					attrVal = Expressions.eval(arg, context, StandardDatatypes.BOOLEAN);</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">					if (attrVal.getUnderlyingValue().booleanValue())</span>
+					{
+<span class="fc" id="L79">						return BooleanValue.TRUE;</span>
+					}
+				}
+<span class="fc" id="L82">				catch (final IndeterminateEvaluationException e)</span>
+				{
+					// save the indeterminate to throw later only if there was not any TRUE in remaining
+					// args
+<span class="fc" id="L86">					indeterminateException = new IndeterminateEvaluationException(indeterminateArgMsgPrefix + argIndex, e.getStatusCode(), e);</span>
+<span class="fc" id="L87">				}</span>
+
+<span class="fc" id="L89">				argIndex++;</span>
+<span class="fc" id="L90">			}</span>
+
+			// do the same with remaining arg values
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">			if (checkedRemainingArgs != null)</span>
+			{
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">				for (final AttributeValue arg : checkedRemainingArgs)</span>
+				{
+					// Evaluate the argument
+					final BooleanValue attrVal;
+					try
+					{
+<span class="nc" id="L102">						attrVal = BooleanValue.class.cast(arg);</span>
+					}
+<span class="nc" id="L104">					catch (final ClassCastException e)</span>
+					{
+<span class="nc" id="L106">						throw new IndeterminateEvaluationException(invalidArgTypeMsgPrefix + argIndex + &quot;: &quot; + arg.getClass().getName(), XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L107">					}</span>
+
+<span class="nc bnc" id="L109" title="All 2 branches missed.">					if (attrVal.getUnderlyingValue().booleanValue())</span>
+					{
+<span class="nc" id="L111">						return BooleanValue.TRUE;</span>
+					}
+
+<span class="nc" id="L114">					argIndex++;</span>
+				}
+			}
+
+<span class="fc bfc" id="L118" title="All 2 branches covered.">			if (indeterminateException != null)</span>
+			{
+				// there was at least one indeterminate arg that could have been TRUE or FALSE -&gt;
+				// indeterminate result
+<span class="fc" id="L122">				throw indeterminateException;</span>
+			}
+
+<span class="fc" id="L125">			return BooleanValue.FALSE;</span>
+		}
+	}
+
+	LogicalOrFunction(final String functionId)
+	{
+<span class="fc" id="L131">		super(functionId, StandardDatatypes.BOOLEAN, true, Arrays.asList(StandardDatatypes.BOOLEAN));</span>
+<span class="fc" id="L132">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;BooleanValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes)
+	{
+		/**
+		 * TODO: optimize this function call by checking the following:
+		 * &lt;ol&gt;
+		 * &lt;li&gt;If any argument expression is constant BooleanAttributeValue False, remove it from the arguments, as it has no effect on the final result. Indeed, or function is commutative and
+		 * or(false, x, y...) = or(x, y...).&lt;/li&gt;
+		 * &lt;/ol&gt;
+		 * Other optimizations are already achieved by ApplyExpression pre-evaluating the function call with context = null and check the result if no IndeterminateEvaluationException is thrown.
+		 */
+<span class="fc" id="L146">		return new Call(functionSignature, argExpressions, remainingArgTypes);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

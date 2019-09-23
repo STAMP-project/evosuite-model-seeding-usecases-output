@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TemporalArithmeticFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">TemporalArithmeticFunction.java</span></div><h1>TemporalArithmeticFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall.EagerMultiPrimitiveTypeEval;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.MultiParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.BaseTimeValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.DurationValue;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+
+/**
+ * Implements generic match functions taking parameters of possibly different types.
+ *
+ * @param &lt;T&gt;
+ *            type of first parameter and returned value (date/time)
+ * @param &lt;D&gt;
+ *            type of second parameter (duration)
+ * 
+ * @version $Id: $
+ */
+final class TemporalArithmeticFunction&lt;T extends BaseTimeValue&lt;T&gt;, D extends DurationValue&lt;D&gt;&gt; extends MultiParameterTypedFirstOrderFunction&lt;T&gt;
+{
+	interface StaticOperation&lt;TV extends BaseTimeValue&lt;TV&gt;, DV extends DurationValue&lt;DV&gt;&gt;
+	{
+
+		TV eval(TV time, DV duration);
+	}
+
+	private static final class Call&lt;TV extends BaseTimeValue&lt;TV&gt;, DV extends DurationValue&lt;DV&gt;&gt; extends EagerMultiPrimitiveTypeEval&lt;TV&gt;
+	{
+		private final String invalidArgTypesErrorMsg;
+		private final Datatype&lt;DV&gt; durationParamType;
+		private final Datatype&lt;TV&gt; timeParamType;
+		private final StaticOperation&lt;TV, DV&gt; op;
+
+		private Call(final FirstOrderFunctionSignature&lt;TV&gt; functionSig, final Datatype&lt;TV&gt; timeParamType, final Datatype&lt;DV&gt; durationParamType, final StaticOperation&lt;TV, DV&gt; op,
+		        final List&lt;Expression&lt;?&gt;&gt; args, final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+		{
+<span class="fc" id="L64">			super(functionSig, args, remainingArgTypes);</span>
+<span class="fc" id="L65">			invalidArgTypesErrorMsg = &quot;Function &quot; + this.functionId + &quot;: Invalid arg types. Expected: &quot; + timeParamType + &quot;,&quot; + durationParamType;</span>
+<span class="fc" id="L66">			this.timeParamType = timeParamType;</span>
+<span class="fc" id="L67">			this.durationParamType = durationParamType;</span>
+<span class="fc" id="L68">			this.op = op;</span>
+<span class="fc" id="L69">		}</span>
+
+		@Override
+		protected TV evaluate(final Deque&lt;AttributeValue&gt; args) throws IndeterminateEvaluationException
+		{
+<span class="fc" id="L74">			final AttributeValue rawArg0 = args.poll();</span>
+<span class="fc" id="L75">			final AttributeValue rawArg1 = args.poll();</span>
+
+			final TV arg0;
+			final DV arg1;
+			try
+			{
+<span class="fc" id="L81">				arg0 = timeParamType.cast(rawArg0);</span>
+<span class="fc" id="L82">				arg1 = durationParamType.cast(rawArg1);</span>
+<span class="nc" id="L83">			} catch (final ClassCastException e)</span>
+			{
+<span class="nc" id="L85">				throw new IndeterminateEvaluationException(invalidArgTypesErrorMsg, XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="fc" id="L86">			}</span>
+
+<span class="fc" id="L88">			return op.eval(arg0, arg1);</span>
+		}
+	}
+
+	private final StaticOperation&lt;T, D&gt; op;
+
+	private final Datatype&lt;T&gt; timeParamType;
+
+	private final Datatype&lt;D&gt; durationParamType;
+
+	/**
+	 * Creates a new Date-time arithmetic function
+	 * 
+	 * @param functionName
+	 *            the name of the standard match function, including the complete namespace
+	 * @param durationParamType
+	 *            second parameter type (duration)
+	 * @param timeParamType
+	 *            first parameter type (date/time)
+	 * @param op
+	 *            temporal arithmetic operation
+	 */
+	TemporalArithmeticFunction(final String functionName, final Datatype&lt;T&gt; timeParamType, final Datatype&lt;D&gt; durationParamType, final StaticOperation&lt;T, D&gt; op)
+	{
+<span class="fc" id="L112">		super(functionName, timeParamType, false, Arrays.asList(timeParamType, durationParamType));</span>
+<span class="fc" id="L113">		this.timeParamType = timeParamType;</span>
+<span class="fc" id="L114">		this.durationParamType = durationParamType;</span>
+
+<span class="fc" id="L116">		this.op = op;</span>
+<span class="fc" id="L117">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;T&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException
+	{
+<span class="fc" id="L123">		return new Call&lt;&gt;(functionSignature, timeParamType, durationParamType, op, argExpressions, remainingArgTypes);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

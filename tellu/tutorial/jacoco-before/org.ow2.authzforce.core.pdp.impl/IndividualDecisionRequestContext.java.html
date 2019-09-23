@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IndividualDecisionRequestContext.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">IndividualDecisionRequestContext.java</span></div><h1>IndividualDecisionRequestContext.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.AttributeFqn;
+import org.ow2.authzforce.core.pdp.api.AttributeProvider;
+import org.ow2.authzforce.core.pdp.api.AttributeSelectorId;
+import org.ow2.authzforce.core.pdp.api.DecisionCache;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.UpdatableCollections;
+import org.ow2.authzforce.core.pdp.api.UpdatableMap;
+import org.ow2.authzforce.core.pdp.api.expression.AttributeSelectorExpression;
+import org.ow2.authzforce.core.pdp.api.value.AttributeBag;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Bag;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.core.pdp.api.value.XPathValue;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ClassToInstanceMap;
+import com.google.common.collect.MutableClassToInstanceMap;
+
+import net.sf.saxon.s9api.XdmNode;
+
+/**
+ * An {@link EvaluationContext} associated to an XACML Individual Decision Request, i.e. for evaluation to a single authorization decision Result (see Multiple Decision Profile spec for more
+ * information on Individual Decision Request as opposed to Multiple Decision Request). This is the default {@link EvaluationContext} implementation used by the PDP engine. It is also meant to be used
+ * particularly in unit tests of PDP extensions depending on evaluation context, e.g. {@link AttributeProvider}, {@link DecisionCache}, etc.
+ *
+ *
+ * @version $Id: $
+ */
+public final class IndividualDecisionRequestContext implements EvaluationContext
+{
+	/**
+	 * Logger used for all classes
+	 */
+<span class="nc" id="L66">	private static final Logger LOGGER = LoggerFactory.getLogger(IndividualDecisionRequestContext.class);</span>
+
+	private final Map&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt; namedAttributes;
+
+	/*
+	 * Corresponds to Attributes/Content (by attribute category) marshalled to XPath data model for XPath evaluation: AttributeSelector evaluation, XPath-based functions, etc. This may be empty if no
+	 * Content in Request or no feature requiring XPath evaluation against Content is supported/enabled.
+	 */
+	// Not null
+	private final Map&lt;String, XdmNode&gt; extraContentsByAttributeCategory;
+
+	/*
+	 * AttributeSelector evaluation results. Not null
+	 */
+	private final UpdatableMap&lt;AttributeSelectorId, Bag&lt;?&gt;&gt; attributeSelectorResults;
+
+<span class="nc" id="L82">	private final Map&lt;String, Value&gt; varValsById = HashCollections.newMutableMap();</span>
+
+<span class="nc" id="L84">	private final Map&lt;String, Object&gt; mutableProperties = HashCollections.newMutableMap();</span>
+
+	private final boolean returnApplicablePolicyIdList;
+
+<span class="nc" id="L88">	private final ClassToInstanceMap&lt;Listener&gt; listeners = MutableClassToInstanceMap.create();</span>
+
+	/**
+	 * Constructs a new &lt;code&gt;IndividualDecisionRequestContext&lt;/code&gt; based on the given request attributes and extra contents with support for XPath evaluation against Content element in Attributes
+	 *
+	 * @param namedAttributeMap
+	 *            updatable named attribute map (attribute key and value pairs) from the original Request; null iff none. An attribute key is a global ID based on attribute category,issuer,id. An
+	 *            attribute value is a bag of primitive values.
+	 * @param extraContentsByCategory
+	 *            extra contents by attribute category (equivalent to XACML Attributes/Content elements); null iff no Content in the attribute category.
+	 * @param returnApplicablePolicyIdList
+	 *            true iff list of IDs of policies matched during evaluation must be returned
+	 */
+	public IndividualDecisionRequestContext(final Map&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt; namedAttributeMap, final Map&lt;String, XdmNode&gt; extraContentsByCategory, final boolean returnApplicablePolicyIdList)
+<span class="nc" id="L102">	{</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		this.namedAttributes = namedAttributeMap == null ? HashCollections.&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt;newUpdatableMap()</span>
+<span class="nc" id="L104">				: HashCollections.&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt;newUpdatableMap(namedAttributeMap);</span>
+<span class="nc" id="L105">		this.returnApplicablePolicyIdList = returnApplicablePolicyIdList;</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (extraContentsByCategory == null)</span>
+		{
+<span class="nc" id="L108">			this.extraContentsByAttributeCategory = Collections.emptyMap();</span>
+<span class="nc" id="L109">			this.attributeSelectorResults = UpdatableCollections.emptyMap();</span>
+		} else
+		{
+<span class="nc" id="L112">			this.extraContentsByAttributeCategory = extraContentsByCategory;</span>
+<span class="nc" id="L113">			this.attributeSelectorResults = UpdatableCollections.newUpdatableMap();</span>
+		}
+<span class="nc" id="L115">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public &lt;AV extends AttributeValue&gt; AttributeBag&lt;AV&gt; getNamedAttributeValue(final AttributeFqn attributeFqn, final Datatype&lt;AV&gt; datatype) throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L121">		final AttributeBag&lt;?&gt; bagResult = namedAttributes.get(attributeFqn);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">		if (bagResult == null)</span>
+		{
+<span class="nc" id="L124">			return null;</span>
+		}
+
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		if (!bagResult.getElementDatatype().equals(datatype))</span>
+		{
+<span class="nc" id="L129">			throw new IndeterminateEvaluationException(&quot;Datatype (&quot; + bagResult.getElementDatatype() + &quot;) of AttributeDesignator &quot; + attributeFqn + &quot; in context is different from expected/requested (&quot;</span>
+					+ datatype
+					+ &quot;). May be caused by refering to the same Attribute Category/Id/Issuer with different Datatypes in different policy elements and/or attribute providers, which is not allowed.&quot;,
+<span class="nc" id="L132">					XacmlStatusCode.SYNTAX_ERROR.value());</span>
+		}
+
+		/*
+		 * If datatype classes match, bagResult should have same type as datatypeClass.
+		 */
+<span class="nc" id="L138">		final AttributeBag&lt;AV&gt; result = (AttributeBag&lt;AV&gt;) bagResult;</span>
+<span class="nc" id="L139">		this.listeners.forEach((lt, l) -&gt; l.namedAttributeValueConsumed(attributeFqn, result));</span>
+<span class="nc" id="L140">		return result;</span>
+	}
+
+	@Override
+	public boolean putNamedAttributeValueIfAbsent(final AttributeFqn attributeFqn, final AttributeBag&lt;?&gt; result)
+	{
+<span class="nc" id="L146">		final Bag&lt;?&gt; duplicate = namedAttributes.putIfAbsent(attributeFqn, result);</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">		if (duplicate != null)</span>
+		{
+			/*
+			 * This should never happen, as getAttributeDesignatorResult() should have been called first (for same id) and returned this oldResult, and no further call to
+			 * putAttributeDesignatorResultIfAbsent() in this case. In any case, we do not support setting a different result for same id (but different datatype URI/datatype class) in the same
+			 * context
+			 */
+<span class="nc" id="L154">			LOGGER.warn(&quot;Attempt to override value of AttributeDesignator {} already set in evaluation context. Overriding value: {}&quot;, attributeFqn, result);</span>
+<span class="nc" id="L155">			return false;</span>
+		}
+
+<span class="nc" id="L158">		this.listeners.forEach((lt, l) -&gt; l.namedAttributeValueProduced(attributeFqn, result));</span>
+		/*
+		 * Attribute value cannot change during evaluation context, so if old value already there, put it back
+		 */
+<span class="nc" id="L162">		return true;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public XdmNode getAttributesContent(final String category)
+	{
+<span class="nc" id="L169">		return extraContentsByAttributeCategory.get(category);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public &lt;AV extends AttributeValue&gt; Bag&lt;AV&gt; getAttributeSelectorResult(final AttributeSelectorExpression&lt;AV&gt; attributeSelector) throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L176">		final Bag&lt;?&gt; bagResult = attributeSelectorResults.get(attributeSelector.getAttributeSelectorId());</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		if (bagResult == null)</span>
+		{
+<span class="nc" id="L179">			return null;</span>
+		}
+
+<span class="nc" id="L182">		final Datatype&lt;Bag&lt;AV&gt;&gt; expectedBagDatatype = attributeSelector.getReturnType();</span>
+<span class="nc" id="L183">		final Datatype&lt;?&gt; expectedElementDatatype = expectedBagDatatype.getTypeParameter().get();</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		if (!bagResult.getElementDatatype().equals(expectedElementDatatype))</span>
+		{
+<span class="nc" id="L186">			throw new IndeterminateEvaluationException(&quot;Datatype (&quot; + bagResult.getElementDatatype() + &quot;)of AttributeSelector &quot; + attributeSelector.getAttributeSelectorId()</span>
+					+ &quot; in context is different from actually expected/requested (&quot; + expectedElementDatatype
+					+ &quot;). May be caused by use of same AttributeSelector Category/Path/ContextSelectorId with different Datatypes in different in different policy elements, which is not allowed.&quot;,
+<span class="nc" id="L189">					XacmlStatusCode.SYNTAX_ERROR.value());</span>
+		}
+
+		/*
+		 * If datatype classes match, bagResult should has same type as datatypeClass.
+		 */
+<span class="nc" id="L195">		final Bag&lt;AV&gt; result = expectedBagDatatype.cast(bagResult);</span>
+<span class="nc" id="L196">		this.listeners.forEach((lt, l) -&gt; l.attributeSelectorResultConsumed(attributeSelector, result));</span>
+<span class="nc" id="L197">		return result;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public &lt;AV extends AttributeValue&gt; boolean putAttributeSelectorResultIfAbsent(final AttributeSelectorExpression&lt;AV&gt; attributeSelector, final Bag&lt;AV&gt; result) throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L204">		final AttributeSelectorId attSelectorId = attributeSelector.getAttributeSelectorId();</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		if (attributeSelectorResults.putIfAbsent(attSelectorId, result) != null)</span>
+		{
+<span class="nc" id="L207">			LOGGER.error(&quot;Attempt to override value of AttributeSelector {} already set in evaluation context. Overriding value: {}&quot;, attSelectorId, result);</span>
+<span class="nc" id="L208">			return false;</span>
+		}
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		for (final Listener listener : this.listeners.values())</span>
+		{
+<span class="nc" id="L213">			final Optional&lt;AttributeFqn&gt; optionalContextSelectorFQN = attributeSelector.getContextSelectorFQN();</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">			final Optional&lt;AttributeBag&lt;XPathValue&gt;&gt; contextSelectorValue = optionalContextSelectorFQN.isPresent()</span>
+<span class="nc" id="L215">					? Optional.of(getNamedAttributeValue(optionalContextSelectorFQN.get(), StandardDatatypes.XPATH))</span>
+<span class="nc" id="L216">					: Optional.empty();</span>
+<span class="nc" id="L217">			listener.attributeSelectorResultProduced(attributeSelector, contextSelectorValue, result);</span>
+<span class="nc" id="L218">		}</span>
+
+<span class="nc" id="L220">		return true;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public &lt;V extends Value&gt; V getVariableValue(final String variableId, final Datatype&lt;V&gt; expectedDatatype) throws IndeterminateEvaluationException
+	{
+<span class="nc" id="L227">		final Value val = varValsById.get(variableId);</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">		if (val == null)</span>
+		{
+<span class="nc" id="L230">			return null;</span>
+		}
+
+		try
+		{
+<span class="nc" id="L235">			return expectedDatatype.cast(val);</span>
+<span class="nc" id="L236">		} catch (final ClassCastException e)</span>
+		{
+<span class="nc" id="L238">			throw new IndeterminateEvaluationException(&quot;Datatype of variable '&quot; + variableId + &quot;' in context does not match expected datatype: &quot; + expectedDatatype,</span>
+<span class="nc" id="L239">					XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+		}
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public boolean putVariableIfAbsent(final String variableId, final Value value)
+	{
+<span class="nc bnc" id="L247" title="All 2 branches missed.">		if (varValsById.putIfAbsent(variableId, value) != null)</span>
+		{
+<span class="nc" id="L249">			LOGGER.error(&quot;Attempt to override value of Variable '{}' already set in evaluation context. Overriding value: {}&quot;, variableId, value);</span>
+<span class="nc" id="L250">			return false;</span>
+		}
+
+<span class="nc" id="L253">		return true;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public Value removeVariable(final String variableId)
+	{
+<span class="nc" id="L260">		return varValsById.remove(variableId);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public Object getOther(final String key)
+	{
+<span class="nc" id="L267">		return mutableProperties.get(key);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public boolean containsKey(final String key)
+	{
+<span class="nc" id="L274">		return mutableProperties.containsKey(key);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public void putOther(final String key, final Object val)
+	{
+<span class="nc" id="L281">		mutableProperties.put(key, val);</span>
+<span class="nc" id="L282">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public Object remove(final String key)
+	{
+<span class="nc" id="L288">		return mutableProperties.remove(key);</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public Iterator&lt;Entry&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt;&gt; getNamedAttributes()
+	{
+<span class="nc" id="L295">		final Set&lt;Entry&lt;AttributeFqn, AttributeBag&lt;?&gt;&gt;&gt; immutableAttributeSet = Collections.unmodifiableSet(namedAttributes.entrySet());</span>
+<span class="nc" id="L296">		return immutableAttributeSet.iterator();</span>
+	}
+
+	@Override
+	public boolean isApplicablePolicyIdListRequested()
+	{
+<span class="nc" id="L302">		return returnApplicablePolicyIdList;</span>
+	}
+
+	@Override
+	public &lt;L extends Listener&gt; L putListener(final Class&lt;L&gt; listenerType, final L listener)
+	{
+<span class="nc" id="L308">		return this.listeners.putInstance(listenerType, listener);</span>
+	}
+
+	@Override
+	public &lt;L extends Listener&gt; L getListener(final Class&lt;L&gt; listenerType)
+	{
+<span class="nc" id="L314">		return this.listeners.getInstance(listenerType);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

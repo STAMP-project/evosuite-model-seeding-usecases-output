@@ -1,0 +1,937 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StandardFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">StandardFunction.java</span></div><h1>StandardFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+
+ * Copyright (C) 2012-2016 Thales Services SAS.
+ *
+ * This file is part of AuthZForce CE.
+ *
+ * AuthZForce CE is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * AuthZForce CE is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with AuthZForce CE.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.PdpExtensionRegistry.PdpExtensionComparator;
+import org.ow2.authzforce.core.pdp.api.func.ComparisonFunction;
+import org.ow2.authzforce.core.pdp.api.func.ComparisonFunction.PostCondition;
+import org.ow2.authzforce.core.pdp.api.func.DatatypeConversionFunction;
+import org.ow2.authzforce.core.pdp.api.func.EqualTypeMatchFunction;
+import org.ow2.authzforce.core.pdp.api.func.EqualTypeMatchFunction.EqualIgnoreCaseMatcher;
+import org.ow2.authzforce.core.pdp.api.func.EqualTypeMatchFunction.EqualMatcher;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderBagFunctions;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.func.GenericHigherOrderFunctionFactory;
+import org.ow2.authzforce.core.pdp.api.func.NonEqualTypeMatchFunction;
+import org.ow2.authzforce.core.pdp.api.func.NonEqualTypeMatchFunction.RegexpMatchCallFactoryBuilder;
+import org.ow2.authzforce.core.pdp.api.value.AnyUriValue;
+import org.ow2.authzforce.core.pdp.api.value.AttributeDatatype;
+import org.ow2.authzforce.core.pdp.api.value.Base64BinaryValue;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.DateTimeValue;
+import org.ow2.authzforce.core.pdp.api.value.DateValue;
+import org.ow2.authzforce.core.pdp.api.value.DayTimeDurationValue;
+import org.ow2.authzforce.core.pdp.api.value.DnsNameWithPortRangeValue;
+import org.ow2.authzforce.core.pdp.api.value.DoubleValue;
+import org.ow2.authzforce.core.pdp.api.value.HexBinaryValue;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.IpAddressValue;
+import org.ow2.authzforce.core.pdp.api.value.Rfc822NameValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardAttributeValueFactories;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.StringParseableValue;
+import org.ow2.authzforce.core.pdp.api.value.StringValue;
+import org.ow2.authzforce.core.pdp.api.value.TimeValue;
+import org.ow2.authzforce.core.pdp.api.value.X500NameValue;
+import org.ow2.authzforce.core.pdp.api.value.YearMonthDurationValue;
+import org.ow2.authzforce.core.pdp.impl.func.NumericArithmeticOperators.AbsOperator;
+import org.ow2.authzforce.core.pdp.impl.func.NumericArithmeticOperators.AddOperator;
+import org.ow2.authzforce.core.pdp.impl.func.NumericArithmeticOperators.DivideOperator;
+import org.ow2.authzforce.core.pdp.impl.func.NumericArithmeticOperators.MultiplyOperator;
+import org.ow2.authzforce.core.pdp.impl.func.NumericArithmeticOperators.SubtractOperator;
+import org.ow2.authzforce.core.pdp.impl.func.StandardDatatypeConverters.FromStringConverter;
+import org.ow2.authzforce.core.pdp.impl.func.StandardDatatypeConverters.ToStringConverter;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AllOfAll;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AllOfAny;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AllOfCallFactory;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AnyOfAll;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AnyOfAny;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.AnyOfCallFactory;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.BooleanOneBagOnlyFunction;
+import org.ow2.authzforce.core.pdp.impl.func.TemporalArithmeticOperators.TimeAddDurationOperator;
+import org.ow2.authzforce.core.pdp.impl.func.TemporalArithmeticOperators.TimeSubtractDurationOperator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Maps;
+
+/**
+ * Utilities to handle the XACML core standard functions
+ * 
+ * @version $Id: $
+ */
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">public enum StandardFunction</span>
+{
+    /**
+     * Equal-type match
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:string-equal
+	 */
+<span class="fc" id="L113">	STRING_EQUAL(Function.XACML_NS_1_0 + &quot;string-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:boolean-equal
+	 */
+<span class="fc" id="L118">	BOOLEAN_EQUAL(Function.XACML_NS_1_0 + &quot;boolean-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-equal
+	 */
+<span class="fc" id="L123">	INTEGER_EQUAL(Function.XACML_NS_1_0 + &quot;integer-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-equal
+	 */
+<span class="fc" id="L128">	DOUBLE_EQUAL(Function.XACML_NS_1_0 + &quot;double-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:date-equal
+	 */
+<span class="fc" id="L133">	DATE_EQUAL(Function.XACML_NS_1_0 + &quot;date-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:time-equal
+	 */
+<span class="fc" id="L138">	TIME_EQUAL(Function.XACML_NS_1_0 + &quot;time-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:dateTime-equal
+	 */
+<span class="fc" id="L143">	DATETIME_EQUAL(Function.XACML_NS_1_0 + &quot;dateTime-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dayTimeDuration-equal
+	 */
+<span class="fc" id="L148">	DAYTIME_DURATION_EQUAL(Function.XACML_NS_3_0 + &quot;dayTimeDuration-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:yearMonthDuration-equal
+	 */
+<span class="fc" id="L153">	YEARMONTH_DURATION_EQUAL(Function.XACML_NS_3_0 + &quot;yearMonthDuration-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:anyURI-equal
+	 */
+<span class="fc" id="L158">	ANYURI_EQUAL(Function.XACML_NS_1_0 + &quot;anyURI-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:x500Name-equal function.
+	 */
+<span class="fc" id="L163">	X500NAME_EQUAL(Function.XACML_NS_1_0 + &quot;x500Name-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:rfc822Name-equal function.
+	 */
+<span class="fc" id="L168">	RFC822NAME_EQUAL(Function.XACML_NS_1_0 + &quot;rfc822Name-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:hexBinary-equal function.
+	 */
+<span class="fc" id="L173">	HEXBINARY_EQUAL(Function.XACML_NS_1_0 + &quot;hexBinary-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:base64Binary-equal function.
+	 */
+<span class="fc" id="L178">	BASE64BINARY_EQUAL(Function.XACML_NS_1_0 + &quot;base64Binary-equal&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-equal-ignore-case function.
+	 */
+<span class="fc" id="L183">	STRING_EQUAL_IGNORE_CASE(Function.XACML_NS_3_0 + &quot;string-equal-ignore-case&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:x500Name-match function (different from x500Name-regexp-match down below).
+	 */
+<span class="fc" id="L188">	X500NAME_MATCH(Function.XACML_NS_1_0 + &quot;x500Name-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-starts-with function.
+	 */
+<span class="fc" id="L193">	STRING_STARTS_WITH(Function.XACML_NS_3_0 + &quot;string-starts-with&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-ends-with function.
+	 */
+<span class="fc" id="L198">	STRING_ENDS_WITH(Function.XACML_NS_3_0 + &quot;string-ends-with&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-contains-with function.
+	 */
+<span class="fc" id="L203">	STRING_CONTAINS(Function.XACML_NS_3_0 + &quot;string-contains&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-regexp-match function.
+	 */
+<span class="fc" id="L208">	STRING_REGEXP_MATCH(Function.XACML_NS_1_0 + &quot;string-regexp-match&quot;),</span>
+
+    /**
+     * Numeric arithmetic functions
+     */
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-abs function URI
+	 */
+<span class="fc" id="L216">	INTEGER_ABS(Function.XACML_NS_1_0 + &quot;integer-abs&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-abs function URI
+	 */
+<span class="fc" id="L221">	DOUBLE_ABS(Function.XACML_NS_1_0 + &quot;double-abs&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-add
+	 */
+<span class="fc" id="L226">	INTEGER_ADD(Function.XACML_NS_1_0 + &quot;integer-add&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-add
+	 */
+<span class="fc" id="L231">	DOUBLE_ADD(Function.XACML_NS_1_0 + &quot;double-add&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-multiply function.
+	 */
+<span class="fc" id="L236">	INTEGER_MULTIPLY(Function.XACML_NS_1_0 + &quot;integer-multiply&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-multiply function.
+	 */
+<span class="fc" id="L241">	DOUBLE_MULTIPLY(Function.XACML_NS_1_0 + &quot;double-multiply&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-subtract function.
+	 */
+<span class="fc" id="L246">	INTEGER_SUBTRACT(Function.XACML_NS_1_0 + &quot;integer-subtract&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-subtract function.
+	 */
+<span class="fc" id="L251">	DOUBLE_SUBTRACT(Function.XACML_NS_1_0 + &quot;double-subtract&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-divide function.
+	 */
+<span class="fc" id="L256">	INTEGER_DIVIDE(Function.XACML_NS_1_0 + &quot;integer-divide&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-divide function.
+	 */
+<span class="fc" id="L261">	DOUBLE_DIVIDE(Function.XACML_NS_1_0 + &quot;double-divide&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-mod function.
+	 */
+<span class="fc" id="L266">	INTEGER_MOD(Function.XACML_NS_1_0 + &quot;integer-mod&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:round function.
+	 */
+<span class="fc" id="L271">	ROUND(Function.XACML_NS_1_0 + &quot;round&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:floor function.
+	 */
+<span class="fc" id="L276">	FLOOR(Function.XACML_NS_1_0 + &quot;floor&quot;),</span>
+
+    /**
+     * String normalization functions
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:string-normalize-space
+	 */
+<span class="fc" id="L285">	STRING_NORMALIZE_SPACE(Function.XACML_NS_1_0 + &quot;string-normalize-space&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:string-normalize-to-lower-case
+	 */
+<span class="fc" id="L290">	STRING_NORMALIZE_TO_LOWER_CASE(Function.XACML_NS_1_0 + &quot;string-normalize-to-lower-case&quot;),</span>
+
+    /**
+     * Primitive datatype conversion functions
+     */
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:double-to-integer function.
+	 */
+<span class="fc" id="L298">	DOUBLE_TO_INTEGER(Function.XACML_NS_1_0 + &quot;double-to-integer&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:integer-to-double function.
+	 */
+<span class="fc" id="L303">	INTEGER_TO_DOUBLE(Function.XACML_NS_1_0 + &quot;integer-to-double&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:boolean-from-string function.
+	 */
+<span class="fc" id="L308">	BOOLEAN_FROM_STRING(Function.XACML_NS_3_0 + &quot;boolean-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-boolean function.
+	 */
+<span class="fc" id="L313">	STRING_FROM_BOOLEAN(Function.XACML_NS_3_0 + &quot;string-from-boolean&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:integer-from-string function.
+	 */
+<span class="fc" id="L318">	INTEGER_FROM_STRING(Function.XACML_NS_3_0 + &quot;integer-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-integer function.
+	 */
+<span class="fc" id="L323">	STRING_FROM_INTEGER(Function.XACML_NS_3_0 + &quot;string-from-integer&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:double-from-string function.
+	 */
+<span class="fc" id="L328">	DOUBLE_FROM_STRING(Function.XACML_NS_3_0 + &quot;double-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-double function.
+	 */
+<span class="fc" id="L333">	STRING_FROM_DOUBLE(Function.XACML_NS_3_0 + &quot;string-from-double&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:time-from-string function.
+	 */
+<span class="fc" id="L338">	TIME_FROM_STRING(Function.XACML_NS_3_0 + &quot;time-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-time function.
+	 */
+<span class="fc" id="L343">	STRING_FROM_TIME(Function.XACML_NS_3_0 + &quot;string-from-time&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:date-from-string function.
+	 */
+<span class="fc" id="L348">	DATE_FROM_STRING(Function.XACML_NS_3_0 + &quot;date-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-date function.
+	 */
+<span class="fc" id="L353">	STRING_FROM_DATE(Function.XACML_NS_3_0 + &quot;string-from-date&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dateTime-from-string function.
+	 */
+<span class="fc" id="L358">	DATETIME_FROM_STRING(Function.XACML_NS_3_0 + &quot;dateTime-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-dateTime function.
+	 */
+<span class="fc" id="L363">	STRING_FROM_DATETIME(Function.XACML_NS_3_0 + &quot;string-from-dateTime&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:anyURI-from-string function.
+	 */
+<span class="fc" id="L368">	ANYURI_FROM_STRING(Function.XACML_NS_3_0 + &quot;anyURI-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-anyURI function.
+	 */
+<span class="fc" id="L373">	STRING_FROM_ANYURI(Function.XACML_NS_3_0 + &quot;string-from-anyURI&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dayTimeDuration-from-string function.
+	 */
+<span class="fc" id="L378">	DAYTIMEDURATION_FROM_STRING(Function.XACML_NS_3_0 + &quot;dayTimeDuration-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-dayTimeDuration function.
+	 */
+<span class="fc" id="L383">	STRING_FROM_DAYTIMEDURATION(Function.XACML_NS_3_0 + &quot;string-from-dayTimeDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:yearMonthDuration-from-string function.
+	 */
+<span class="fc" id="L388">	YEARMONTHDURATION_FROM_STRING(Function.XACML_NS_3_0 + &quot;yearMonthDuration-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-yearMonthDuration function.
+	 */
+<span class="fc" id="L393">	STRING_FROM_YEARMONTHDURATION(Function.XACML_NS_3_0 + &quot;string-from-yearMonthDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:x500Name-from-string function.
+	 */
+<span class="fc" id="L398">	X500NAME_FROM_STRING(Function.XACML_NS_3_0 + &quot;x500Name-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-x500Name function.
+	 */
+<span class="fc" id="L403">	STRING_FROM_X500NAME(Function.XACML_NS_3_0 + &quot;string-from-x500Name&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:rfc822Name-from-string function.
+	 */
+<span class="fc" id="L408">	RFC822NAME_FROM_STRING(Function.XACML_NS_3_0 + &quot;rfc822Name-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-rfc822Name function.
+	 */
+<span class="fc" id="L413">	STRING_FROM_RFC822NAME(Function.XACML_NS_3_0 + &quot;string-from-rfc822Name&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:ipAddress-from-string function.
+	 */
+<span class="fc" id="L418">	IPADDRESS_FROM_STRING(Function.XACML_NS_3_0 + &quot;ipAddress-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-ipAddress function.
+	 */
+<span class="fc" id="L423">	STRING_FROM_IPADDRESS(Function.XACML_NS_3_0 + &quot;string-from-ipAddress&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dnsName-from-string function.
+	 */
+<span class="fc" id="L428">	DNSNAME_FROM_STRING(Function.XACML_NS_3_0 + &quot;dnsName-from-string&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-from-dnsName function.
+	 */
+<span class="fc" id="L433">	STRING_FROM_DNSNAME(Function.XACML_NS_3_0 + &quot;string-from-dnsName&quot;),</span>
+
+    /**
+     * Logical functions
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:or
+	 */
+<span class="fc" id="L442">	OR(Function.XACML_NS_1_0 + &quot;or&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:and
+	 */
+<span class="fc" id="L447">	AND(Function.XACML_NS_1_0 + &quot;and&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:n-of
+	 */
+<span class="fc" id="L452">	N_OF(Function.XACML_NS_1_0 + &quot;n-of&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:not
+	 */
+<span class="fc" id="L457">	NOT(Function.XACML_NS_1_0 + &quot;not&quot;),</span>
+
+    /**
+     * Temporal arithmetic functions
+     */
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dateTime-add-dayTimeDuration function.
+	 */
+<span class="fc" id="L465">	DATETIME_ADD_DAYTIMEDURATION(Function.XACML_NS_3_0 + &quot;dateTime-add-dayTimeDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dateTime-subtract-dayTimeDuration function.
+	 */
+<span class="fc" id="L470">	DATETIME_SUBTRACT_DAYTIMEDURATION(Function.XACML_NS_3_0 + &quot;dateTime-subtract-dayTimeDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dateTime-add-yearMonthDuration function.
+	 */
+<span class="fc" id="L475">	DATETIME_ADD_YEARMONTHDURATION(Function.XACML_NS_3_0 + &quot;dateTime-add-yearMonthDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:dateTime-subtract-yearMonthDuration function.
+	 */
+<span class="fc" id="L480">	DATETIME_SUBTRACT_YEARMONTHDURATION(Function.XACML_NS_3_0 + &quot;dateTime-subtract-yearMonthDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:date-add-yearMonthDuration function.
+	 */
+<span class="fc" id="L485">	DATE_ADD_YEARMONTHDURATION(Function.XACML_NS_3_0 + &quot;date-add-yearMonthDuration&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:date-subtract-yearMonthDuration function.
+	 */
+<span class="fc" id="L490">	DATE_SUBTRACT_YEARMONTHDURATION(Function.XACML_NS_3_0 + &quot;date-subtract-yearMonthDuration&quot;),</span>
+
+    /**
+     * Time range comparison function
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:time-in-range
+	 */
+<span class="fc" id="L499">	TIME_IN_RANGE(Function.XACML_NS_2_0 + &quot;time-in-range&quot;),</span>
+
+    /**
+     * String concatenation function
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:string-concatenate function.
+	 */
+<span class="fc" id="L508">	STRING_CONCATENATE(Function.XACML_NS_2_0 + &quot;string-concatenate&quot;),</span>
+
+    /**
+     * Non-equal type match
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:rfc822Name-match function (different from rfc822Name-regexp-match down below).
+	 */
+<span class="fc" id="L517">	RFC822NAME_MATCH(Function.XACML_NS_1_0 + &quot;rfc822Name-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:anyURI-regexp-match function.
+	 */
+<span class="fc" id="L522">	ANYURI_REGEXP_MATCH(Function.XACML_NS_2_0 + &quot;anyURI-regexp-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:ipAddress-regexp-match function.
+	 */
+<span class="fc" id="L527">	IPADDRESS_REGEXP_MATCH(Function.XACML_NS_2_0 + &quot;ipAddress-regexp-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:dnsName-regexp-match function.
+	 */
+<span class="fc" id="L532">	DNSNAME_REGEXP_MATCH(Function.XACML_NS_2_0 + &quot;dnsName-regexp-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:rfc822Name-regexp-match function.
+	 */
+<span class="fc" id="L537">	RFC822NAME_REGEXP_MATCH(Function.XACML_NS_2_0 + &quot;rfc822Name-regexp-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:2.0:function:x500Name-regexp-match function.
+	 */
+<span class="fc" id="L542">	X500NAME_REGEXP_MATCH(Function.XACML_NS_2_0 + &quot;x500Name-regexp-match&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:anyURI-starts-with function.
+	 */
+<span class="fc" id="L547">	ANYURI_STARTS_WITH(Function.XACML_NS_3_0 + &quot;anyURI-starts-with&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:anyURI-ends-with function.
+	 */
+<span class="fc" id="L552">	ANYURI_ENDS_WITH(Function.XACML_NS_3_0 + &quot;anyURI-ends-with&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:anyURI-contains-with function.
+	 */
+<span class="fc" id="L557">	ANYURI_CONTAINS(Function.XACML_NS_3_0 + &quot;anyURI-contains&quot;),</span>
+
+    /**
+     * Substring functions
+     */
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:string-substring function.
+	 */
+<span class="fc" id="L565">	STRING_SUBSTRING(Function.XACML_NS_3_0 + &quot;string-substring&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:anyURI-substring function.
+	 */
+<span class="fc" id="L570">	ANYURI_SUBSTRING(Function.XACML_NS_3_0 + &quot;anyURI-substring&quot;),</span>
+
+    /**
+     * Higher-order bag functions
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:any-of function. WARNING: XACML 1.0 any-of planned for deprecation as of XACML 3.0. Only 3.0 version supported henceforth.
+	 */
+<span class="fc" id="L579">	ANY_OF(Function.XACML_NS_3_0 + &quot;any-of&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:all-of function.
+	 */
+<span class="fc" id="L584">	ALL_OF(Function.XACML_NS_3_0 + &quot;all-of&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:any-of-any function.
+	 */
+<span class="fc" id="L589">	ANY_OF_ANY(Function.XACML_NS_3_0 + &quot;any-of-any&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:all-of-any function.
+	 */
+<span class="fc" id="L594">	ALL_OF_ANY(Function.XACML_NS_1_0 + &quot;all-of-any&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:any-of-all function.
+	 */
+<span class="fc" id="L599">	ANY_OF_ALL(Function.XACML_NS_1_0 + &quot;any-of-all&quot;),</span>
+
+	/**
+	 * urn:oasis:names:tc:xacml:1.0:function:all-of-all function.
+	 */
+<span class="fc" id="L604">	ALL_OF_ALL(Function.XACML_NS_1_0 + &quot;all-of-all&quot;),</span>
+
+    /**
+     * Generic functions
+     */
+
+	/**
+	 * urn:oasis:names:tc:xacml:3.0:function:map function.
+	 */
+<span class="fc" id="L613">	MAP(Function.XACML_NS_3_0 + &quot;map&quot;),</span>
+
+	/**
+	 * XPath-based functions
+	 */
+<span class="fc" id="L618">	XPATH_NODE_COUNT(Function.XACML_NS_3_0 + &quot;xpath-node-count&quot;);</span>
+
+<span class="fc" id="L620">	private static final IllegalArgumentException NULL_INT_VALUE_FACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined standard XACML integer value factory&quot;);</span>
+
+	private final String id;
+
+	private StandardFunction(final String id)
+<span class="fc" id="L625">	{</span>
+<span class="fc" id="L626">		this.id = id;</span>
+<span class="fc" id="L627">	}</span>
+
+	/**
+	 * Get function ID, as defined in the XACML standard
+	 * 
+	 * @return function ID
+	 */
+	public String getId()
+	{
+<span class="fc" id="L636">		return this.id;</span>
+	}
+
+<span class="fc" id="L639">	private static final Logger LOGGER = LoggerFactory.getLogger(StandardFunction.class);</span>
+
+<span class="fc" id="L641">	private static final PdpExtensionComparator&lt;Function&lt;?&gt;&gt; FUNCTION_COMPARATOR = new PdpExtensionComparator&lt;&gt;();</span>
+<span class="fc" id="L642">	private static final PdpExtensionComparator&lt;GenericHigherOrderFunctionFactory&gt; FUNCTION_FACTORY_COMPARATOR = new PdpExtensionComparator&lt;&gt;();</span>
+
+<span class="fc" id="L644">	private static final Map&lt;String, StandardFunction&gt; ID_TO_STD_FUNC_MAP = Maps.uniqueIndex(Arrays.asList(StandardFunction.values()),</span>
+	        (com.google.common.base.Function&lt;StandardFunction, String&gt;) input -&gt; {
+<span class="pc bpc" id="L646" title="2 of 4 branches missed.">		        assert input != null;</span>
+<span class="fc" id="L647">		        return input.getId();</span>
+	        });
+
+	/**
+	 * Get the standard function with a given ID
+	 * 
+	 * @param functionId
+	 *            standard function ID
+	 * @return StandardFunction with given ID, or null if there is no standard function with such ID
+	 */
+	public static StandardFunction getInstance(final String functionId)
+	{
+<span class="nc" id="L659">		return ID_TO_STD_FUNC_MAP.get(functionId);</span>
+	}
+
+	/**
+	 * Get standard function registry
+	 *
+	 * @param enableXPath
+	 *            true iff XPath-based function(s) support enabled
+	 * @param stdIntValueFactory
+	 *            attribute value factory for standard integer datatype
+	 * @return standard function registry
+	 */
+	public static FunctionRegistry getRegistry(final boolean enableXPath, final StringParseableValue.Factory&lt;IntegerValue&gt; stdIntValueFactory)
+	{
+<span class="pc bpc" id="L673" title="1 of 2 branches missed.">		if (stdIntValueFactory == null)</span>
+		{
+<span class="nc" id="L675">			throw NULL_INT_VALUE_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+		final Set&lt;Function&lt;?&gt;&gt; nonGenericFunctions;
+<span class="pc bpc" id="L679" title="1 of 2 branches missed.">		if (enableXPath)</span>
+		{
+<span class="fc" id="L681">			nonGenericFunctions = HashCollections.newUpdatableSet(250);</span>
+			/*
+			 * A.3.15. Optional XPath-based functions: only xpath-node-count supported
+			 */
+<span class="fc" id="L685">			nonGenericFunctions.add(new XPathNodeCountFunction(StandardFunction.XPATH_NODE_COUNT.id));</span>
+		} else
+		{
+<span class="nc" id="L688">			nonGenericFunctions = HashCollections.newUpdatableSet(249);</span>
+		}
+
+		/*
+		 * Add standard functions in an order as close as possible to the order of declaration in the XACML spec (A.3).
+		 */
+
+		/*
+		 * Match functions taking only one type of parameter: Equality predicates (A.3.1) + special match function 'x500Name-match' (A.3.14)
+		 */
+<span class="fc" id="L698">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_EQUAL.id, StandardDatatypes.STRING, new EqualMatcher&lt;StringValue&gt;()));</span>
+<span class="fc" id="L699">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.BOOLEAN_EQUAL.id, StandardDatatypes.BOOLEAN, new EqualMatcher&lt;BooleanValue&gt;()));</span>
+<span class="fc" id="L700">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.INTEGER_EQUAL.id, StandardDatatypes.INTEGER, new EqualMatcher&lt;IntegerValue&gt;()));</span>
+<span class="fc" id="L701">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.DOUBLE_EQUAL.id, StandardDatatypes.DOUBLE, new EqualMatcher&lt;DoubleValue&gt;()));</span>
+<span class="fc" id="L702">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.DATE_EQUAL.id, StandardDatatypes.DATE, new EqualMatcher&lt;DateValue&gt;()));</span>
+<span class="fc" id="L703">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.TIME_EQUAL.id, StandardDatatypes.TIME, new EqualMatcher&lt;TimeValue&gt;()));</span>
+<span class="fc" id="L704">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.DATETIME_EQUAL.id, StandardDatatypes.DATETIME, new EqualMatcher&lt;DateTimeValue&gt;()));</span>
+<span class="fc" id="L705">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.DAYTIME_DURATION_EQUAL.id, StandardDatatypes.DAYTIMEDURATION, new EqualMatcher&lt;DayTimeDurationValue&gt;()));</span>
+<span class="fc" id="L706">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.YEARMONTH_DURATION_EQUAL.id, StandardDatatypes.YEARMONTHDURATION, new EqualMatcher&lt;YearMonthDurationValue&gt;()));</span>
+<span class="fc" id="L707">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.ANYURI_EQUAL.id, StandardDatatypes.ANYURI, new EqualMatcher&lt;AnyUriValue&gt;()));</span>
+<span class="fc" id="L708">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.X500NAME_EQUAL.id, StandardDatatypes.X500NAME, new EqualMatcher&lt;X500NameValue&gt;()));</span>
+<span class="fc" id="L709">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.RFC822NAME_EQUAL.id, StandardDatatypes.RFC822NAME, new EqualMatcher&lt;Rfc822NameValue&gt;()));</span>
+<span class="fc" id="L710">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.HEXBINARY_EQUAL.id, StandardDatatypes.HEXBINARY, new EqualMatcher&lt;HexBinaryValue&gt;()));</span>
+<span class="fc" id="L711">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.BASE64BINARY_EQUAL.id, StandardDatatypes.BASE64BINARY, new EqualMatcher&lt;Base64BinaryValue&gt;()));</span>
+<span class="fc" id="L712">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_EQUAL_IGNORE_CASE.id, StandardDatatypes.STRING, new EqualIgnoreCaseMatcher&lt;StringValue&gt;()));</span>
+<span class="fc" id="L713">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.X500NAME_MATCH.id, StandardDatatypes.X500NAME, StandardEqualTypeMatchers.X500NAME_MATCHER));</span>
+<span class="fc" id="L714">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_STARTS_WITH.id, StandardDatatypes.STRING, StandardEqualTypeMatchers.STRING_STARTS_WITH_MATCHER));</span>
+<span class="fc" id="L715">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_ENDS_WITH.id, StandardDatatypes.STRING, StandardEqualTypeMatchers.STRING_ENDS_WITH_MATCHER));</span>
+<span class="fc" id="L716">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_CONTAINS.id, StandardDatatypes.STRING, StandardEqualTypeMatchers.STRING_CONTAINS_MATCHER));</span>
+<span class="fc" id="L717">		nonGenericFunctions.add(new EqualTypeMatchFunction&lt;&gt;(StandardFunction.STRING_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardEqualTypeMatchers.STRING_REGEXP_MATCH_CALL_FACTORY_BUILDER));</span>
+
+		/*
+		 * Numeric Arithmetic functions (A.3.2)
+		 */
+<span class="fc" id="L722">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_ABS.id, false, Arrays.asList(StandardDatatypes.INTEGER), new AbsOperator&lt;IntegerValue&gt;()));</span>
+<span class="fc" id="L723">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.DOUBLE_ABS.id, false, Arrays.asList(StandardDatatypes.DOUBLE), new AbsOperator&lt;DoubleValue&gt;()));</span>
+<span class="fc" id="L724">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_ADD.id, true, Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.INTEGER, StandardDatatypes.INTEGER),</span>
+		        new AddOperator&lt;IntegerValue&gt;()));
+<span class="fc" id="L726">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.DOUBLE_ADD.id, true, Arrays.asList(StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE),</span>
+		        new AddOperator&lt;DoubleValue&gt;()));
+<span class="fc" id="L728">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_MULTIPLY.id, true,</span>
+<span class="fc" id="L729">		        Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.INTEGER, StandardDatatypes.INTEGER), new MultiplyOperator&lt;IntegerValue&gt;()));</span>
+<span class="fc" id="L730">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.DOUBLE_MULTIPLY.id, true, Arrays.asList(StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE),</span>
+		        new MultiplyOperator&lt;DoubleValue&gt;()));
+<span class="fc" id="L732">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_SUBTRACT.id, false, Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.INTEGER),</span>
+		        new SubtractOperator&lt;IntegerValue&gt;()));
+<span class="fc" id="L734">		nonGenericFunctions.add(</span>
+<span class="fc" id="L735">		        new NumericArithmeticFunction&lt;&gt;(StandardFunction.DOUBLE_SUBTRACT.id, false, Arrays.asList(StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE), new SubtractOperator&lt;DoubleValue&gt;()));</span>
+<span class="fc" id="L736">		nonGenericFunctions.add(</span>
+<span class="fc" id="L737">		        new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_DIVIDE.id, false, Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.INTEGER), new DivideOperator&lt;IntegerValue&gt;()));</span>
+<span class="fc" id="L738">		nonGenericFunctions</span>
+<span class="fc" id="L739">		        .add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.DOUBLE_DIVIDE.id, false, Arrays.asList(StandardDatatypes.DOUBLE, StandardDatatypes.DOUBLE), new DivideOperator&lt;DoubleValue&gt;()));</span>
+<span class="fc" id="L740">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.INTEGER_MOD.id, false, Arrays.asList(StandardDatatypes.INTEGER, StandardDatatypes.INTEGER),</span>
+		        NumericArithmeticOperators.INTEGER_MOD_OPERATOR));
+<span class="fc" id="L742">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.FLOOR.id, false, Arrays.asList(StandardDatatypes.DOUBLE), NumericArithmeticOperators.FLOOR_OPERATOR));</span>
+<span class="fc" id="L743">		nonGenericFunctions.add(new NumericArithmeticFunction&lt;&gt;(StandardFunction.ROUND.id, false, Arrays.asList(StandardDatatypes.DOUBLE), NumericArithmeticOperators.ROUND_OPERATOR));</span>
+
+		/*
+		 * String-normalize functions (= A.3.3 String conversion functions in the spec)
+		 */
+<span class="fc" id="L748">		nonGenericFunctions.add(new StringN11nFunction(StandardFunction.STRING_NORMALIZE_SPACE.id, StringN11nFunction.STRING_NORMALIZE_SPACE_FUNCTION_CALL_FACTORY));</span>
+<span class="fc" id="L749">		nonGenericFunctions.add(new StringN11nFunction(StandardFunction.STRING_NORMALIZE_TO_LOWER_CASE.id, StringN11nFunction.STRING_NORMALIZE_TO_LOWER_CASE_FUNCTION_CALL_FACTORY));</span>
+
+		/*
+		 * Primitive data-type conversion functions: A.3.4 Numeric data-type conversion functions, and all {type}-from-string / string-from-{type} functions from A.3.9 (other parts of A.3.9 addressed
+		 * below by StringConcatenateFunction, NonEqualTypeMatchFunction, SubstringFunction)
+		 */
+<span class="fc" id="L755">		nonGenericFunctions</span>
+<span class="fc" id="L756">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DOUBLE_TO_INTEGER.id, StandardDatatypes.DOUBLE, StandardDatatypes.INTEGER, StandardDatatypeConverters.DOUBLE_TO_INTEGER));</span>
+<span class="fc" id="L757">		nonGenericFunctions</span>
+<span class="fc" id="L758">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.INTEGER_TO_DOUBLE.id, StandardDatatypes.INTEGER, StandardDatatypes.DOUBLE, StandardDatatypeConverters.INTEGER_TO_DOUBLE));</span>
+<span class="fc" id="L759">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.BOOLEAN_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.BOOLEAN,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.BOOLEAN)));
+<span class="fc" id="L761">		nonGenericFunctions</span>
+<span class="fc" id="L762">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_BOOLEAN.id, StandardDatatypes.BOOLEAN, StandardDatatypes.STRING, StandardDatatypeConverters.BOOLEAN_TO_STRING));</span>
+<span class="fc" id="L763">		nonGenericFunctions</span>
+<span class="fc" id="L764">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.INTEGER_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.INTEGER, new FromStringConverter&lt;&gt;(stdIntValueFactory)));</span>
+<span class="fc" id="L765">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_INTEGER.id, StandardDatatypes.INTEGER, StandardDatatypes.STRING, new ToStringConverter&lt;IntegerValue&gt;()));</span>
+<span class="fc" id="L766">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DOUBLE_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.DOUBLE,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.DOUBLE)));
+<span class="fc" id="L768">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_DOUBLE.id, StandardDatatypes.DOUBLE, StandardDatatypes.STRING, new ToStringConverter&lt;DoubleValue&gt;()));</span>
+<span class="fc" id="L769">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.TIME_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.TIME,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.TIME)));
+<span class="fc" id="L771">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_TIME.id, StandardDatatypes.TIME, StandardDatatypes.STRING, new ToStringConverter&lt;TimeValue&gt;()));</span>
+<span class="fc" id="L772">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DATE_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.DATE,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.DATE)));
+<span class="fc" id="L774">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_DATE.id, StandardDatatypes.DATE, StandardDatatypes.STRING, new ToStringConverter&lt;DateValue&gt;()));</span>
+<span class="fc" id="L775">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DATETIME_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.DATETIME,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.DATETIME)));
+<span class="fc" id="L777">		nonGenericFunctions</span>
+<span class="fc" id="L778">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_DATETIME.id, StandardDatatypes.DATETIME, StandardDatatypes.STRING, new ToStringConverter&lt;DateTimeValue&gt;()));</span>
+<span class="fc" id="L779">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.ANYURI_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.ANYURI,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.ANYURI)));
+<span class="fc" id="L781">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_ANYURI.id, StandardDatatypes.ANYURI, StandardDatatypes.STRING, new ToStringConverter&lt;AnyUriValue&gt;()));</span>
+<span class="fc" id="L782">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DAYTIMEDURATION_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.DAYTIMEDURATION,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.DAYTIMEDURATION)));
+<span class="fc" id="L784">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_DAYTIMEDURATION.id, StandardDatatypes.DAYTIMEDURATION, StandardDatatypes.STRING,</span>
+		        new ToStringConverter&lt;DayTimeDurationValue&gt;()));
+<span class="fc" id="L786">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.YEARMONTHDURATION_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.YEARMONTHDURATION,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.YEARMONTHDURATION)));
+<span class="fc" id="L788">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_YEARMONTHDURATION.id, StandardDatatypes.YEARMONTHDURATION, StandardDatatypes.STRING,</span>
+		        new ToStringConverter&lt;YearMonthDurationValue&gt;()));
+<span class="fc" id="L790">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.X500NAME_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.X500NAME,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.X500NAME)));
+<span class="fc" id="L792">		nonGenericFunctions</span>
+<span class="fc" id="L793">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_X500NAME.id, StandardDatatypes.X500NAME, StandardDatatypes.STRING, new ToStringConverter&lt;X500NameValue&gt;()));</span>
+<span class="fc" id="L794">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.RFC822NAME_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.RFC822NAME,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.RFC822NAME)));
+<span class="fc" id="L796">		nonGenericFunctions</span>
+<span class="fc" id="L797">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_RFC822NAME.id, StandardDatatypes.RFC822NAME, StandardDatatypes.STRING, new ToStringConverter&lt;Rfc822NameValue&gt;()));</span>
+<span class="fc" id="L798">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.IPADDRESS_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.IPADDRESS,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.IPADDRESS)));
+<span class="fc" id="L800">		nonGenericFunctions</span>
+<span class="fc" id="L801">		        .add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_IPADDRESS.id, StandardDatatypes.IPADDRESS, StandardDatatypes.STRING, new ToStringConverter&lt;IpAddressValue&gt;()));</span>
+<span class="fc" id="L802">		nonGenericFunctions.add(new DatatypeConversionFunction&lt;&gt;(StandardFunction.DNSNAME_FROM_STRING.id, StandardDatatypes.STRING, StandardDatatypes.DNSNAME,</span>
+		        new FromStringConverter&lt;&gt;(StandardAttributeValueFactories.DNSNAME)));
+<span class="fc" id="L804">		nonGenericFunctions.add(</span>
+		        new DatatypeConversionFunction&lt;&gt;(StandardFunction.STRING_FROM_DNSNAME.id, StandardDatatypes.DNSNAME, StandardDatatypes.STRING, new ToStringConverter&lt;DnsNameWithPortRangeValue&gt;()));
+
+		/*
+		 * Logical functions (A.3.5)
+		 */
+<span class="fc" id="L810">		nonGenericFunctions.add(new LogicalOrFunction(StandardFunction.OR.id));</span>
+<span class="fc" id="L811">		nonGenericFunctions.add(new LogicalAndFunction(StandardFunction.AND.id));</span>
+<span class="fc" id="L812">		nonGenericFunctions.add(new LogicalNOfFunction(StandardFunction.N_OF.id));</span>
+<span class="fc" id="L813">		nonGenericFunctions.add(new LogicalNotFunction(StandardFunction.NOT.id));</span>
+
+		/*
+		 * Total-ordering comparison functions (all elements of a given type can be compared to each other), i.e. numeric (A.3.6) and string comparison functions (first part of A.3.8)
+		 */
+<span class="fc bfc" id="L818" title="All 2 branches covered.">		for (final PostCondition condition : PostCondition.values())</span>
+		{
+<span class="fc" id="L820">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.INTEGER, condition));</span>
+<span class="fc" id="L821">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.DOUBLE, condition));</span>
+<span class="fc" id="L822">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.STRING, condition));</span>
+		}
+
+		/*
+		 * Date and time arithmetic functions (A.3.7)
+		 */
+<span class="fc" id="L828">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATETIME_ADD_DAYTIMEDURATION.id, StandardDatatypes.DATETIME, StandardDatatypes.DAYTIMEDURATION,</span>
+		        new TimeAddDurationOperator&lt;DateTimeValue, DayTimeDurationValue&gt;()));
+<span class="fc" id="L830">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATETIME_SUBTRACT_DAYTIMEDURATION.id, StandardDatatypes.DATETIME, StandardDatatypes.DAYTIMEDURATION,</span>
+		        new TimeSubtractDurationOperator&lt;DateTimeValue, DayTimeDurationValue&gt;()));
+<span class="fc" id="L832">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATETIME_ADD_YEARMONTHDURATION.id, StandardDatatypes.DATETIME, StandardDatatypes.YEARMONTHDURATION,</span>
+		        new TimeAddDurationOperator&lt;DateTimeValue, YearMonthDurationValue&gt;()));
+<span class="fc" id="L834">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATETIME_SUBTRACT_YEARMONTHDURATION.id, StandardDatatypes.DATETIME, StandardDatatypes.YEARMONTHDURATION,</span>
+		        new TimeSubtractDurationOperator&lt;DateTimeValue, YearMonthDurationValue&gt;()));
+<span class="fc" id="L836">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATE_ADD_YEARMONTHDURATION.id, StandardDatatypes.DATE, StandardDatatypes.YEARMONTHDURATION,</span>
+		        new TimeAddDurationOperator&lt;DateValue, YearMonthDurationValue&gt;()));
+<span class="fc" id="L838">		nonGenericFunctions.add(new TemporalArithmeticFunction&lt;&gt;(StandardFunction.DATE_SUBTRACT_YEARMONTHDURATION.id, StandardDatatypes.DATE, StandardDatatypes.YEARMONTHDURATION,</span>
+		        new TimeSubtractDurationOperator&lt;DateValue, YearMonthDurationValue&gt;()));
+
+		/*
+		 * Date and time comparison functions (second part of A.3.8, first part already addressed previously), i.e. not imposing total ordering of compared objects, as opposed to total-ordering
+		 * comparison functions above, since such date/times may have indeterminate relationship to each other
+		 */
+<span class="fc bfc" id="L845" title="All 2 branches covered.">		for (final PostCondition condition : PostCondition.values())</span>
+		{
+<span class="fc" id="L847">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.TIME, condition));</span>
+<span class="fc" id="L848">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.DATE, condition));</span>
+<span class="fc" id="L849">			nonGenericFunctions.add(new ComparisonFunction&lt;&gt;(StandardDatatypes.DATETIME, condition));</span>
+		}
+
+<span class="fc" id="L852">		nonGenericFunctions.add(new TimeRangeComparisonFunction(StandardFunction.TIME_IN_RANGE.id));</span>
+
+		/*
+		 * String-concatenate function (start of A.3.9, other parts addressed above by DatatypeConversionFunction, and below by NonEqualTypeMatchFunction and SubstringFunction)
+		 */
+<span class="fc" id="L857">		nonGenericFunctions.add(new StringConcatenateFunction(StandardFunction.STRING_CONCATENATE.id));</span>
+
+		/*
+		 * Match functions taking parameters of possibly different types, i.e. *-contains / *-starts-with / *-ends-with (second before last part of A.3.9, other parts addressed above by
+		 * DatatypeConversionFunction, StringConcatenateFunction, and below by SubstringFunction), regexp-match (A.3.13) and special match 'rfc822Name-match' (part of A.3.14, other part addressed
+		 * above by EqualTypeMatchFunction)
+		 */
+<span class="fc" id="L864">		nonGenericFunctions</span>
+<span class="fc" id="L865">		        .add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.RFC822NAME_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.RFC822NAME, StandardNonEqualTypeMatchers.RFC822NAME_MATCHER));</span>
+<span class="fc" id="L866">		nonGenericFunctions.add(</span>
+		        new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.ANYURI_STARTS_WITH.id, StandardDatatypes.STRING, StandardDatatypes.ANYURI, StandardNonEqualTypeMatchers.ANYURI_STARTS_WITH_MATCHER));
+<span class="fc" id="L868">		nonGenericFunctions</span>
+<span class="fc" id="L869">		        .add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.ANYURI_ENDS_WITH.id, StandardDatatypes.STRING, StandardDatatypes.ANYURI, StandardNonEqualTypeMatchers.ANYURI_ENDS_WITH_MATCHER));</span>
+<span class="fc" id="L870">		nonGenericFunctions</span>
+<span class="fc" id="L871">		        .add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.ANYURI_CONTAINS.id, StandardDatatypes.STRING, StandardDatatypes.ANYURI, StandardNonEqualTypeMatchers.ANYURI_CONTAINS_MATCHER));</span>
+<span class="fc" id="L872">		nonGenericFunctions</span>
+<span class="fc" id="L873">		        .add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.ANYURI_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.ANYURI, new RegexpMatchCallFactoryBuilder&lt;AnyUriValue&gt;()));</span>
+<span class="fc" id="L874">		nonGenericFunctions.add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.IPADDRESS_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.IPADDRESS,</span>
+		        new RegexpMatchCallFactoryBuilder&lt;IpAddressValue&gt;()));
+<span class="fc" id="L876">		nonGenericFunctions.add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.DNSNAME_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.DNSNAME,</span>
+		        new RegexpMatchCallFactoryBuilder&lt;DnsNameWithPortRangeValue&gt;()));
+<span class="fc" id="L878">		nonGenericFunctions.add(new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.RFC822NAME_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.RFC822NAME,</span>
+		        new RegexpMatchCallFactoryBuilder&lt;Rfc822NameValue&gt;()));
+<span class="fc" id="L880">		nonGenericFunctions.add(</span>
+		        new NonEqualTypeMatchFunction&lt;&gt;(StandardFunction.X500NAME_REGEXP_MATCH.id, StandardDatatypes.STRING, StandardDatatypes.X500NAME, new RegexpMatchCallFactoryBuilder&lt;X500NameValue&gt;()));
+
+		/*
+		 * Substring functions (last part of A.3.9, other parts addressed above by DatatypeConversionFunction, StringConcatenateFunction, NonEqualTypeMatchFunction)
+		 */
+<span class="fc" id="L886">		nonGenericFunctions.add(new SubstringFunction&lt;&gt;(StandardFunction.STRING_SUBSTRING.id, StandardDatatypes.STRING));</span>
+<span class="fc" id="L887">		nonGenericFunctions.add(new SubstringFunction&lt;&gt;(StandardFunction.ANYURI_SUBSTRING.id, StandardDatatypes.ANYURI));</span>
+
+		/*
+		 * First-order bag functions (A.3.10, A.3.11)
+		 */
+<span class="fc bfc" id="L892" title="All 2 branches covered.">		for (final AttributeDatatype&lt;?&gt; datatype : StandardDatatypes.MANDATORY_SET)</span>
+		{
+<span class="fc" id="L894">			nonGenericFunctions.addAll(FirstOrderBagFunctions.getFunctions(datatype));</span>
+<span class="fc" id="L895">		}</span>
+
+		/*
+		 * Higher-order bag functions (A.3.12)
+		 */
+<span class="fc" id="L900">		nonGenericFunctions.add(new BooleanOneBagOnlyFunction(StandardFunction.ANY_OF.id, new AnyOfCallFactory(StandardFunction.ANY_OF.id)));</span>
+<span class="fc" id="L901">		nonGenericFunctions.add(new BooleanOneBagOnlyFunction(StandardFunction.ALL_OF.id, new AllOfCallFactory(StandardFunction.ALL_OF.id)));</span>
+<span class="fc" id="L902">		nonGenericFunctions.add(new AnyOfAny(StandardFunction.ANY_OF_ANY.id));</span>
+<span class="fc" id="L903">		nonGenericFunctions.add(new AllOfAny(StandardFunction.ALL_OF_ANY.id));</span>
+<span class="fc" id="L904">		nonGenericFunctions.add(new AnyOfAll(StandardFunction.ANY_OF_ALL.id));</span>
+<span class="fc" id="L905">		nonGenericFunctions.add(new AllOfAll(StandardFunction.ALL_OF_ALL.id));</span>
+
+		/*
+		 * A.3.13 already addressed above by NonEqualTypeMatchFunction
+		 */
+		/*
+		 * A.3.14 already addressed above by EqualTypeMatchFunction and NonEqualTypeMatchFunction
+		 */
+
+		// Generic functions, e.g. map function
+<span class="fc" id="L915">		final Set&lt;GenericHigherOrderFunctionFactory&gt; genericFuncFactories = Collections.&lt;GenericHigherOrderFunctionFactory&gt;singleton(new MapFunctionFactory(StandardFunction.MAP.id));</span>
+
+		/*
+		 * A.3.16. Optional function(s) not supported
+		 */
+
+<span class="pc bpc" id="L921" title="1 of 2 branches missed.">		if (LOGGER.isDebugEnabled())</span>
+		{
+			// TreeSet for sorting functions, easier to read
+<span class="nc" id="L924">			final TreeSet&lt;Function&lt;?&gt;&gt; sortedFunctions = new TreeSet&lt;&gt;(FUNCTION_COMPARATOR);</span>
+<span class="nc" id="L925">			sortedFunctions.addAll(nonGenericFunctions);</span>
+<span class="nc" id="L926">			LOGGER.debug(&quot;Loaded XACML standard non-generic functions: {}&quot;, sortedFunctions);</span>
+
+<span class="nc" id="L928">			final TreeSet&lt;GenericHigherOrderFunctionFactory&gt; sortedFunctionFactories = new TreeSet&lt;&gt;(FUNCTION_FACTORY_COMPARATOR);</span>
+<span class="nc" id="L929">			sortedFunctionFactories.addAll(genericFuncFactories);</span>
+<span class="nc" id="L930">			LOGGER.debug(&quot;Loaded XACML standard generic functions: {}&quot;, sortedFunctionFactories);</span>
+		}
+
+<span class="fc" id="L933">		return new ImmutableFunctionRegistry(nonGenericFunctions, genericFuncFactories);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

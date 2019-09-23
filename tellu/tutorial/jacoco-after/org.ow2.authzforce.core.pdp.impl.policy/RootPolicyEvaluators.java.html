@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RootPolicyEvaluators.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.policy</a> &gt; <span class="el_source">RootPolicyEvaluators.java</span></div><h1>RootPolicyEvaluators.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.policy;
+
+import java.io.IOException;
+
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.DecisionResults;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.RootPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.StaticRootPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.StaticTopLevelPolicyElementEvaluator;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * {@link RootPolicyEvaluator} implementations
+ *
+ * 
+ * @version $Id: $
+ */
+<span class="nc" id="L41">public final class RootPolicyEvaluators</span>
+{
+
+	/**
+	 * Root Policy Evaluator base implementation.
+	 */
+	public static class Base implements RootPolicyEvaluator
+	{
+<span class="nc" id="L49">		private static final IllegalArgumentException NULL_EXPRESSIONFACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined XACML Expression parser/factory (expressionFactory)&quot;);</span>
+<span class="nc" id="L50">		private static final IllegalArgumentException NULL_ROOTPOLICYPROVIDER_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined Root Policy Provider (rootPolicyProvider)&quot;);</span>
+
+<span class="nc" id="L52">		private static final Logger LOGGER = LoggerFactory.getLogger(Base.class);</span>
+
+		private final RootPolicyProvider rootPolicyProvider;
+
+		private transient final ExpressionFactory expressionFactory;
+
+		private transient final boolean isRootPolicyProviderStatic;
+
+<span class="nc" id="L60">		private transient volatile StaticView staticView = null;</span>
+
+		/**
+		 * Creates a root policy evaluator. If you want static resolution, i.e. use the same constant root policy (resolved at initialization time) for all evaluations, use the static root policy
+		 * Provider provided by {@link #toStatic()} after calling this constructor; then {@link #close()} this instance.
+		 * 
+		 * @param xacmlExpressionFactory
+		 *            XACML expression factory
+		 * 
+		 * @param rootPolicyProvider
+		 *            Root Policy Provider - mandatory
+		 * 
+		 * @throws java.lang.IllegalArgumentException
+		 *             If {@code expressionFactory == null || rootPolicyProvider == null}
+		 */
+		public Base(final ExpressionFactory xacmlExpressionFactory, final RootPolicyProvider rootPolicyProvider) throws IllegalArgumentException
+<span class="nc" id="L76">		{</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">			if (xacmlExpressionFactory == null)</span>
+			{
+<span class="nc" id="L79">				throw NULL_EXPRESSIONFACTORY_ARGUMENT_EXCEPTION;</span>
+			}
+
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			if (rootPolicyProvider == null)</span>
+			{
+<span class="nc" id="L84">				throw NULL_ROOTPOLICYPROVIDER_ARGUMENT_EXCEPTION;</span>
+			}
+
+			// Initialize ExpressionFactory
+<span class="nc" id="L88">			this.expressionFactory = xacmlExpressionFactory;</span>
+
+<span class="nc" id="L90">			this.rootPolicyProvider = rootPolicyProvider;</span>
+<span class="nc" id="L91">			this.isRootPolicyProviderStatic = rootPolicyProvider instanceof StaticRootPolicyProvider;</span>
+<span class="nc" id="L92">		}</span>
+
+		@Override
+		public void close() throws IOException
+		{
+<span class="nc" id="L97">			this.expressionFactory.close();</span>
+<span class="nc" id="L98">			this.rootPolicyProvider.close();</span>
+<span class="nc" id="L99">		}</span>
+
+		@Override
+		public DecisionResult findAndEvaluate(final EvaluationContext context)
+		{
+			final PolicyEvaluator policy;
+			try
+			{
+<span class="nc" id="L107">				policy = rootPolicyProvider.getPolicy(context);</span>
+			}
+<span class="nc" id="L109">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L111">				LOGGER.info(&quot;Root policy Provider {} could not find an applicable root policy to evaluate&quot;, rootPolicyProvider, e);</span>
+<span class="nc" id="L112">				return DecisionResults.newIndeterminate(null, e, null);</span>
+			}
+<span class="nc" id="L114">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L116">				LOGGER.warn(&quot;One of the possible root policies (resolved by the root policy provider {}) is invalid&quot;, rootPolicyProvider, e);</span>
+<span class="nc" id="L117">				return DecisionResults.newIndeterminate(null, new IndeterminateEvaluationException(e.getMessage(), XacmlStatusCode.PROCESSING_ERROR.value()), null);</span>
+<span class="nc" id="L118">			}</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">			if (policy == null)</span>
+			{
+<span class="nc" id="L122">				return DecisionResults.SIMPLE_NOT_APPLICABLE;</span>
+			}
+
+<span class="nc" id="L125">			return policy.evaluate(context, true);</span>
+		}
+
+		@Override
+		public FlattenedPolicyTree getStaticApplicablePolicies()
+		{
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			return staticView == null ? null : staticView.getStaticApplicablePolicies();</span>
+		}
+
+		/**
+		 * Gets the static version of this policy evaluator, i.e. a policy evaluator using the same constant root policy resolved by the internal root policy provider (once and for all) when calling
+		 * this method. This root policy will be used for all evaluations. This is possible only if the root policy provider is static, i.e. independent from the evaluation context (static
+		 * resolution).
+		 * 
+		 * @return static view of this policy evaluator; or null if none could be created because the internal root policy provider depends on the evaluation context to find the root policy (no static
+		 *         resolution is possible). If not null, this evaluator's policy provider responsible for finding the policy in {@link #findAndEvaluate(EvaluationContext)} is closed (calling
+		 *         {@link RootPolicyProvider#close()} and therefore not useable anymore. The resulting static view must be used instead.
+		 * @throws IOException
+		 *             error closing the evaluator's policy provider responsible for finding the policy in {@link #findAndEvaluate(EvaluationContext)}
+		 */
+		public RootPolicyEvaluator toStatic() throws IOException
+		{
+			/*
+			 * If staticView not yet initialized and root policy provider is actually static (in which case staticView can be initialized)
+			 */
+<span class="nc bnc" id="L150" title="All 4 branches missed.">			if (staticView == null &amp;&amp; isRootPolicyProviderStatic)</span>
+			{
+<span class="nc" id="L152">				staticView = new StaticView((StaticRootPolicyProvider) rootPolicyProvider, this.expressionFactory);</span>
+			}
+
+<span class="nc" id="L155">			return staticView;</span>
+		}
+
+	}
+
+	/**
+	 * 
+	 * Static view of policy evaluator. The root policy is resolved once and for all at initialization time, and is then used for all evaluation requests.
+	 *
+	 */
+<span class="nc bnc" id="L165" title="All 2 branches missed.">	static class StaticView implements RootPolicyEvaluator</span>
+	{
+		private final StaticTopLevelPolicyElementEvaluator staticRootPolicyEvaluator;
+		private final ExpressionFactory expressionFactory;
+		private transient final FlattenedPolicyTree staticApplicablePolicies;
+
+		private StaticView(final StaticRootPolicyProvider staticProvider, final ExpressionFactory expressionFactoryForClosing) throws IOException
+<span class="nc" id="L172">		{</span>
+<span class="nc bnc" id="L173" title="All 6 branches missed.">			assert staticProvider != null &amp;&amp; expressionFactoryForClosing != null;</span>
+<span class="nc" id="L174">			this.expressionFactory = expressionFactoryForClosing;</span>
+<span class="nc" id="L175">			this.staticRootPolicyEvaluator = staticProvider.getPolicy();</span>
+<span class="nc" id="L176">			this.staticApplicablePolicies = new FlattenedPolicyTree(staticRootPolicyEvaluator.getPrimaryPolicyMetadata(), staticRootPolicyEvaluator.getPolicyRefsMetadata());</span>
+
+<span class="nc" id="L178">			staticProvider.close();</span>
+<span class="nc" id="L179">		}</span>
+
+		@Override
+		public void close() throws IOException
+		{
+<span class="nc" id="L184">			this.expressionFactory.close();</span>
+<span class="nc" id="L185">		}</span>
+
+		@Override
+		public DecisionResult findAndEvaluate(final EvaluationContext context)
+		{
+<span class="nc" id="L190">			return staticRootPolicyEvaluator.evaluate(context);</span>
+		}
+
+		@Override
+		public FlattenedPolicyTree getStaticApplicablePolicies()
+		{
+<span class="nc" id="L196">			return staticApplicablePolicies;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

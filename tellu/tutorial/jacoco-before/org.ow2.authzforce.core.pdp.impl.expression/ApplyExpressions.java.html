@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApplyExpressions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.expression</a> &gt; <span class="el_source">ApplyExpressions.java</span></div><h1>ApplyExpressions.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.expression;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
+import java.util.Optional;
+
+import javax.xml.bind.JAXBElement;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.ConstantExpression;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.expression.FunctionExpression;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.func.FunctionCall;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ApplyType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DefaultsType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ExpressionType;
+
+/**
+ * Static utility methods pertaining to {@link ApplyType} evaluators.
+ *
+ */
+public final class ApplyExpressions
+{
+	private ApplyExpressions()
+	{
+		// prevent instantiation
+	}
+
+	private static final class ConstantApplyExpression&lt;V extends Value&gt; extends ConstantExpression&lt;V&gt;
+	{
+
+		private ConstantApplyExpression(final Datatype&lt;V&gt; datatype, final V v) throws IllegalArgumentException
+		{
+<span class="nc" id="L64">			super(datatype, v);</span>
+<span class="nc" id="L65">		}</span>
+
+	}
+
+	private static final class VariableApplyExpression&lt;V extends Value&gt; implements Expression&lt;V&gt;
+	{
+
+		private final FunctionCall&lt;V&gt; functionCall;
+
+		private VariableApplyExpression(final FunctionCall&lt;V&gt; funcCall)
+<span class="nc" id="L75">		{</span>
+<span class="nc" id="L76">			this.functionCall = funcCall;</span>
+<span class="nc" id="L77">		}</span>
+
+		@Override
+		public Datatype&lt;V&gt; getReturnType()
+		{
+<span class="nc" id="L82">			return functionCall.getReturnType();</span>
+		}
+
+		@Override
+		public V evaluate(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L88">			return functionCall.evaluate(context);</span>
+		}
+
+		@Override
+		public Optional&lt;V&gt; getValue()
+		{
+<span class="nc" id="L94">			return Optional.empty();</span>
+		}
+	}
+
+<span class="nc" id="L98">	private static final Logger LOGGER = LoggerFactory.getLogger(ApplyExpressions.class);</span>
+
+<span class="nc" id="L100">	private static final IllegalArgumentException NULL_EXPRESSION_FACTORY_EXCEPTION = new IllegalArgumentException(&quot;Undefined expression factory argument&quot;);</span>
+
+<span class="nc" id="L102">	private static final IllegalArgumentException NULL_XACML_APPLY_ELEMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined argument: XACML Apply element&quot;);</span>
+
+	private static &lt;V extends Value&gt; Expression&lt;V&gt; newInstance(final FunctionCall&lt;V&gt; functionCall, final String description)
+	{
+		/*
+		 * Check whether the Apply Expression is constant -&gt; try to pre-evaluate the result statically (out of context, i.e. in null context), to prevent useless re-evaluation of the same thing
+		 */
+<span class="nc" id="L109">		V staticEvalResult = null;</span>
+		try
+		{
+<span class="nc" id="L112">			staticEvalResult = functionCall.evaluate(null);</span>
+<span class="nc" id="L113">			LOGGER.debug(&quot;Apply[Description = &quot; + description + &quot;]: static evaluation OK -&gt; expression is constant -&gt; optimizing: using constant result as evaluation result&quot;);</span>
+<span class="nc" id="L114">		} catch (final IndeterminateEvaluationException e)</span>
+		{
+<span class="nc" id="L116">			LOGGER.debug(&quot;Apply[Description = &quot; + description + &quot;]: static evaluation failed -&gt; expression is not constant -&gt; not optimizing&quot;);</span>
+<span class="nc" id="L117">		}</span>
+
+<span class="nc bnc" id="L119" title="All 2 branches missed.">		return staticEvalResult == null ? new VariableApplyExpression&lt;&gt;(functionCall) : new ConstantApplyExpression&lt;&gt;(functionCall.getReturnType(), staticEvalResult);</span>
+	}
+
+	/**
+	 * Creates instance of Apply evaluator from XACML Apply element
+	 *
+	 * @param xacmlApply
+	 *            XACML Apply element
+	 * @param xPathCompiler
+	 *            Enclosing Policy(Set)'s default XPath compiler, corresponding to the Policy(Set)'s default XPath version specified in {@link DefaultsType} element.
+	 * @param expFactory
+	 *            expression factory for instantiating Apply's parameters
+	 * @param longestVarRefChain
+	 *            Longest chain of VariableReference references leading to this Apply, when evaluating a VariableDefinitions, i.e. list of VariableIds, such that V1-&gt; V2 -&gt;... -&gt; Vn -&gt;
+	 *            &lt;code&gt;this&lt;/code&gt;, where &quot;V1 -&gt; V2&quot; means: the expression in VariableDefinition of V1 contains a VariableReference to V2. This is used to detect exceeding depth of VariableReference
+	 *            reference when a new VariableReference occurs in a VariableDefinition's expression. May be null, if this expression does not belong to any VariableDefinition.
+	 * @return Apply evaluator instance
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code xacmlApply} is invalid or {@code expFactory} is null; or function ID not supported/unknown; if {@code xprs} are invalid expressions, or invalid arguments for this
+	 *             function; or if all {@code xprs} are static but calling the function statically (with these static arguments) failed
+	 */
+	public static Expression&lt;?&gt; newInstance(final ApplyType xacmlApply, final XPathCompiler xPathCompiler, final ExpressionFactory expFactory, final Deque&lt;String&gt; longestVarRefChain)
+	        throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		if (xacmlApply == null)</span>
+		{
+<span class="nc" id="L145">			throw NULL_XACML_APPLY_ELEMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		if (expFactory == null)</span>
+		{
+<span class="nc" id="L150">			throw NULL_EXPRESSION_FACTORY_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L153">		final String applyDesc = xacmlApply.getDescription();</span>
+		// function args
+<span class="nc" id="L155">		final List&lt;JAXBElement&lt;? extends ExpressionType&gt;&gt; applyArgExpressions = xacmlApply.getExpressions();</span>
+<span class="nc" id="L156">		final List&lt;Expression&lt;?&gt;&gt; funcInputs = new ArrayList&lt;&gt;(applyArgExpressions.size());</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		for (final JAXBElement&lt;? extends ExpressionType&gt; exprElt : applyArgExpressions)</span>
+		{
+			final Expression&lt;?&gt; exprHandler;
+			try
+			{
+<span class="nc" id="L162">				exprHandler = expFactory.getInstance(exprElt.getValue(), xPathCompiler, longestVarRefChain);</span>
+<span class="nc" id="L163">			} catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L165">				throw new IllegalArgumentException(&quot;Error parsing one of Apply [description=&quot; + applyDesc + &quot;]'s function arguments (Expressions)&quot;, e);</span>
+<span class="nc" id="L166">			}</span>
+
+<span class="nc" id="L168">			funcInputs.add(exprHandler);</span>
+<span class="nc" id="L169">		}</span>
+
+<span class="nc" id="L171">		final String functionId = xacmlApply.getFunctionId();</span>
+
+		// get the function instance
+		// Determine whether this is a higher-order function, i.e. first parameter is a sub-function
+		final Datatype&lt;? extends AttributeValue&gt; subFuncPrimReturnType;
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if (funcInputs.isEmpty())</span>
+		{
+<span class="nc" id="L178">			subFuncPrimReturnType = null;</span>
+		} else
+		{
+<span class="nc" id="L181">			final Expression&lt;?&gt; xpr0 = funcInputs.get(0);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			if (xpr0 instanceof FunctionExpression)</span>
+			{
+<span class="nc" id="L184">				final Datatype&lt;?&gt; subFuncReturnType = ((FunctionExpression) xpr0).getValue().get().getReturnType();</span>
+<span class="nc bnc" id="L185" title="All 4 branches missed.">				if (subFuncReturnType.getTypeParameter().isPresent() || subFuncReturnType == StandardDatatypes.FUNCTION)</span>
+				{
+<span class="nc" id="L187">					throw new IllegalArgumentException(&quot;Error parsing Apply[description=&quot; + applyDesc + &quot;]: Invalid return type (&quot; + subFuncReturnType</span>
+					        + &quot;) of sub-function (first-parameter) of Apply Function '&quot; + functionId + &quot;'. Expected: AttributeValue datatype.&quot;);
+				}
+
+				/*
+				 * FIXME: is there a cleaner way to cast?
+				 */
+<span class="nc" id="L194">				subFuncPrimReturnType = (Datatype&lt;? extends AttributeValue&gt;) subFuncReturnType;</span>
+<span class="nc" id="L195">			} else</span>
+			{
+<span class="nc" id="L197">				subFuncPrimReturnType = null;</span>
+			}
+		}
+
+		final FunctionExpression functionExp;
+		try
+		{
+<span class="nc" id="L204">			functionExp = expFactory.getFunction(functionId, subFuncPrimReturnType);</span>
+<span class="nc" id="L205">		} catch (final IllegalArgumentException e)</span>
+		{
+<span class="nc" id="L207">			throw new IllegalArgumentException(</span>
+			        &quot;Invalid Apply[description=&quot; + applyDesc + &quot;]: Invalid return type (&quot; + subFuncPrimReturnType + &quot;) of sub-function (first-parameter) of Apply Function '&quot; + functionId + &quot;'&quot;, e);
+<span class="nc" id="L209">		}</span>
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		if (functionExp == null)</span>
+		{
+<span class="nc" id="L213">			throw new IllegalArgumentException(&quot;Invalid Apply[description=&quot; + applyDesc + &quot;]: Invalid Function: function ID '&quot; + functionId + &quot;' not supported&quot;);</span>
+		}
+
+<span class="nc" id="L216">		final Function&lt;?&gt; function = functionExp.getValue().get();</span>
+
+		// check that the given inputs work for the function and get the optimized functionCall
+		final FunctionCall&lt;?&gt; funcCall;
+		try
+		{
+<span class="nc" id="L222">			funcCall = function.newCall(Collections.unmodifiableList(funcInputs));</span>
+<span class="nc" id="L223">		} catch (final IllegalArgumentException e)</span>
+		{
+<span class="nc" id="L225">			throw new IllegalArgumentException(&quot;Invalid Apply[Description = &quot; + applyDesc + &quot;]: Invalid args for function &quot; + function, e);</span>
+<span class="nc" id="L226">		}</span>
+
+<span class="nc" id="L228">		return newInstance(funcCall, applyDesc);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

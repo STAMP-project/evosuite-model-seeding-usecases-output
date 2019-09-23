@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SubstringFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">SubstringFunction.java</span></div><h1>SubstringFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall.EagerMultiPrimitiveTypeEval;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.func.MultiParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.IntegerValue;
+import org.ow2.authzforce.core.pdp.api.value.SimpleValue;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.StringValue;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Implements *-substring functions
+ *
+ * @param &lt;AV&gt;
+ *            parameter type
+ * 
+ * @version $Id: $
+ */
+final class SubstringFunction&lt;AV extends SimpleValue&lt;String&gt;&gt; extends MultiParameterTypedFirstOrderFunction&lt;StringValue&gt;
+{
+
+<span class="fc" id="L54">	private static final Logger LOGGER = LoggerFactory.getLogger(SubstringFunction.class);</span>
+
+	private static final class Call extends EagerMultiPrimitiveTypeEval&lt;StringValue&gt;
+	{
+
+		private final String invalidArgTypesErrorMsg;
+		private final String argsOutOfBoundsErrorMessage;
+		private final Datatype&lt;? extends SimpleValue&lt;String&gt;&gt; param0Type;
+
+		private Call(final FirstOrderFunctionSignature&lt;StringValue&gt; functionSig, final Datatype&lt;? extends SimpleValue&lt;String&gt;&gt; param0Type, final List&lt;Expression&lt;?&gt;&gt; args,
+		        final Datatype&lt;?&gt;[] remainingArgTypes) throws IllegalArgumentException
+		{
+<span class="fc" id="L66">			super(functionSig, args, remainingArgTypes);</span>
+<span class="fc" id="L67">			this.invalidArgTypesErrorMsg = &quot;Function &quot; + functionId + &quot;: Invalid arg types. Expected: &quot; + param0Type + &quot;, &quot; + StandardDatatypes.INTEGER + &quot;, &quot; + StandardDatatypes.INTEGER;</span>
+<span class="fc" id="L68">			this.argsOutOfBoundsErrorMessage = &quot;Function &quot; + functionId + &quot;: either beginIndex is out of bounds, or endIndex =/= -1 and out of bounds&quot;;</span>
+<span class="fc" id="L69">			this.param0Type = param0Type;</span>
+<span class="fc" id="L70">		}</span>
+
+		@Override
+		protected StringValue evaluate(final Deque&lt;AttributeValue&gt; args) throws IndeterminateEvaluationException
+		{
+<span class="fc" id="L75">			final AttributeValue rawArg0 = args.poll();</span>
+<span class="fc" id="L76">			final AttributeValue rawArg1 = args.poll();</span>
+<span class="fc" id="L77">			final AttributeValue rawArg2 = args.poll();</span>
+
+			final SimpleValue&lt;String&gt; arg0;
+			final IntegerValue beginIndex;
+			final IntegerValue endIndex;
+			try
+			{
+<span class="fc" id="L84">				arg0 = param0Type.cast(rawArg0);</span>
+<span class="fc" id="L85">				beginIndex = (IntegerValue) rawArg1;</span>
+<span class="fc" id="L86">				endIndex = (IntegerValue) rawArg2;</span>
+<span class="nc" id="L87">			} catch (final ClassCastException e)</span>
+			{
+<span class="nc" id="L89">				throw new IndeterminateEvaluationException(invalidArgTypesErrorMsg, XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="fc" id="L90">			}</span>
+
+			/**
+			 * string-susbtring(str1, beginIndex, endIndex)
+			 * &lt;p&gt;
+			 * The result SHALL be the substring of &lt;code&gt;arg0&lt;/code&gt; at the position given by &lt;code&gt;beginIndex&lt;/code&gt; and ending at &lt;code&gt;endIndex&lt;/code&gt;. The first character of &lt;code&gt;arg0&lt;/code&gt; has
+			 * position zero. The negative integer value -1 given for &lt;code&gt;endIndex&lt;/code&gt; indicates the end of the string. If &lt;code&gt;beginIndex&lt;/code&gt; or &lt;code&gt;endIndex&lt;/code&gt; are out of bounds, then
+			 * the function MUST evaluate to Indeterminate with a status code of urn:oasis:names:tc:xacml:1.0:status:processing-error
+			 * 
+			 * @param arg0
+			 *            value from which to extract the substring
+			 * @param beginIndex
+			 *            position in this string where to begin the substring
+			 * @param endIndex
+			 *            the position in this string just before which to end the substring
+			 * @return the substring
+			 * @throws IndeterminateXacmlJaxbResult
+			 *             if {@code beginIndex} or {@code endIndex} are out of bounds
+			 */
+			final String substring;
+			try
+			{
+<span class="fc" id="L112">				final int beginIndexInt = beginIndex.intValueExact();</span>
+<span class="fc" id="L113">				final int endIndexInt = endIndex.intValueExact();</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">				substring = endIndexInt == -1 ? arg0.getUnderlyingValue().substring(beginIndexInt) : arg0.getUnderlyingValue().substring(beginIndexInt, endIndexInt);</span>
+<span class="fc" id="L115">			} catch (ArithmeticException | IndexOutOfBoundsException e)</span>
+			{
+<span class="fc" id="L117">				throw new IndeterminateEvaluationException(argsOutOfBoundsErrorMessage, XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="fc" id="L118">			}</span>
+
+<span class="fc" id="L120">			return new StringValue(substring);</span>
+		}
+	}
+
+	private final Datatype&lt;AV&gt; param0Type;
+
+	/**
+	 * Instantiates function
+	 * 
+	 * @param functionId
+	 *            function ID
+	 * @param param0Type
+	 *            First parameter type
+	 */
+	SubstringFunction(final String functionId, final Datatype&lt;AV&gt; param0Type)
+	{
+<span class="fc" id="L136">		super(functionId, StandardDatatypes.STRING, false, Arrays.asList(param0Type, StandardDatatypes.INTEGER, StandardDatatypes.INTEGER));</span>
+<span class="fc" id="L137">		this.param0Type = param0Type;</span>
+<span class="fc" id="L138">	}</span>
+
+	private static String getInvalidArg1MessagePrefix(final FirstOrderFunctionSignature&lt;?&gt; funcsig)
+	{
+<span class="fc" id="L142">		return &quot;Function &quot; + funcsig.getName() + &quot;: Invalid arg #1 (beginIndex): expected: positive integer; actual: &quot;;</span>
+	}
+
+	private static String getInvalidArg2MessagePrefix(final FirstOrderFunctionSignature&lt;?&gt; funcsig)
+	{
+<span class="nc" id="L147">		return &quot;Function &quot; + funcsig.getName() + &quot;: Invalid arg #2 (endIndex): expected: -1 or positive integer &gt;= beginIndex; actual: &quot;;</span>
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;StringValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes)
+	{
+<span class="fc" id="L154">		final int numOfArgs = argExpressions.size() + remainingArgTypes.length;</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">		if (numOfArgs != 3)</span>
+		{
+<span class="nc" id="L157">			throw new IllegalArgumentException(&quot;Function &quot; + functionSignature.getName() + &quot;: Invalid number of args: expected: 3; actual: &quot; + numOfArgs);</span>
+		}
+
+		/*
+		 * Datatypes will be checked by Call class but they are specific constraints: arg0 &gt;= 0 &amp;&amp; (arg1 == -1 || arg0 &lt;= arg1). Note that if arg0 == arg1, result may be '' or raise out-of-bounds
+		 * error
+		 */
+<span class="fc" id="L164">		final Iterator&lt;? extends Expression&lt;?&gt;&gt; argExpsIterator = argExpressions.iterator();</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">		if (!argExpsIterator.hasNext())</span>
+		{
+<span class="fc" id="L167">			return new Call(functionSignature, param0Type, argExpressions, remainingArgTypes);</span>
+		}
+
+		// Skip the first argument (arg #0) which is the string
+<span class="fc" id="L171">		argExpsIterator.next();</span>
+
+		// Second arg (arg #1)
+<span class="pc bpc" id="L174" title="1 of 2 branches missed.">		if (!argExpsIterator.hasNext())</span>
+		{
+<span class="nc" id="L176">			return new Call(functionSignature, param0Type, argExpressions, remainingArgTypes);</span>
+		}
+
+<span class="fc" id="L179">		final Expression&lt;?&gt; arg1Exp = argExpsIterator.next();</span>
+<span class="fc" id="L180">		final Optional&lt;? extends Value&gt; arg1 = arg1Exp.getValue();</span>
+		final int beginIndex;
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">		if (arg1.isPresent())</span>
+		{
+<span class="fc" id="L184">			final Value arg1Value = arg1.get();</span>
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">			if (!(arg1Value instanceof IntegerValue))</span>
+			{
+<span class="nc" id="L187">				throw new IllegalArgumentException(getInvalidArg1MessagePrefix(functionSignature) + arg1Value + &quot; (type: &quot; + arg1Exp.getReturnType() + &quot;)&quot;);</span>
+			}
+
+<span class="fc" id="L190">			beginIndex = IntegerValue.class.cast(arg1Value).getUnderlyingValue().intValueExact();</span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">			if (beginIndex &lt; 0)</span>
+			{
+<span class="fc" id="L193">				throw new IllegalArgumentException(getInvalidArg1MessagePrefix(functionSignature) + beginIndex);</span>
+			}
+<span class="fc" id="L195">		} else</span>
+		{
+<span class="nc" id="L197">			beginIndex = -1; // undefined</span>
+		}
+
+		// Third arg
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">		if (!argExpsIterator.hasNext())</span>
+		{
+<span class="nc" id="L203">			return new Call(functionSignature, param0Type, argExpressions, remainingArgTypes);</span>
+		}
+
+<span class="fc" id="L206">		final Expression&lt;?&gt; arg2Exp = argExpsIterator.next();</span>
+<span class="fc" id="L207">		final Optional&lt;? extends Value&gt; arg2 = arg2Exp.getValue();</span>
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">		if (arg2.isPresent())</span>
+		{
+<span class="fc" id="L210">			final Value arg2Value = arg2.get();</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">			if (!(arg2Value instanceof IntegerValue))</span>
+			{
+<span class="nc" id="L213">				throw new IllegalArgumentException(getInvalidArg2MessagePrefix(functionSignature) + arg2Value + &quot; (type: &quot; + arg2Exp.getReturnType() + &quot;)&quot;);</span>
+			}
+
+<span class="fc" id="L216">			final int endIndex = IntegerValue.class.cast(arg2Value).getUnderlyingValue().intValueExact();</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">			if (endIndex != -1)</span>
+			{
+<span class="pc bpc" id="L219" title="1 of 2 branches missed.">				if (endIndex &lt; 0)</span>
+				{
+<span class="nc" id="L221">					throw new IllegalArgumentException(getInvalidArg2MessagePrefix(functionSignature) + endIndex);</span>
+				}
+
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">				if (beginIndex != -1)</span>
+				{
+					// beginIndex defined
+<span class="pc bpc" id="L227" title="1 of 2 branches missed.">					if (endIndex &lt; beginIndex)</span>
+					{
+						// and endIndex strictly smaller than beginIndex!
+<span class="nc" id="L230">						throw new IllegalArgumentException(getInvalidArg2MessagePrefix(functionSignature) + endIndex + &quot; &lt; beginIndex (&quot; + beginIndex + &quot;)&quot;);</span>
+					}
+
+					// endIndex &gt;= beginIndex
+<span class="pc bpc" id="L234" title="1 of 4 branches missed.">					if (beginIndex == 0 &amp;&amp; endIndex == 0)</span>
+					{
+						// constant empty string
+<span class="nc" id="L237">						LOGGER.warn(&quot;{} used with arg0 (beginIndex) = arg1 (endIndex) = 0 resulting in constant empty string. This is useless!&quot;, this.functionSignature);</span>
+<span class="nc" id="L238">						return new ConstantResultFirstOrderFunctionCall&lt;&gt;(StringValue.EMPTY, StandardDatatypes.STRING);</span>
+					}
+				}
+
+			}
+		}
+
+<span class="fc" id="L245">		return new Call(functionSignature, param0Type, argExpressions, remainingArgTypes);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

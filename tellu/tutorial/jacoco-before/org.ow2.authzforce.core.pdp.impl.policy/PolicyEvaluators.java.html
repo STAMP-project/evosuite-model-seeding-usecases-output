@@ -1,0 +1,2356 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PolicyEvaluators.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.policy</a> &gt; <span class="el_source">PolicyEvaluators.java</span></div><h1>PolicyEvaluators.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.policy;
+
+import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import javax.xml.bind.JAXBElement;
+
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.DecisionResults;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecision;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.UpdatableCollections;
+import org.ow2.authzforce.core.pdp.api.UpdatableList;
+import org.ow2.authzforce.core.pdp.api.XmlUtils;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgParameter;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.api.combining.ParameterAssignment;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.expression.VariableReference;
+import org.ow2.authzforce.core.pdp.api.policy.BasePrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyRefsMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersion;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersionPatterns;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.RefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.StaticPolicyEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.StaticRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.StaticTopLevelPolicyElementEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.TopLevelPolicyElementEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.TopLevelPolicyElementType;
+import org.ow2.authzforce.core.pdp.api.value.Value;
+import org.ow2.authzforce.core.pdp.impl.BooleanEvaluator;
+import org.ow2.authzforce.core.pdp.impl.PepActionExpression;
+import org.ow2.authzforce.core.pdp.impl.TargetEvaluators;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+import org.ow2.authzforce.xacml.identifiers.XacmlNodeName;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+
+import net.sf.saxon.s9api.XPathCompiler;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AdviceExpression;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.AdviceExpressions;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.CombinerParameter;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.CombinerParametersType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DecisionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DefaultsType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.EffectType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ExpressionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.IdReferenceType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ObligationExpression;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.ObligationExpressions;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Policy;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.PolicyCombinerParameters;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.PolicySet;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.PolicySetCombinerParameters;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Rule;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.RuleCombinerParameters;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Status;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Target;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.VariableDefinition;
+
+/**
+ * This class consists exclusively of static methods that operate on or return {@link PolicyEvaluator}s
+ *
+ * 
+ * @version $Id: $
+ */
+<span class="nc bnc" id="L109" title="All 2 branches missed.">public final class PolicyEvaluators</span>
+{
+
+<span class="nc" id="L112">	private static final IllegalArgumentException NULL_XACML_COMBINING_ALG_ARG_EXCEPTION = new IllegalArgumentException(&quot;Undefined policy/rule combining algorithm registry&quot;);</span>
+<span class="nc" id="L113">	private static final IllegalArgumentException NULL_EXPRESSION_FACTORY_EXCEPTION = new IllegalArgumentException(&quot;Undefined XACML Expression factory/parser&quot;);</span>
+<span class="nc" id="L114">	private static final IllegalArgumentException NULL_XACML_POLICY_ARG_EXCEPTION = new IllegalArgumentException(&quot;Undefined XACML &lt;Policy&gt;&quot;);</span>
+<span class="nc" id="L115">	private static final IllegalArgumentException NULL_XACML_POLICYSET_ARG_EXCEPTION = new IllegalArgumentException(&quot;Undefined XACML &lt;PolicySet&gt;&quot;);</span>
+
+<span class="nc" id="L117">	private static final Logger LOGGER = LoggerFactory.getLogger(PolicyEvaluators.class);</span>
+
+	/**
+	 * Factory for returning Deny/Permit policy decision based on combining algorithm evaluation result, evaluation context, initial PEP actions (filled from results of evaluation of child elements by
+	 * combining algorithm) and applicable Policy identifiers
+	 */
+	private interface DPResultFactory
+	{
+
+		DecisionResult getInstance(ExtendedDecision combiningAlgResult, EvaluationContext evaluationContext, UpdatableList&lt;PepAction&gt; basePepActions,
+		        ImmutableList&lt;PrimaryPolicyMetadata&gt; applicablePolicies);
+
+	}
+
+<span class="nc" id="L131">	private static final DPResultFactory DP_WITHOUT_EXTRA_PEP_ACTION_RESULT_FACTORY = (combiningAlgResult, evaluationContext, basePepActions, applicablePolicies) -&gt; DecisionResults</span>
+<span class="nc" id="L132">	        .getInstance(combiningAlgResult, basePepActions.copy(), applicablePolicies);</span>
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">	private static final class PepActionAppendingDPResultFactory implements DPResultFactory</span>
+	{
+		/*
+		 * policy's fully qualifying name for logs: Policy(Set)[ID#vXXX]
+		 */
+		private final String policyToString;
+		private final List&lt;PepActionExpression&gt; denyActionExpressions;
+		private final List&lt;PepActionExpression&gt; permitActionExpressions;
+
+		private PepActionAppendingDPResultFactory(final String policyId, final List&lt;PepActionExpression&gt; denyActionExpressions, final List&lt;PepActionExpression&gt; permitActionExpressions)
+<span class="nc" id="L144">		{</span>
+<span class="nc bnc" id="L145" title="All 8 branches missed.">			assert policyId != null &amp;&amp; denyActionExpressions != null &amp;&amp; permitActionExpressions != null;</span>
+
+<span class="nc" id="L147">			this.policyToString = policyId;</span>
+<span class="nc" id="L148">			this.denyActionExpressions = denyActionExpressions;</span>
+<span class="nc" id="L149">			this.permitActionExpressions = permitActionExpressions;</span>
+<span class="nc" id="L150">		}</span>
+
+		@Override
+		public DecisionResult getInstance(final ExtendedDecision combiningAlgResult, final EvaluationContext context, final UpdatableList&lt;PepAction&gt; basePepActions,
+		        final ImmutableList&lt;PrimaryPolicyMetadata&gt; applicablePolicies)
+		{
+			final List&lt;PepActionExpression&gt; matchingActionExpressions;
+<span class="nc" id="L157">			final DecisionType combiningAlgDecision = combiningAlgResult.getDecision();</span>
+<span class="nc bnc" id="L158" title="All 3 branches missed.">			switch (combiningAlgDecision)</span>
+			{
+				case DENY:
+<span class="nc" id="L161">					matchingActionExpressions = this.denyActionExpressions;</span>
+<span class="nc" id="L162">					break;</span>
+				case PERMIT:
+<span class="nc" id="L164">					matchingActionExpressions = this.permitActionExpressions;</span>
+<span class="nc" id="L165">					break;</span>
+				default:
+<span class="nc" id="L167">					throw new IllegalArgumentException(&quot;Invalid decision type for policy obligations/advice: &quot; + combiningAlgDecision + &quot;. Expected: Permit/Deny&quot;);</span>
+			}
+
+			/*
+			 * If any of the attribute assignment expressions in an obligation or advice expression with a matching FulfillOn or AppliesTo attribute evaluates to &quot;Indeterminate&quot;, then the whole rule,
+			 * policy, or policy set SHALL be &quot;Indeterminate&quot; (see XACML 3.0 core spec, section 7.18).
+			 */
+<span class="nc bnc" id="L174" title="All 2 branches missed.">			for (final PepActionExpression pepActionExpr : matchingActionExpressions)</span>
+			{
+				final PepAction pepAction;
+				try
+				{
+<span class="nc" id="L179">					pepAction = pepActionExpr.evaluate(context);</span>
+				}
+<span class="nc" id="L181">				catch (final IndeterminateEvaluationException e)</span>
+				{
+					/*
+					 * Before we lose the exception information, log it at a higher level because it is an evaluation error (but no critical application error, therefore lower level than error)
+					 */
+<span class="nc" id="L186">					LOGGER.info(&quot;{}/{Obligation|Advice}Expressions -&gt; Indeterminate&quot;, policyToString, e);</span>
+
+<span class="nc" id="L188">					return DecisionResults.newIndeterminate(combiningAlgDecision, e, applicablePolicies);</span>
+<span class="nc" id="L189">				}</span>
+
+<span class="nc" id="L191">				basePepActions.add(pepAction);</span>
+<span class="nc" id="L192">			}</span>
+
+<span class="nc" id="L194">			return DecisionResults.getInstance(combiningAlgResult, basePepActions.copy(), applicablePolicies);</span>
+		}
+	}
+
+	/**
+	 * Represents a set of CombinerParameters to a combining algorithm that may or may not be associated with a policy/rule
+	 * 
+	 * @param &lt;T&gt;
+	 *            Type of combined element (Policy, Rule...) with which the CombinerParameters are associated
+	 */
+	public static final class BaseCombiningAlgParameter&lt;T extends Decidable&gt; implements CombiningAlgParameter&lt;T&gt;
+	{
+
+		// the element to be combined
+		private final T element;
+
+		// the parameters used with this element
+		private final List&lt;ParameterAssignment&gt; parameters;
+
+		/**
+		 * Constructor that takes both the element to combine and its associated combiner parameters.
+		 * 
+		 * @param element
+		 *            combined element; null if
+		 * 
+		 * @param jaxbCombinerParameters
+		 *            a (possibly empty) non-null &lt;code&gt;List&lt;/code&gt; of &lt;code&gt;CombinerParameter&lt;code&gt;s provided for general use
+		 * @param xPathCompiler
+		 *            Policy(Set) default XPath compiler, corresponding to the Policy(Set)'s default XPath version specified in {@link DefaultsType} element; null if none specified
+		 * @param expFactory
+		 *            attribute value factory
+		 * @throws IllegalArgumentException
+		 *             if if one of the CombinerParameters is invalid
+		 */
+		private BaseCombiningAlgParameter(final T element, final List&lt;CombinerParameter&gt; jaxbCombinerParameters, final ExpressionFactory expFactory, final XPathCompiler xPathCompiler)
+		        throws IllegalArgumentException
+<span class="nc" id="L230">		{</span>
+<span class="nc" id="L231">			this.element = element;</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">			if (jaxbCombinerParameters == null)</span>
+			{
+<span class="nc" id="L234">				this.parameters = Collections.emptyList();</span>
+			}
+			else
+			{
+<span class="nc" id="L238">				final List&lt;ParameterAssignment&gt; modifiableParamList = new ArrayList&lt;&gt;(jaxbCombinerParameters.size());</span>
+<span class="nc" id="L239">				int paramIndex = 0;</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">				for (final CombinerParameter jaxbCombinerParam : jaxbCombinerParameters)</span>
+				{
+					try
+					{
+<span class="nc" id="L244">						final ParameterAssignment combinerParam = new ParameterAssignment(jaxbCombinerParam, expFactory, xPathCompiler);</span>
+<span class="nc" id="L245">						modifiableParamList.add(combinerParam);</span>
+					}
+<span class="nc" id="L247">					catch (final IllegalArgumentException e)</span>
+					{
+<span class="nc" id="L249">						throw new IllegalArgumentException(&quot;Error parsing CombinerParameters/CombinerParameter#&quot; + paramIndex, e);</span>
+<span class="nc" id="L250">					}</span>
+
+<span class="nc" id="L252">					paramIndex++;</span>
+<span class="nc" id="L253">				}</span>
+
+<span class="nc" id="L255">				this.parameters = Collections.unmodifiableList(modifiableParamList);</span>
+			}
+<span class="nc" id="L257">		}</span>
+
+		/**
+		 * Returns the combined element. If null, it means, this CombinerElement (i.e. all its CombinerParameters) is not associated with a particular rule
+		 * 
+		 * @return the combined element
+		 */
+		@Override
+		public T getCombinedElement()
+		{
+<span class="nc" id="L267">			return element;</span>
+		}
+
+		/**
+		 * Returns the &lt;code&gt;CombinerParameterEvaluator&lt;/code&gt;s associated with this element.
+		 * 
+		 * @return a &lt;code&gt;List&lt;/code&gt; of &lt;code&gt;CombinerParameterEvaluator&lt;/code&gt;s
+		 */
+		@Override
+		public List&lt;ParameterAssignment&gt; getParameters()
+		{
+<span class="nc" id="L278">			return parameters;</span>
+		}
+
+	}
+
+<span class="nc bnc" id="L283" title="All 2 branches missed.">	private static final class BasePolicyRefsMetadata implements PolicyRefsMetadata</span>
+	{
+		private final ImmutableSet&lt;PrimaryPolicyMetadata&gt; refPolicies;
+		private final ImmutableList&lt;String&gt; longestPolicyRefChain;
+
+		/**
+		 * This constructor will make all fields immutable, so do you need to make args immutable before passing them to this.
+		 * 
+		 * @param refPolicies
+		 *            policies referenced from the policy
+		 * @param longestPolicyRefChain
+		 *            longest chain of policy references (Policy(Set)IdReferences) originating from the policy
+		 */
+		private BasePolicyRefsMetadata(final Set&lt;PrimaryPolicyMetadata&gt; refPolicies, final List&lt;String&gt; longestPolicyRefChain)
+<span class="nc" id="L297">		{</span>
+<span class="nc bnc" id="L298" title="All 6 branches missed.">			assert refPolicies != null &amp;&amp; longestPolicyRefChain != null;</span>
+<span class="nc" id="L299">			this.refPolicies = ImmutableSet.copyOf(refPolicies);</span>
+<span class="nc" id="L300">			this.longestPolicyRefChain = ImmutableList.copyOf(longestPolicyRefChain);</span>
+<span class="nc" id="L301">		}</span>
+
+		@Override
+		public List&lt;String&gt; getLongestPolicyRefChain()
+		{
+<span class="nc" id="L306">			return longestPolicyRefChain;</span>
+		}
+
+		@Override
+		public Set&lt;PrimaryPolicyMetadata&gt; getRefPolicies()
+		{
+<span class="nc" id="L312">			return refPolicies;</span>
+		}
+
+	}
+
+	/**
+	 * Generic Policy(Set) evaluator. Evaluates to a Decision.
+	 * 
+	 * @param &lt;T&gt;
+	 *            type of combined child elements in evaluated Policy(Set)
+	 * 
+	 */
+	private static abstract class BaseTopLevelPolicyElementEvaluator&lt;T extends Decidable&gt; implements TopLevelPolicyElementEvaluator
+	{
+<span class="nc" id="L326">		private static final IllegalArgumentException NULL_POLICY_METADATA_EXCEPTION = new IllegalArgumentException(&quot;Undefined Policy(Set) metadata (required)&quot;);</span>
+<span class="nc" id="L327">		private static final IllegalArgumentException NULL_ALG_EXCEPTION = new IllegalArgumentException(&quot;Undefined Policy(Set) combining algorithm ID (required)&quot;);</span>
+
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		private static final class EvalResults</span>
+		{
+			private final String policyId;
+<span class="nc" id="L332">			private DecisionResult resultWithTarget = null;</span>
+<span class="nc" id="L333">			private DecisionResult resultWithoutTarget = null;</span>
+
+			private EvalResults(final String policyId)
+<span class="nc" id="L336">			{</span>
+<span class="nc bnc" id="L337" title="All 4 branches missed.">				assert policyId != null;</span>
+<span class="nc" id="L338">				this.policyId = policyId;</span>
+<span class="nc" id="L339">			}</span>
+
+			private void setResult(final boolean skipTarget, final DecisionResult result)
+			{
+<span class="nc bnc" id="L343" title="All 4 branches missed.">				assert result != null;</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">				if (skipTarget)</span>
+				{
+<span class="nc bnc" id="L346" title="All 2 branches missed.">					if (resultWithoutTarget != null)</span>
+					{
+<span class="nc" id="L348">						throw new UnsupportedOperationException(&quot;Policy(Set) '&quot; + policyId + &quot;+': evaluation result (skipTarget = true) already set in this context&quot;);</span>
+					}
+
+<span class="nc" id="L351">					resultWithoutTarget = result;</span>
+				}
+				else
+				{
+<span class="nc bnc" id="L355" title="All 2 branches missed.">					if (resultWithoutTarget != null)</span>
+					{
+<span class="nc" id="L357">						throw new UnsupportedOperationException(&quot;Policy(Set) '&quot; + policyId + &quot;' : evaluation result (skipTarget = false) already set in this context&quot;);</span>
+					}
+
+<span class="nc" id="L360">					resultWithTarget = result;</span>
+				}
+<span class="nc" id="L362">			}</span>
+		}
+
+		// non-null
+		private final PrimaryPolicyMetadata policyMetadata;
+
+		// non-null
+		private final BooleanEvaluator targetEvaluator;
+
+		// non-null
+		private final CombiningAlg.Evaluator combiningAlgEvaluator;
+
+		// non-null
+		private final DPResultFactory decisionResultFactory;
+
+		// non-null
+		private final List&lt;VariableReference&lt;?&gt;&gt; localVariableAssignmentExpressions;
+
+		private transient final Set&lt;PrimaryPolicyMetadata&gt; enclosedPolicies;
+
+		private transient final String requestScopedEvalResultsCacheKey;
+
+		/**
+		 * Instantiates an evaluator
+		 * 
+		 * @param combinedElementClass
+		 *            combined element class
+		 * @param policyMetadata
+		 *            policy metadata (type, ID, version...)
+		 * @param policyTarget
+		 *            policy(Set) Target
+		 * @param combinedElements
+		 *            child elements combined in the policy(set) by {@code combiningAlg}, in order of declaration
+		 * @param combinerParameters
+		 *            combining algorithm parameters, in order of declaration
+		 * @param localVariableIds
+		 *            IDs of variables defined locally (in policy {@code policyId})
+		 * @param combiningAlgId
+		 *            (policy/rule-)combining algorithm ID
+		 * @param obligationExps
+		 *            ObligationExpressions
+		 * @param adviceExps
+		 *            AdviceExpressions
+		 * @param defaultXPathCompiler
+		 *            Default XPath compiler corresponding to the Policy(Set) default XPath version
+		 * @param expressionFactory
+		 *            Expression factory/parser
+		 * @param combiningAlgRegistry
+		 *            rule/policy combining algorithm registry
+		 * @throws IllegalArgumentException
+		 *             if {@code policyMetadata == null || combiningAlgId  == null}
+		 */
+		protected BaseTopLevelPolicyElementEvaluator(final Class&lt;T&gt; combinedElementClass, final PrimaryPolicyMetadata policyMetadata, final Target policyTarget, final String combiningAlgId,
+		        final Iterable&lt;T&gt; combinedElements, final Iterable&lt;CombiningAlgParameter&lt;? extends T&gt;&gt; combinerParameters, final List&lt;ObligationExpression&gt; obligationExps,
+		        final List&lt;AdviceExpression&gt; adviceExps, final List&lt;String&gt; localVariableIds, final XPathCompiler defaultXPathCompiler, final ExpressionFactory expressionFactory,
+		        final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+<span class="nc" id="L418">		{</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">			if (policyMetadata == null)</span>
+			{
+<span class="nc" id="L421">				throw NULL_POLICY_METADATA_EXCEPTION;</span>
+			}
+
+<span class="nc bnc" id="L424" title="All 2 branches missed.">			if (combiningAlgId == null)</span>
+			{
+<span class="nc" id="L426">				throw NULL_ALG_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L429">			this.policyMetadata = policyMetadata;</span>
+
+<span class="nc" id="L431">			this.targetEvaluator = TargetEvaluators.getInstance(policyTarget, defaultXPathCompiler, expressionFactory);</span>
+
+			final CombiningAlg&lt;T&gt; combiningAlg;
+			try
+			{
+<span class="nc" id="L436">				combiningAlg = combiningAlgRegistry.getAlgorithm(combiningAlgId, combinedElementClass);</span>
+			}
+<span class="nc" id="L438">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L440">				throw new IllegalArgumentException(</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">				        this + &quot;: Unknown/unsupported &quot; + (RuleEvaluator.class.isAssignableFrom(combinedElementClass) ? &quot;rule&quot; : &quot;policy&quot;) + &quot;-combining algorithm ID = '&quot; + combiningAlgId + &quot;'&quot;, e);</span>
+<span class="nc" id="L442">			}</span>
+
+<span class="nc" id="L444">			this.combiningAlgEvaluator = combiningAlg.getInstance(combinerParameters, combinedElements);</span>
+
+<span class="nc bnc" id="L446" title="All 8 branches missed.">			if ((obligationExps == null || obligationExps.isEmpty()) &amp;&amp; (adviceExps == null || adviceExps.isEmpty()))</span>
+			{
+				// no PEP obligation/advice
+<span class="nc" id="L449">				this.decisionResultFactory = DP_WITHOUT_EXTRA_PEP_ACTION_RESULT_FACTORY;</span>
+			}
+			else
+			{
+<span class="nc bnc" id="L453" title="All 4 branches missed.">				final int maxNumOfPepActionExpressions = (obligationExps == null ? 0 : obligationExps.size()) + (adviceExps == null ? 0 : adviceExps.size());</span>
+<span class="nc" id="L454">				final List&lt;PepActionExpression&gt; denyPepActionExpressions = new ArrayList&lt;&gt;(maxNumOfPepActionExpressions);</span>
+<span class="nc" id="L455">				final List&lt;PepActionExpression&gt; permitPepActionExpressions = new ArrayList&lt;&gt;(maxNumOfPepActionExpressions);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">				if (obligationExps != null)</span>
+				{
+<span class="nc" id="L458">					obligationExps.forEach(obligationExp -&gt; {</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">						final List&lt;PepActionExpression&gt; pepActionExpressions = obligationExp.getFulfillOn() == EffectType.DENY ? denyPepActionExpressions : permitPepActionExpressions;</span>
+<span class="nc" id="L460">						pepActionExpressions</span>
+<span class="nc" id="L461">						        .add(new PepActionExpression(obligationExp.getObligationId(), true, obligationExp.getAttributeAssignmentExpressions(), defaultXPathCompiler, expressionFactory));</span>
+<span class="nc" id="L462">					});</span>
+				}
+
+<span class="nc bnc" id="L465" title="All 2 branches missed.">				if (adviceExps != null)</span>
+				{
+<span class="nc" id="L467">					adviceExps.forEach(adviceExp -&gt; {</span>
+<span class="nc bnc" id="L468" title="All 2 branches missed.">						final List&lt;PepActionExpression&gt; pepActionExpressions = adviceExp.getAppliesTo() == EffectType.DENY ? denyPepActionExpressions : permitPepActionExpressions;</span>
+<span class="nc" id="L469">						pepActionExpressions.add(new PepActionExpression(adviceExp.getAdviceId(), false, adviceExp.getAttributeAssignmentExpressions(), defaultXPathCompiler, expressionFactory));</span>
+<span class="nc" id="L470">					});</span>
+				}
+
+<span class="nc" id="L473">				this.decisionResultFactory = new PepActionAppendingDPResultFactory(this.policyMetadata.toString(), denyPepActionExpressions, permitPepActionExpressions);</span>
+			}
+
+<span class="nc bnc" id="L476" title="All 2 branches missed.">			this.localVariableAssignmentExpressions = localVariableIds == null ? Collections.&lt;VariableReference&lt;?&gt;&gt;emptyList()</span>
+<span class="nc" id="L477">			        : localVariableIds.stream().map(id -&gt; expressionFactory.getVariableExpression(id)).collect(Collectors.toList());</span>
+
+<span class="nc" id="L479">			final Set&lt;PrimaryPolicyMetadata&gt; mutableEnclosedPolicies = HashCollections.newUpdatableSet();</span>
+<span class="nc" id="L480">			mutableEnclosedPolicies.add(policyMetadata);</span>
+<span class="nc" id="L481">			StreamSupport.stream(combinedElements.spliterator(), false).filter(e -&gt; e instanceof PolicyEvaluator).forEach(e -&gt; {</span>
+<span class="nc" id="L482">				final Set&lt;PrimaryPolicyMetadata&gt; policiesEnclosedInChildPolicy = ((PolicyEvaluator) e).getEnclosedPolicies();</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">				if (!Collections.disjoint(mutableEnclosedPolicies, policiesEnclosedInChildPolicy))</span>
+				{
+<span class="nc" id="L485">					throw new IllegalArgumentException(this.policyMetadata + &quot;: duplicate policy (ID,version)! (One of these is enclosed multiple times: &quot; + policiesEnclosedInChildPolicy + &quot;)&quot;);</span>
+				}
+
+<span class="nc" id="L488">				mutableEnclosedPolicies.addAll(policiesEnclosedInChildPolicy);</span>
+<span class="nc" id="L489">			});</span>
+
+			/*
+			 * Add itself
+			 */
+<span class="nc" id="L494">			this.enclosedPolicies = ImmutableSet.copyOf(mutableEnclosedPolicies);</span>
+
+			/*
+			 * Define keys for caching the result of #evaluate() in the request context (see Object#toString())
+			 */
+<span class="nc" id="L499">			this.requestScopedEvalResultsCacheKey = this.getClass().getName() + '@' + Integer.toHexString(hashCode());</span>
+<span class="nc" id="L500">		}</span>
+
+		private IndeterminateEvaluationException enforceNoNullCauseForIndeterminate(final Optional&lt;IndeterminateEvaluationException&gt; causeForIndeterminate)
+		{
+<span class="nc bnc" id="L504" title="All 2 branches missed.">			if (causeForIndeterminate.isPresent())</span>
+			{
+<span class="nc" id="L506">				return causeForIndeterminate.get();</span>
+			}
+
+			// not present
+<span class="nc" id="L510">			LOGGER.error(&quot;{} evaluation failed for UNKNOWN reason. Make sure all AuthzForce extensions provide meaningful information when throwing instances of {}&quot;, this,</span>
+			        IndeterminateEvaluationException.class);
+<span class="nc" id="L512">			return new IndeterminateEvaluationException(&quot;Cause unknown/hidden&quot;, XacmlStatusCode.PROCESSING_ERROR.value());</span>
+		}
+
+		@Override
+		public final Set&lt;PrimaryPolicyMetadata&gt; getEnclosedPolicies()
+		{
+<span class="nc" id="L518">			return this.enclosedPolicies;</span>
+		}
+
+		private void assignVariables(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc bnc" id="L523" title="All 2 branches missed.">			for (final VariableReference&lt;?&gt; varRef : this.localVariableAssignmentExpressions)</span>
+			{
+<span class="nc" id="L525">				final Value varVal = varRef.evaluate(context);</span>
+<span class="nc" id="L526">				context.putVariableIfAbsent(varRef.getVariableId(), varVal);</span>
+<span class="nc" id="L527">			}</span>
+<span class="nc" id="L528">		}</span>
+
+		/**
+		 * Policy(Set) evaluation with option to skip Target evaluation. The option is to be used by Only-one-applicable algorithm with value 'true', after calling
+		 * {@link TopLevelPolicyElementEvaluator#isApplicableByTarget(EvaluationContext)} in particular.
+		 * 
+		 * @param context
+		 *            evaluation context
+		 * @param skipTarget
+		 *            whether to evaluate the Target.
+		 * @return decision result
+		 */
+		@Override
+		public final DecisionResult evaluate(final EvaluationContext context, final boolean skipTarget)
+		{
+			/*
+			 * check whether the result is already cached in the evaluation context
+			 */
+<span class="nc" id="L546">			final Object cachedValue = context.getOther(this.requestScopedEvalResultsCacheKey);</span>
+			final EvalResults cachedResults;
+<span class="nc bnc" id="L548" title="All 2 branches missed.">			if (cachedValue instanceof EvalResults)</span>
+			{
+<span class="nc" id="L550">				cachedResults = (EvalResults) cachedValue;</span>
+			}
+			else
+			{
+<span class="nc" id="L554">				cachedResults = null;</span>
+			}
+
+<span class="nc" id="L557">			DecisionResult newResult = null;</span>
+			final UpdatableList&lt;PepAction&gt; updatablePepActions;
+
+			/*
+			 * We add the current policy (this.refToSelf) to the applicablePolicyIdList only at the end when we know for sure the result is different from NotApplicable
+			 */
+			final UpdatableList&lt;PrimaryPolicyMetadata&gt; updatableApplicablePolicyIdList;
+
+			try
+			{
+				final ExtendedDecision algResult;
+<span class="nc bnc" id="L568" title="All 2 branches missed.">				if (skipTarget)</span>
+				{
+					// check cached result
+<span class="nc bnc" id="L571" title="All 4 branches missed.">					if (cachedResults != null &amp;&amp; cachedResults.resultWithoutTarget != null)</span>
+					{
+<span class="nc" id="L573">						LOGGER.debug(&quot;{} -&gt; {} (result from context cache with skipTarget=true)&quot;, this, cachedResults.resultWithoutTarget);</span>
+<span class="nc" id="L574">						return cachedResults.resultWithoutTarget;</span>
+					}
+
+					// evaluate with combining algorithm
+					/*
+					 * But first compute the variables that maybe used in this scope
+					 */
+					/*
+					 * Make the value of local variables available in this scope. Note that not only Apply expressions may use variables but also PDP extensions such as Attribute/Policy Providers
+					 * possibly.
+					 */
+					try
+					{
+<span class="nc" id="L587">						assignVariables(context);</span>
+					}
+<span class="nc" id="L589">					catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L591">						LOGGER.error(&quot;{} -&gt; Indeterminate (failed to evaluate one of the local Variables defined in this policy))&quot;, this);</span>
+<span class="nc" id="L592">						return DecisionResults.newIndeterminate(null, e, ImmutableList.of());</span>
+<span class="nc" id="L593">					}</span>
+
+<span class="nc" id="L595">					updatablePepActions = UpdatableCollections.newUpdatableList();</span>
+<span class="nc bnc" id="L596" title="All 2 branches missed.">					updatableApplicablePolicyIdList = context.isApplicablePolicyIdListRequested() ? UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;newUpdatableList()</span>
+<span class="nc" id="L597">					        : UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;emptyList();</span>
+
+<span class="nc" id="L599">					algResult = combiningAlgEvaluator.evaluate(context, updatablePepActions, updatableApplicablePolicyIdList);</span>
+<span class="nc" id="L600">					LOGGER.debug(&quot;{}/Algorithm -&gt; {}&quot;, this, algResult);</span>
+				}
+				else
+				{
+<span class="nc bnc" id="L604" title="All 4 branches missed.">					if (cachedResults != null &amp;&amp; cachedResults.resultWithTarget != null)</span>
+					{
+<span class="nc" id="L606">						LOGGER.debug(&quot;{} -&gt; {} (result from context cache with skipTarget=false)&quot;, this, cachedResults.resultWithTarget);</span>
+<span class="nc" id="L607">						return cachedResults.resultWithTarget;</span>
+					}
+
+					// evaluate target
+<span class="nc" id="L611">					IndeterminateEvaluationException targetMatchIndeterminateException = null;</span>
+					try
+					{
+<span class="nc bnc" id="L614" title="All 2 branches missed.">						if (!isApplicableByTarget(context))</span>
+						{
+<span class="nc" id="L616">							LOGGER.debug(&quot;{}/Target -&gt; No-match&quot;, this);</span>
+<span class="nc" id="L617">							LOGGER.debug(&quot;{} -&gt; NotApplicable&quot;, this);</span>
+<span class="nc" id="L618">							newResult = DecisionResults.SIMPLE_NOT_APPLICABLE;</span>
+<span class="nc" id="L619">							return newResult;</span>
+						}
+
+						// Target Match
+<span class="nc" id="L623">						LOGGER.debug(&quot;{}/Target -&gt; Match&quot;, this);</span>
+					}
+<span class="nc" id="L625">					catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L627">						targetMatchIndeterminateException = e;</span>
+						/*
+						 * Before we lose the exception information, log it at a higher level because it is an evaluation error (but no critical application error, therefore lower level than error)
+						 */
+<span class="nc" id="L631">						LOGGER.info(&quot;{}/Target -&gt; Indeterminate&quot;, this, e);</span>
+<span class="nc" id="L632">					}</span>
+
+					// evaluate with combining algorithm
+					/*
+					 * First make the value of local variables available in this scope. Note that not only Apply expressions may use variables but also PDP extensions such as Attribute/Policy
+					 * Providers possibly.
+					 */
+					try
+					{
+<span class="nc" id="L641">						assignVariables(context);</span>
+					}
+<span class="nc" id="L643">					catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L645">						LOGGER.error(&quot;{} -&gt; Indeterminate (failed to evaluate one of the local Variables defined in this policy))&quot;, this);</span>
+<span class="nc" id="L646">						return DecisionResults.newIndeterminate(null, e, ImmutableList.of());</span>
+<span class="nc" id="L647">					}</span>
+
+<span class="nc" id="L649">					updatablePepActions = UpdatableCollections.newUpdatableList();</span>
+<span class="nc bnc" id="L650" title="All 2 branches missed.">					updatableApplicablePolicyIdList = context.isApplicablePolicyIdListRequested() ? UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;newUpdatableList()</span>
+<span class="nc" id="L651">					        : UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;emptyList();</span>
+<span class="nc" id="L652">					algResult = combiningAlgEvaluator.evaluate(context, updatablePepActions, updatableApplicablePolicyIdList);</span>
+<span class="nc" id="L653">					LOGGER.debug(&quot;{}/Algorithm -&gt; {}&quot;, this, algResult);</span>
+
+<span class="nc bnc" id="L655" title="All 2 branches missed.">					if (targetMatchIndeterminateException != null)</span>
+					{
+						// Target is Indeterminate
+						/*
+						 * Implement Extended Indeterminate according to table 7 of section 7.14 (XACML 3.0 Core). If the combining alg value is Indeterminate, use its extended Indeterminate value as
+						 * this evaluation result's extended Indeterminate value; else (Permit or Deny) as our extended indeterminate value (part between {} in XACML notation).
+						 */
+<span class="nc" id="L662">						final DecisionType algDecision = algResult.getDecision();</span>
+
+<span class="nc bnc" id="L664" title="All 3 branches missed.">						switch (algDecision)</span>
+						{
+							case NOT_APPLICABLE:
+<span class="nc" id="L667">								newResult = DecisionResults.getNotApplicable(algResult.getStatus());</span>
+<span class="nc" id="L668">								break;</span>
+							case PERMIT:
+							case DENY:
+								/*
+								 * Result != NotApplicable -&gt; consider current policy as applicable
+								 */
+<span class="nc" id="L674">								updatableApplicablePolicyIdList.add(this.policyMetadata);</span>
+<span class="nc" id="L675">								newResult = DecisionResults.newIndeterminate(algDecision, targetMatchIndeterminateException, updatableApplicablePolicyIdList.copy());</span>
+<span class="nc" id="L676">								break;</span>
+							default: // INDETERMINATE
+								/*
+								 * Result != NotApplicable -&gt; consider current policy as applicable
+								 */
+<span class="nc" id="L681">								updatableApplicablePolicyIdList.add(this.policyMetadata);</span>
+<span class="nc" id="L682">								newResult = DecisionResults.newIndeterminate(algResult.getExtendedIndeterminate(), targetMatchIndeterminateException, updatableApplicablePolicyIdList.copy());</span>
+								break;
+						}
+
+						/*
+						 * newResult must be initialized and used as return variable at this point, in order to be used in finally{} block below
+						 */
+<span class="nc" id="L689">						return newResult;</span>
+					}
+					// Else Target Match
+				} // End of Target evaluation
+
+				/*
+				 * Target Match (or assumed Match if skipTarget=true) -&gt; the policy decision is the one from the combining algorithm
+				 */
+				/*
+				 * The spec is unclear about what is considered an &quot;applicable&quot; policy, therefore in what case should we add the policy to the PolicyIdentifierList in the final XACML Result. See the
+				 * discussion here for more info: https://lists.oasis-open.org/archives/xacml-comment/201605/ msg00004.html. Here we choose to consider a policy applicable if and only if its
+				 * evaluation does not return NotApplicable.
+				 */
+<span class="nc" id="L702">				final DecisionType algResultDecision = algResult.getDecision();</span>
+<span class="nc" id="L703">				final Status algResultStatus = algResult.getStatus();</span>
+<span class="nc bnc" id="L704" title="All 3 branches missed.">				switch (algResultDecision)</span>
+				{
+					case NOT_APPLICABLE:
+						/*
+						 * Final evaluation result is NotApplicable, so we don't add to applicable policy identifier list
+						 */
+<span class="nc" id="L710">						newResult = DecisionResults.getNotApplicable(algResultStatus);</span>
+<span class="nc" id="L711">						return newResult;</span>
+
+					case INDETERMINATE:
+						/*
+						 * Final result is the Indeterminate from algResult (no PEP actions), XACML §7.12, 7.13
+						 * 
+						 * Result != NotApplicable -&gt; consider current policy as applicable
+						 */
+<span class="nc" id="L719">						updatableApplicablePolicyIdList.add(this.policyMetadata);</span>
+
+<span class="nc" id="L721">						newResult = DecisionResults.newIndeterminate(algResultDecision, enforceNoNullCauseForIndeterminate(algResult.getCauseForIndeterminate()),</span>
+<span class="nc" id="L722">						        updatableApplicablePolicyIdList.copy());</span>
+<span class="nc" id="L723">						return newResult;</span>
+
+					default:
+						// Permit/Deny decision
+						/*
+						 * Result != NotApplicable -&gt; consider current policy as applicable
+						 */
+<span class="nc" id="L730">						updatableApplicablePolicyIdList.add(this.policyMetadata);</span>
+<span class="nc" id="L731">						newResult = this.decisionResultFactory.getInstance(algResult, context, updatablePepActions, updatableApplicablePolicyIdList.copy());</span>
+<span class="nc" id="L732">						return newResult;</span>
+				}
+			}
+			finally
+			{
+				// remove local variables from context
+<span class="nc bnc" id="L738" title="All 2 branches missed.">				for (final VariableReference&lt;?&gt; varRef : this.localVariableAssignmentExpressions)</span>
+				{
+<span class="nc" id="L740">					context.removeVariable(varRef.getVariableId());</span>
+<span class="nc" id="L741">				}</span>
+
+				// update cache with new result
+<span class="nc bnc" id="L744" title="All 2 branches missed.">				if (newResult != null)</span>
+				{
+<span class="nc bnc" id="L746" title="All 2 branches missed.">					if (cachedResults == null)</span>
+					{
+<span class="nc" id="L748">						final EvalResults newCachedResults = new EvalResults(this.policyMetadata.getId());</span>
+<span class="nc" id="L749">						newCachedResults.setResult(skipTarget, newResult);</span>
+<span class="nc" id="L750">						context.putOther(this.requestScopedEvalResultsCacheKey, newCachedResults);</span>
+<span class="nc" id="L751">					}</span>
+					else
+					{
+<span class="nc" id="L754">						cachedResults.setResult(skipTarget, newResult);</span>
+					}
+				}
+			}
+		}
+
+		@Override
+		public final boolean isApplicableByTarget(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L763">			return targetEvaluator.evaluate(context);</span>
+		}
+
+		@Override
+		public final DecisionResult evaluate(final EvaluationContext context)
+		{
+<span class="nc" id="L769">			return evaluate(context, false);</span>
+		}
+
+		@Override
+		public final TopLevelPolicyElementType getPolicyElementType()
+		{
+<span class="nc" id="L775">			return this.policyMetadata.getType();</span>
+		}
+
+		@Override
+		public final String getPolicyId()
+		{
+<span class="nc" id="L781">			return this.policyMetadata.getId();</span>
+		}
+
+		@Override
+		public final PolicyVersion getPolicyVersion()
+		{
+<span class="nc" id="L787">			return this.policyMetadata.getVersion();</span>
+		}
+
+		@Override
+		public final PrimaryPolicyMetadata getPrimaryPolicyMetadata()
+		{
+<span class="nc" id="L793">			return this.policyMetadata;</span>
+		}
+
+		@Override
+		public final String toString()
+		{
+<span class="nc" id="L799">			return this.policyMetadata.toString();</span>
+		}
+
+		@Override
+		public final int hashCode()
+		{
+<span class="nc" id="L805">			return this.policyMetadata.hashCode();</span>
+		}
+
+		@Override
+		public final boolean equals(final Object obj)
+		{
+			// Effective Java - Item 8
+<span class="nc bnc" id="L812" title="All 2 branches missed.">			if (this == obj)</span>
+			{
+<span class="nc" id="L814">				return true;</span>
+			}
+
+<span class="nc bnc" id="L817" title="All 2 branches missed.">			if (!(obj instanceof TopLevelPolicyElementEvaluator))</span>
+			{
+<span class="nc" id="L819">				return false;</span>
+			}
+
+<span class="nc" id="L822">			final TopLevelPolicyElementEvaluator other = (TopLevelPolicyElementEvaluator) obj;</span>
+			/*
+			 * We ignore the policyIssuer because it is no part of PolicyReferences, therefore we consider it is not part of the Policy uniqueness
+			 */
+<span class="nc" id="L826">			return this.policyMetadata.equals(other.getPrimaryPolicyMetadata());</span>
+		}
+
+	}
+
+	private static final class StaticBaseTopLevelPolicyElementEvaluator&lt;T extends Decidable&gt; extends BaseTopLevelPolicyElementEvaluator&lt;T&gt; implements StaticTopLevelPolicyElementEvaluator
+	{
+		private transient final Optional&lt;PolicyRefsMetadata&gt; extraPolicyMetadata;
+
+		private StaticBaseTopLevelPolicyElementEvaluator(final Class&lt;T&gt; combinedElementClass, final PrimaryPolicyMetadata policyMetadata, final Optional&lt;PolicyRefsMetadata&gt; extraPolicyMetadata,
+		        final Target policyTarget, final String combiningAlgId, final Iterable&lt;T&gt; combinedElements, final Iterable&lt;CombiningAlgParameter&lt;? extends T&gt;&gt; combinerParameters,
+		        final List&lt;ObligationExpression&gt; obligationExps, final List&lt;AdviceExpression&gt; adviceExps, final List&lt;String&gt; localVariableIds, final XPathCompiler defaultXPathCompiler,
+		        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+		{
+<span class="nc" id="L840">			super(combinedElementClass, policyMetadata, policyTarget, combiningAlgId, combinedElements, combinerParameters, obligationExps, adviceExps, localVariableIds, defaultXPathCompiler,</span>
+			        expressionFactory, combiningAlgRegistry);
+<span class="nc" id="L842">			this.extraPolicyMetadata = extraPolicyMetadata;</span>
+<span class="nc" id="L843">		}</span>
+
+		@Override
+		public Optional&lt;PolicyRefsMetadata&gt; getPolicyRefsMetadata()
+		{
+<span class="nc" id="L848">			return this.extraPolicyMetadata;</span>
+		}
+
+	}
+
+	/**
+	 * This class is responsible for evaluating XACML Policy(Set)IdReferences.
+	 * 
+	 */
+<span class="nc bnc" id="L857" title="All 2 branches missed.">	private static abstract class PolicyRefEvaluator implements PolicyEvaluator</span>
+	{
+		protected final TopLevelPolicyElementType referredPolicyType;
+		protected final String refPolicyId;
+		// and version constraints on this reference
+		protected final Optional&lt;PolicyVersionPatterns&gt; versionConstraints;
+
+		private transient final String toString;
+		private transient final int hashCode;
+
+		/**
+		 * Get Policy reference description
+		 * 
+		 * @param refPolicyType
+		 *            type of referenced policy (PolicySet for PolicySetIdReference or Policy for PolicyIdReference)
+		 * @param policyRefId
+		 *            referenced policy ID
+		 * @param versionConstraints
+		 *            referenced policy version constraints
+		 * @return description
+		 */
+		private static String toString(final TopLevelPolicyElementType refPolicyType, final String policyRefId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints)
+		{
+<span class="nc" id="L880">			return refPolicyType + &quot;IdReference[Id=&quot; + policyRefId + &quot;, &quot; + versionConstraints + &quot;]&quot;;</span>
+		}
+
+		private PolicyRefEvaluator(final TopLevelPolicyElementType refPolicyType, final String policyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints)
+<span class="nc" id="L884">		{</span>
+<span class="nc bnc" id="L885" title="All 6 branches missed.">			assert policyId != null &amp;&amp; refPolicyType != null;</span>
+<span class="nc" id="L886">			this.refPolicyId = policyId;</span>
+<span class="nc" id="L887">			this.versionConstraints = versionConstraints;</span>
+<span class="nc" id="L888">			this.referredPolicyType = refPolicyType;</span>
+<span class="nc" id="L889">			this.toString = toString(referredPolicyType, policyId, versionConstraints);</span>
+<span class="nc" id="L890">			this.hashCode = Objects.hash(this.referredPolicyType, this.refPolicyId, this.versionConstraints);</span>
+<span class="nc" id="L891">		}</span>
+
+		@Override
+		public final Set&lt;PrimaryPolicyMetadata&gt; getEnclosedPolicies()
+		{
+<span class="nc" id="L896">			return Collections.emptySet();</span>
+		}
+
+		@Override
+		public final DecisionResult evaluate(final EvaluationContext context)
+		{
+<span class="nc" id="L902">			return evaluate(context, false);</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator#getPolicyElementType()
+		 */
+		@Override
+		public final TopLevelPolicyElementType getPolicyElementType()
+		{
+<span class="nc" id="L913">			return this.referredPolicyType;</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator#getPolicyId()
+		 */
+		@Override
+		public final String getPolicyId()
+		{
+<span class="nc" id="L924">			return this.refPolicyId;</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see java.lang.Object#toString()
+		 */
+		@Override
+		public final String toString()
+		{
+<span class="nc" id="L935">			return toString;</span>
+		}
+
+		@Override
+		public final int hashCode()
+		{
+<span class="nc" id="L941">			return hashCode;</span>
+		}
+
+		@Override
+		public final boolean equals(final Object obj)
+		{
+			// Effective Java - Item 8
+<span class="nc bnc" id="L948" title="All 2 branches missed.">			if (this == obj)</span>
+			{
+<span class="nc" id="L950">				return true;</span>
+			}
+
+			// if not both PolicyEvaluators or not both PolicySetEvaluators
+<span class="nc bnc" id="L954" title="All 2 branches missed.">			if (!(obj instanceof PolicyRefEvaluator))</span>
+			{
+<span class="nc" id="L956">				return false;</span>
+			}
+
+<span class="nc" id="L959">			final PolicyRefEvaluator other = (PolicyRefEvaluator) obj;</span>
+			/*
+			 * We ignore the policyIssuer because it is no part of PolicyReferences, therefore we consider it is not part of the Policy uniqueness
+			 */
+<span class="nc bnc" id="L963" title="All 6 branches missed.">			return this.referredPolicyType.equals(other.referredPolicyType) &amp;&amp; this.refPolicyId.equals(other.refPolicyId) &amp;&amp; Objects.equals(this.versionConstraints, other.versionConstraints);</span>
+		}
+
+	}
+
+	/**
+	 * 
+	 * @param referredPolicy
+	 * @return extra policy metadata
+	 * @throws IndeterminateEvaluationException
+	 *             if the extra policy metadata of {@code referredPolicy} could not be determined in {@code evalCtx} (with
+	 *             {@link TopLevelPolicyElementEvaluator#getPolicyRefsMetadata(EvaluationContext)} )
+	 */
+	private static PolicyRefsMetadata newPolicyRefExtraMetadata(final TopLevelPolicyElementEvaluator referredPolicy, final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+	{
+<span class="nc bnc" id="L978" title="All 4 branches missed.">		assert referredPolicy != null;</span>
+
+<span class="nc" id="L980">		final PrimaryPolicyMetadata referredPolicyMetadata = referredPolicy.getPrimaryPolicyMetadata();</span>
+<span class="nc" id="L981">		final Optional&lt;PolicyRefsMetadata&gt; referredPolicyRefsMetadata = referredPolicy.getPolicyRefsMetadata(evalCtx);</span>
+		final Set&lt;PrimaryPolicyMetadata&gt; newRefPolicies;
+		final List&lt;String&gt; newLongestPolicyRefChain;
+<span class="nc bnc" id="L984" title="All 2 branches missed.">		if (referredPolicyRefsMetadata.isPresent())</span>
+		{
+<span class="nc" id="L986">			final Set&lt;PrimaryPolicyMetadata&gt; childRefPolicies = referredPolicyRefsMetadata.get().getRefPolicies();</span>
+			// LinkedHashSet to preserve order
+<span class="nc" id="L988">			newRefPolicies = new LinkedHashSet&lt;&gt;(childRefPolicies.size() + 1);</span>
+<span class="nc" id="L989">			newRefPolicies.addAll(childRefPolicies);</span>
+<span class="nc" id="L990">			newRefPolicies.add(referredPolicyMetadata);</span>
+
+<span class="nc" id="L992">			final List&lt;String&gt; referredPolicyLongestRefChain = referredPolicyRefsMetadata.get().getLongestPolicyRefChain();</span>
+<span class="nc" id="L993">			newLongestPolicyRefChain = new ArrayList&lt;&gt;(referredPolicyLongestRefChain.size() + 1);</span>
+<span class="nc" id="L994">			newLongestPolicyRefChain.add(referredPolicy.getPolicyId());</span>
+<span class="nc" id="L995">			newLongestPolicyRefChain.addAll(referredPolicyLongestRefChain);</span>
+<span class="nc" id="L996">		}</span>
+		else
+		{
+<span class="nc" id="L999">			newRefPolicies = Sets.newHashSet(referredPolicyMetadata);</span>
+<span class="nc" id="L1000">			newLongestPolicyRefChain = Arrays.asList(referredPolicy.getPolicyId());</span>
+		}
+
+<span class="nc" id="L1003">		return new BasePolicyRefsMetadata(newRefPolicies, newLongestPolicyRefChain);</span>
+	}
+
+<span class="nc bnc" id="L1006" title="All 2 branches missed.">	private static final class StaticPolicySetChildRefsMetadataProvider</span>
+	{
+		// LinkedHashSet to preserve order
+<span class="nc" id="L1009">		private final Set&lt;PrimaryPolicyMetadata&gt; refPolicies = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L1010">		private final List&lt;String&gt; longestPolicyRefChain = new ArrayList&lt;&gt;();</span>
+
+		private StaticPolicySetChildRefsMetadataProvider(final PrimaryPolicyMetadata primaryPolicyMetadata)
+<span class="nc" id="L1013">		{</span>
+<span class="nc bnc" id="L1014" title="All 4 branches missed.">			assert primaryPolicyMetadata != null;</span>
+<span class="nc" id="L1015">		}</span>
+
+		private Optional&lt;PolicyRefsMetadata&gt; getMetadata()
+		{
+<span class="nc bnc" id="L1019" title="All 2 branches missed.">			return refPolicies.isEmpty() ? Optional.empty() : Optional.of(new BasePolicyRefsMetadata(refPolicies, longestPolicyRefChain));</span>
+		}
+
+		private void updateMetadata(final PolicyRefsMetadata childPolicyRefsMetadata)
+		{
+<span class="nc bnc" id="L1024" title="All 4 branches missed.">			assert childPolicyRefsMetadata != null;</span>
+
+			// Modify refPolicies
+<span class="nc" id="L1027">			refPolicies.addAll(childPolicyRefsMetadata.getRefPolicies());</span>
+
+			/*
+			 * update longest policy ref chain depending on the length of the longest in this child policy element
+			 */
+<span class="nc" id="L1032">			final List&lt;String&gt; childLongestPolicyRefChain = childPolicyRefsMetadata.getLongestPolicyRefChain();</span>
+<span class="nc bnc" id="L1033" title="All 2 branches missed.">			if (childLongestPolicyRefChain.size() &gt; longestPolicyRefChain.size())</span>
+			{
+<span class="nc" id="L1035">				longestPolicyRefChain.clear();</span>
+<span class="nc" id="L1036">				longestPolicyRefChain.addAll(childLongestPolicyRefChain);</span>
+			}
+<span class="nc" id="L1038">		}</span>
+	}
+
+	private static final class DynamicPolicySetChildRefsMetadataProvider
+	{
+<span class="nc bnc" id="L1043" title="All 2 branches missed.">		private static final class GetMetadataResult</span>
+		{
+			private final Optional&lt;PolicyRefsMetadata&gt; extraMetadata;
+			private final IndeterminateEvaluationException exception;
+
+			private GetMetadataResult(final Optional&lt;PolicyRefsMetadata&gt; metadata)
+<span class="nc" id="L1049">			{</span>
+<span class="nc bnc" id="L1050" title="All 4 branches missed.">				assert metadata != null;</span>
+<span class="nc" id="L1051">				this.exception = null;</span>
+<span class="nc" id="L1052">				this.extraMetadata = metadata;</span>
+<span class="nc" id="L1053">			}</span>
+
+			private GetMetadataResult(final IndeterminateEvaluationException exception)
+<span class="nc" id="L1056">			{</span>
+<span class="nc bnc" id="L1057" title="All 4 branches missed.">				assert exception != null;</span>
+<span class="nc" id="L1058">				this.exception = exception;</span>
+<span class="nc" id="L1059">				this.extraMetadata = null;</span>
+<span class="nc" id="L1060">			}</span>
+		}
+
+<span class="nc" id="L1063">		private final List&lt;PolicyEvaluator&gt; childPolicySetElementsOrRefs = new ArrayList&lt;&gt;();</span>
+
+		private transient final String requestScopedCacheKey;
+
+		private DynamicPolicySetChildRefsMetadataProvider()
+<span class="nc" id="L1068">		{</span>
+			/*
+			 * Define a key for caching the result of #getMetadata() in the request context (see Object#toString())
+			 */
+<span class="nc" id="L1072">			this.requestScopedCacheKey = this.getClass().getName() + '@' + Integer.toHexString(hashCode());</span>
+<span class="nc" id="L1073">		}</span>
+
+		private void addChildPolicySetElementOrRef(final PolicyEvaluator childElement)
+		{
+<span class="nc" id="L1077">			childPolicySetElementsOrRefs.add(childElement);</span>
+<span class="nc" id="L1078">		}</span>
+
+		private Optional&lt;PolicyRefsMetadata&gt; getMetadata(final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+		{
+			/*
+			 * check whether the result is already cached in the evaluation context
+			 */
+<span class="nc" id="L1085">			final Object cachedValue = evalCtx.getOther(requestScopedCacheKey);</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">			if (cachedValue instanceof GetMetadataResult)</span>
+			{
+<span class="nc" id="L1088">				final GetMetadataResult result = (GetMetadataResult) cachedValue;</span>
+<span class="nc bnc" id="L1089" title="All 2 branches missed.">				if (result.exception == null)</span>
+				{
+<span class="nc" id="L1091">					return result.extraMetadata;</span>
+				}
+
+<span class="nc" id="L1094">				throw result.exception;</span>
+			}
+
+			/*
+			 * cachedValue == null, i.e. result not cached yet; or cachedValue of the wrong type (unexpected), so we just overwrite with proper type
+			 */
+<span class="nc" id="L1100">			final Set&lt;PrimaryPolicyMetadata&gt; refPolicies = new LinkedHashSet&lt;&gt;();</span>
+<span class="nc" id="L1101">			final List&lt;String&gt; longestPolicyRefChain = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1102" title="All 2 branches missed.">			for (final PolicyEvaluator policyRef : childPolicySetElementsOrRefs)</span>
+			{
+<span class="nc" id="L1104">				final Optional&lt;PolicyRefsMetadata&gt; extraMetadata = policyRef.getPolicyRefsMetadata(evalCtx);</span>
+<span class="nc bnc" id="L1105" title="All 2 branches missed.">				if (extraMetadata.isPresent())</span>
+				{
+<span class="nc" id="L1107">					refPolicies.addAll(extraMetadata.get().getRefPolicies());</span>
+<span class="nc" id="L1108">					final List&lt;String&gt; policyRefLongestPolicyRefChain = extraMetadata.get().getLongestPolicyRefChain();</span>
+<span class="nc bnc" id="L1109" title="All 2 branches missed.">					if (policyRefLongestPolicyRefChain.size() &gt; longestPolicyRefChain.size())</span>
+					{
+<span class="nc" id="L1111">						longestPolicyRefChain.clear();</span>
+<span class="nc" id="L1112">						longestPolicyRefChain.addAll(policyRefLongestPolicyRefChain);</span>
+					}
+				}
+<span class="nc" id="L1115">			}</span>
+
+<span class="nc bnc" id="L1117" title="All 2 branches missed.">			final Optional&lt;PolicyRefsMetadata&gt; extraMetadata = refPolicies.isEmpty() ? Optional.empty() : Optional.of(new BasePolicyRefsMetadata(refPolicies, longestPolicyRefChain));</span>
+<span class="nc" id="L1118">			final GetMetadataResult newCachedValue = new GetMetadataResult(extraMetadata);</span>
+<span class="nc" id="L1119">			evalCtx.putOther(requestScopedCacheKey, newCachedValue);</span>
+<span class="nc" id="L1120">			return extraMetadata;</span>
+		}
+	}
+
+	private static final class DynamicPolicySetEvaluator extends BaseTopLevelPolicyElementEvaluator&lt;PolicyEvaluator&gt;
+	{
+		private transient final DynamicPolicySetChildRefsMetadataProvider extraPolicyMetadataProvider;
+
+		private DynamicPolicySetEvaluator(final PrimaryPolicyMetadata policyMetadata, final DynamicPolicySetChildRefsMetadataProvider extraPolicyMetadataProvider, final Target policyTarget,
+		        final String combiningAlgId, final Iterable&lt;PolicyEvaluator&gt; combinedElements, final Iterable&lt;CombiningAlgParameter&lt;? extends PolicyEvaluator&gt;&gt; combinerParameters,
+		        final List&lt;ObligationExpression&gt; obligationExps, final List&lt;AdviceExpression&gt; adviceExps, final List&lt;String&gt; localVariableIds, final XPathCompiler defaultXPathCompiler,
+		        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+		{
+<span class="nc" id="L1133">			super(PolicyEvaluator.class, policyMetadata, policyTarget, combiningAlgId, combinedElements, combinerParameters, obligationExps, adviceExps, localVariableIds, defaultXPathCompiler,</span>
+			        expressionFactory, combiningAlgRegistry);
+<span class="nc" id="L1135">			this.extraPolicyMetadataProvider = extraPolicyMetadataProvider;</span>
+<span class="nc" id="L1136">		}</span>
+
+		@Override
+		public Optional&lt;PolicyRefsMetadata&gt; getPolicyRefsMetadata(final EvaluationContext evaluationCtx) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L1141">			return this.extraPolicyMetadataProvider.getMetadata(evaluationCtx);</span>
+		}
+
+	}
+
+	private static final class StaticPolicyRefEvaluator extends PolicyRefEvaluator implements StaticPolicyEvaluator
+	{
+		/*
+		 * statically defined policy referenced by this policy reference evaluator
+		 */
+		private final StaticTopLevelPolicyElementEvaluator referredPolicy;
+		private transient final Optional&lt;PolicyRefsMetadata&gt; extraMetadata;
+
+		private static TopLevelPolicyElementType validate(final TopLevelPolicyElementEvaluator referredPolicy)
+		{
+<span class="nc" id="L1156">			return referredPolicy.getPolicyElementType();</span>
+		}
+
+		private StaticPolicyRefEvaluator(final StaticTopLevelPolicyElementEvaluator referredPolicy, final Optional&lt;PolicyVersionPatterns&gt; refVersionConstraints)
+		{
+<span class="nc" id="L1161">			super(validate(referredPolicy), referredPolicy.getPolicyId(), refVersionConstraints);</span>
+<span class="nc" id="L1162">			this.referredPolicy = referredPolicy;</span>
+			try
+			{
+<span class="nc" id="L1165">				this.extraMetadata = Optional.of(newPolicyRefExtraMetadata(referredPolicy, null));</span>
+			}
+<span class="nc" id="L1167">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L1169">				throw new RuntimeException(this + &quot;: unexpected error: could not get extra metadata of statically defined policy: &quot; + referredPolicy, e);</span>
+<span class="nc" id="L1170">			}</span>
+<span class="nc" id="L1171">		}</span>
+
+		@Override
+		public DecisionResult evaluate(final EvaluationContext context, final boolean skipTarget)
+		{
+<span class="nc" id="L1176">			return referredPolicy.evaluate(context, skipTarget);</span>
+		}
+
+		@Override
+		public boolean isApplicableByTarget(final EvaluationContext context) throws IndeterminateEvaluationException
+		{
+			try
+			{
+<span class="nc" id="L1184">				return referredPolicy.isApplicableByTarget(context);</span>
+			}
+<span class="nc" id="L1186">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L1188">				throw new IndeterminateEvaluationException(&quot;Error checking whether Policy(Set) referenced by &quot; + this + &quot; is applicable to the request context&quot;, e.getStatusCode(), e);</span>
+			}
+		}
+
+		@Override
+		public PolicyVersion getPolicyVersion()
+		{
+<span class="nc" id="L1195">			return this.referredPolicy.getPolicyVersion();</span>
+		}
+
+		@Override
+		public Optional&lt;PolicyRefsMetadata&gt; getPolicyRefsMetadata()
+		{
+<span class="nc" id="L1201">			return this.extraMetadata;</span>
+		}
+
+	}
+
+	/**
+	 * Dynamic Policy/PolicySet reference evaluator
+	 *
+	 */
+<span class="nc bnc" id="L1210" title="All 2 branches missed.">	private static abstract class DynamicTopLevelPolicyElementRefEvaluator extends PolicyRefEvaluator</span>
+	{
+
+<span class="nc bnc" id="L1213" title="All 2 branches missed.">		protected static final class RefResolvedResult</span>
+		{
+
+			private final TopLevelPolicyElementEvaluator resolvedPolicy;
+			private final Optional&lt;PolicyRefsMetadata&gt; extraMetadata;
+			private final IndeterminateEvaluationException exception;
+
+			private RefResolvedResult(final TopLevelPolicyElementEvaluator policy, final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+<span class="nc" id="L1221">			{</span>
+<span class="nc bnc" id="L1222" title="All 6 branches missed.">				assert policy != null &amp;&amp; evalCtx != null;</span>
+<span class="nc" id="L1223">				this.exception = null;</span>
+<span class="nc" id="L1224">				this.resolvedPolicy = policy;</span>
+<span class="nc" id="L1225">				this.extraMetadata = Optional.of(newPolicyRefExtraMetadata(policy, evalCtx));</span>
+<span class="nc" id="L1226">			}</span>
+
+			private RefResolvedResult(final IndeterminateEvaluationException exception)
+<span class="nc" id="L1229">			{</span>
+<span class="nc bnc" id="L1230" title="All 4 branches missed.">				assert exception != null;</span>
+<span class="nc" id="L1231">				this.exception = exception;</span>
+<span class="nc" id="L1232">				this.resolvedPolicy = null;</span>
+<span class="nc" id="L1233">				this.extraMetadata = null;</span>
+<span class="nc" id="L1234">			}</span>
+		}
+
+		// this policyProvider to use in finding the referenced policy
+		private final RefPolicyProvider refPolicyProvider;
+
+		private final String requestScopedCacheKey;
+
+		private DynamicTopLevelPolicyElementRefEvaluator(final TopLevelPolicyElementType policyType, final String policyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints,
+		        final RefPolicyProvider refPolicyProvider)
+		{
+<span class="nc" id="L1245">			super(policyType, policyId, versionConstraints);</span>
+<span class="nc bnc" id="L1246" title="All 4 branches missed.">			assert refPolicyProvider != null;</span>
+<span class="nc" id="L1247">			this.refPolicyProvider = refPolicyProvider;</span>
+			/*
+			 * define a key for caching the resolved policy in the request context (see Object#toString())
+			 */
+<span class="nc" id="L1251">			this.requestScopedCacheKey = this.getClass().getName() + '@' + Integer.toHexString(hashCode());</span>
+<span class="nc" id="L1252">		}</span>
+
+		protected final void checkJoinedPolicySetRefChain(final Deque&lt;String&gt; chain1, final List&lt;String&gt; chain2) throws IllegalArgumentException
+		{
+<span class="nc" id="L1256">			refPolicyProvider.joinPolicyRefChains(chain1, chain2);</span>
+<span class="nc" id="L1257">		}</span>
+
+		protected final TopLevelPolicyElementEvaluator resolvePolicy(final Deque&lt;String&gt; policySetRefChainWithResolvedPolicyIfPolicySet, final EvaluationContext evalCtx)
+		        throws IllegalArgumentException, IndeterminateEvaluationException
+		{
+<span class="nc" id="L1262">			return refPolicyProvider.get(this.referredPolicyType, this.refPolicyId, this.versionConstraints, policySetRefChainWithResolvedPolicyIfPolicySet, evalCtx);</span>
+		}
+
+		protected abstract void checkPolicyRefChain(TopLevelPolicyElementEvaluator nonNullRefResultPolicy, final EvaluationContext evalCtx)
+		        throws IllegalArgumentException, IndeterminateEvaluationException;
+
+		protected abstract TopLevelPolicyElementEvaluator resolvePolicyWithRefDepthCheck(final EvaluationContext evalCtx) throws IllegalArgumentException, IndeterminateEvaluationException;
+
+		/**
+		 * Resolves this to the actual Policy
+		 * 
+		 * @throws IllegalArgumentException
+		 *             Error parsing the policy referenced by this. The referenced policy may be parsed on the fly, when calling this method.
+		 * @throws IndeterminateEvaluationException
+		 *             if error determining the policy referenced by this, e.g. if more than one policy is found
+		 */
+		private RefResolvedResult resolve(final EvaluationContext evalCtx) throws IndeterminateEvaluationException, IllegalArgumentException
+		{
+			// check whether the policy was already resolved in the same context
+<span class="nc" id="L1281">			final Object cachedValue = evalCtx.getOther(requestScopedCacheKey);</span>
+<span class="nc bnc" id="L1282" title="All 2 branches missed.">			if (cachedValue instanceof RefResolvedResult)</span>
+			{
+<span class="nc" id="L1284">				final RefResolvedResult result = (RefResolvedResult) cachedValue;</span>
+<span class="nc bnc" id="L1285" title="All 2 branches missed.">				if (result.exception == null)</span>
+				{
+<span class="nc" id="L1287">					checkPolicyRefChain(result.resolvedPolicy, evalCtx);</span>
+<span class="nc" id="L1288">					return result;</span>
+				}
+
+<span class="nc" id="L1291">				throw result.exception;</span>
+			}
+
+			/*
+			 * cachedValue == null, i.e. ref resolution result not cached yet; or cachedValue of the wrong type (unexpected), so we just overwrite with proper type
+			 */
+			try
+			{
+<span class="nc" id="L1299">				final TopLevelPolicyElementEvaluator policy = resolvePolicyWithRefDepthCheck(evalCtx);</span>
+<span class="nc" id="L1300">				final RefResolvedResult newCacheValue = new RefResolvedResult(policy, evalCtx);</span>
+<span class="nc" id="L1301">				evalCtx.putOther(requestScopedCacheKey, newCacheValue);</span>
+<span class="nc" id="L1302">				return newCacheValue;</span>
+			}
+<span class="nc" id="L1304">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L1306">				final IndeterminateEvaluationException resolutionException = new IndeterminateEvaluationException(&quot;Error resolving &quot; + this + &quot; to the policy to evaluate in the request context&quot;,</span>
+<span class="nc" id="L1307">				        XacmlStatusCode.PROCESSING_ERROR.value(), e);</span>
+<span class="nc" id="L1308">				final RefResolvedResult newCacheValue = new RefResolvedResult(resolutionException);</span>
+<span class="nc" id="L1309">				evalCtx.putOther(requestScopedCacheKey, newCacheValue);</span>
+<span class="nc" id="L1310">				throw resolutionException;</span>
+			}
+<span class="nc" id="L1312">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L1314">				final RefResolvedResult newCacheValue = new RefResolvedResult(e);</span>
+<span class="nc" id="L1315">				evalCtx.putOther(requestScopedCacheKey, newCacheValue);</span>
+<span class="nc" id="L1316">				throw e;</span>
+			}
+		}
+
+		@Override
+		public final DecisionResult evaluate(final EvaluationContext context, final boolean skipTarget)
+		{
+			// we must have found a policy
+			final RefResolvedResult refResolvedResult;
+			try
+			{
+<span class="nc" id="L1327">				refResolvedResult = resolve(context);</span>
+			}
+<span class="nc" id="L1329">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L1331">				LOGGER.info(&quot;&quot;, e);</span>
+				/*
+				 * Dynamic policy ref could not be resolved to an actual policy (-&gt; no applicable policy found)
+				 */
+<span class="nc" id="L1335">				return DecisionResults.newIndeterminate(DecisionType.INDETERMINATE, e, null);</span>
+<span class="nc" id="L1336">			}</span>
+
+<span class="nc" id="L1338">			return refResolvedResult.resolvedPolicy.evaluate(context, skipTarget);</span>
+		}
+
+		@Override
+		public final boolean isApplicableByTarget(final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L1344">			final RefResolvedResult refResolvedResult = resolve(evalCtx);</span>
+<span class="nc" id="L1345">			return refResolvedResult.resolvedPolicy.isApplicableByTarget(evalCtx);</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator#getPolicyVersion(org.ow2.authzforce.core.pdp.api.EvaluationContext)
+		 */
+		@Override
+		public final PolicyVersion getPolicyVersion(final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L1356">			final RefResolvedResult refResolvedResult = resolve(evalCtx);</span>
+<span class="nc" id="L1357">			return refResolvedResult.resolvedPolicy.getPolicyVersion();</span>
+		}
+
+		@Override
+		public final Optional&lt;PolicyRefsMetadata&gt; getPolicyRefsMetadata(final EvaluationContext evalCtx) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L1363">			final RefResolvedResult refResolvedResult = resolve(evalCtx);</span>
+<span class="nc" id="L1364">			return refResolvedResult.extraMetadata;</span>
+		}
+
+	}
+
+	/**
+	 * Evaluator of PolicyIdReference with context-dependent resolution
+	 */
+	private static final class DynamicPolicyRefEvaluator extends DynamicTopLevelPolicyElementRefEvaluator
+	{
+		private DynamicPolicyRefEvaluator(final String policyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints, final RefPolicyProvider refPolicyProvider)
+		{
+<span class="nc" id="L1376">			super(TopLevelPolicyElementType.POLICY, policyId, versionConstraints, refPolicyProvider);</span>
+<span class="nc" id="L1377">		}</span>
+
+		@Override
+		protected void checkPolicyRefChain(final TopLevelPolicyElementEvaluator nonNullRefResultPolicy, final EvaluationContext evalCtx)
+		{
+			// nothing to do for XACML Policy (no nested policy ref)
+<span class="nc" id="L1383">		}</span>
+
+		@Override
+		protected TopLevelPolicyElementEvaluator resolvePolicyWithRefDepthCheck(final EvaluationContext evalCtx) throws IllegalArgumentException, IndeterminateEvaluationException
+		{
+			// no policy ref depth check to do for XACML Policy (no nested policy ref)
+<span class="nc" id="L1389">			return resolvePolicy(null, evalCtx);</span>
+		}
+	}
+
+<span class="nc bnc" id="L1393" title="All 2 branches missed.">	private static final class DynamicPolicySetRefEvaluator extends DynamicTopLevelPolicyElementRefEvaluator</span>
+	{
+		/*
+		 * Chain of PolicySet Reference leading from root PolicySet down to this reference (included) (Do not use a Queue as it is FIFO, and we need LIFO and iteration in order of insertion, so
+		 * different from Collections.asLifoQueue(Deque) as well.)
+		 */
+		private final Deque&lt;String&gt; policySetRefChainToThisRefTarget;
+
+		private DynamicPolicySetRefEvaluator(final String policyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints, final RefPolicyProvider refPolicyProvider,
+		        final Deque&lt;String&gt; policySetRefChainWithPolicyIdArgIfPolicySet) throws IllegalArgumentException
+		{
+<span class="nc" id="L1404">			super(TopLevelPolicyElementType.POLICY_SET, policyId, versionConstraints, refPolicyProvider);</span>
+<span class="nc bnc" id="L1405" title="All 6 branches missed.">			assert policySetRefChainWithPolicyIdArgIfPolicySet != null &amp;&amp; !policySetRefChainWithPolicyIdArgIfPolicySet.isEmpty();</span>
+<span class="nc" id="L1406">			this.policySetRefChainToThisRefTarget = policySetRefChainWithPolicyIdArgIfPolicySet;</span>
+<span class="nc" id="L1407">		}</span>
+
+		@Override
+		protected void checkPolicyRefChain(final TopLevelPolicyElementEvaluator nonNullRefResultPolicy, final EvaluationContext evalCtx)
+		        throws IllegalArgumentException, IndeterminateEvaluationException
+		{
+<span class="nc bnc" id="L1413" title="All 4 branches missed.">			assert nonNullRefResultPolicy != null;</span>
+			/*
+			 * Check PolicySet reference depth resulting from resolving this new PolicySet ref
+			 */
+<span class="nc" id="L1417">			final Optional&lt;PolicyRefsMetadata&gt; optionalRefsMetadata = nonNullRefResultPolicy.getPolicyRefsMetadata(evalCtx);</span>
+<span class="nc bnc" id="L1418" title="All 2 branches missed.">			if (optionalRefsMetadata.isPresent())</span>
+			{
+<span class="nc" id="L1420">				checkJoinedPolicySetRefChain(policySetRefChainToThisRefTarget, optionalRefsMetadata.get().getLongestPolicyRefChain());</span>
+			}
+<span class="nc" id="L1422">		}</span>
+
+		@Override
+		protected TopLevelPolicyElementEvaluator resolvePolicyWithRefDepthCheck(final EvaluationContext evalCtx) throws IllegalArgumentException, IndeterminateEvaluationException
+		{
+<span class="nc" id="L1427">			return resolvePolicy(policySetRefChainToThisRefTarget, evalCtx);</span>
+		}
+
+	}
+
+	/**
+	 * Creates Policy handler from XACML Policy element
+	 *
+	 * @param policyElement
+	 *            Policy (XACML)
+	 * @param parentDefaultXPathCompiler
+	 *            XPath compiler corresponding to parent PolicyDefaults/XPathVersion; null if this Policy has no parent Policy (root), or none defined in parent
+	 * @param namespacePrefixesByURI
+	 *            namespace prefix-URI mappings from the original XACML Policy (XML) document, to be used for namespace-aware XPath evaluation; null or empty iff XPath support disabled
+	 * @param expressionFactory
+	 *            Expression factory/parser; may be null iff {@code policyElement} does not contain any XACML {@link ExpressionType}
+	 * @param combiningAlgRegistry
+	 *            rule/policy combining algorithm registry
+	 * @return instance
+	 * @throws java.lang.IllegalArgumentException
+	 *             if any argument is invalid
+	 */
+	public static StaticTopLevelPolicyElementEvaluator getInstance(final Policy policyElement, final XPathCompiler parentDefaultXPathCompiler, final Map&lt;String, String&gt; namespacePrefixesByURI,
+	        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L1452" title="All 2 branches missed.">		if (policyElement == null)</span>
+		{
+<span class="nc" id="L1454">			throw NULL_XACML_POLICY_ARG_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L1457" title="All 2 branches missed.">		if (expressionFactory == null)</span>
+		{
+<span class="nc" id="L1459">			throw NULL_EXPRESSION_FACTORY_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L1462" title="All 2 branches missed.">		if (combiningAlgRegistry == null)</span>
+		{
+<span class="nc" id="L1464">			throw NULL_XACML_COMBINING_ALG_ARG_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L1467">		final String policyId = policyElement.getPolicyId();</span>
+<span class="nc" id="L1468">		final PolicyVersion policyVersion = new PolicyVersion(policyElement.getVersion());</span>
+<span class="nc" id="L1469">		final String policyFriendlyId = &quot;Policy[&quot; + policyId + &quot;#v&quot; + policyVersion + &quot;]&quot;;</span>
+<span class="nc" id="L1470">		final DefaultsType policyDefaults = policyElement.getPolicyDefaults();</span>
+
+		/*
+		 * Inherited PolicyDefaults is this.policyDefaults if not null, the parentPolicyDefaults otherwise
+		 */
+		final XPathCompiler defaultXPathCompiler;
+<span class="nc bnc" id="L1476" title="All 2 branches missed.">		if (policyDefaults == null)</span>
+		{
+<span class="nc" id="L1478">			defaultXPathCompiler = parentDefaultXPathCompiler;</span>
+		}
+		else
+		{
+			try
+			{
+<span class="nc" id="L1484">				defaultXPathCompiler = XmlUtils.newXPathCompiler(policyDefaults.getXPathVersion(), namespacePrefixesByURI);</span>
+			}
+<span class="nc" id="L1486">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L1488">				throw new IllegalArgumentException(policyFriendlyId + &quot;: Invalid PolicyDefaults/XPathVersion or XML namespace prefix/URI undefined&quot;, e);</span>
+<span class="nc" id="L1489">			}</span>
+
+		}
+
+		/*
+		 * Elements defined in xs:choice of XACML schema type PolicyType: Rules/(Rule)CombinerParameters/VariableDefinitions
+		 */
+<span class="nc" id="L1496">		final List&lt;Serializable&gt; policyChoiceElements = policyElement.getCombinerParametersAndRuleCombinerParametersAndVariableDefinitions();</span>
+		/*
+		 * There are at most as many combining alg parameters as policyChoiceElements.size().
+		 */
+<span class="nc" id="L1500">		final List&lt;CombiningAlgParameter&lt;? extends RuleEvaluator&gt;&gt; combiningAlgParameters = new ArrayList&lt;&gt;(policyChoiceElements.size());</span>
+
+		/*
+		 * Keep a copy of locally-defined variable IDs defined in this policy, to remove them from the global manager at the end of parsing this policy. They should not be visible outside the scope of
+		 * this policy. There are at most as many VariableDefinitions as policyChoiceElements.size().
+		 */
+<span class="nc" id="L1506">		final List&lt;String&gt; localVariableIds = new ArrayList&lt;&gt;(policyChoiceElements.size());</span>
+		/*
+		 * We keep a record of the size of the longest chain of VariableReference in this policy, and update it when a VariableDefinition occurs
+		 */
+<span class="nc" id="L1510">		int sizeOfPolicyLongestVarRefChain = 0;</span>
+		/*
+		 * Map to get rules by their ID so that we can resolve rules associated with RuleCombinerParameters, and detect duplicate RuleId. We want to preserve insertion order, to get map.values() in
+		 * order of declaration, so that ordered-* algorithms have rules in order. There are at most as many Rules as policyChoiceElements.size().
+		 */
+<span class="nc" id="L1515">		final Map&lt;String, RuleEvaluator&gt; ruleEvaluatorsByRuleIdInOrderOfDeclaration = new LinkedHashMap&lt;&gt;(policyChoiceElements.size());</span>
+<span class="nc" id="L1516">		int childIndex = 0;</span>
+<span class="nc bnc" id="L1517" title="All 2 branches missed.">		for (final Serializable policyChildElt : policyChoiceElements)</span>
+		{
+<span class="nc bnc" id="L1519" title="All 2 branches missed.">			if (policyChildElt instanceof RuleCombinerParameters)</span>
+			{
+<span class="nc" id="L1521">				final String combinedRuleId = ((RuleCombinerParameters) policyChildElt).getRuleIdRef();</span>
+<span class="nc" id="L1522">				final RuleEvaluator ruleEvaluator = ruleEvaluatorsByRuleIdInOrderOfDeclaration.get(combinedRuleId);</span>
+<span class="nc bnc" id="L1523" title="All 2 branches missed.">				if (ruleEvaluator == null)</span>
+				{
+<span class="nc" id="L1525">					throw new IllegalArgumentException(</span>
+					        policyFriendlyId + &quot;:  invalid RuleCombinerParameters: referencing undefined child Rule #&quot; + combinedRuleId + &quot; (no such rule defined before this element)&quot;);
+				}
+
+				final BaseCombiningAlgParameter&lt;RuleEvaluator&gt; combiningAlgParameter;
+				try
+				{
+<span class="nc" id="L1532">					combiningAlgParameter = new BaseCombiningAlgParameter&lt;&gt;(ruleEvaluator, ((CombinerParametersType) policyChildElt).getCombinerParameters(), expressionFactory, defaultXPathCompiler);</span>
+				}
+<span class="nc" id="L1534">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L1536">					throw new IllegalArgumentException(policyFriendlyId + &quot;: invalid child #&quot; + childIndex + &quot; (RuleCombinerParameters)&quot;, e);</span>
+<span class="nc" id="L1537">				}</span>
+
+<span class="nc" id="L1539">				combiningAlgParameters.add(combiningAlgParameter);</span>
+<span class="nc" id="L1540">			}</span>
+<span class="nc bnc" id="L1541" title="All 2 branches missed.">			else if (policyChildElt instanceof CombinerParametersType)</span>
+			{
+				/*
+				 * CombinerParameters that is not RuleCombinerParameters already tested before
+				 */
+				final BaseCombiningAlgParameter&lt;RuleEvaluator&gt; combiningAlgParameter;
+				try
+				{
+<span class="nc" id="L1549">					combiningAlgParameter = new BaseCombiningAlgParameter&lt;&gt;(null, ((CombinerParametersType) policyChildElt).getCombinerParameters(), expressionFactory, defaultXPathCompiler);</span>
+				}
+<span class="nc" id="L1551">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L1553">					throw new IllegalArgumentException(policyFriendlyId + &quot;: invalid child #&quot; + childIndex + &quot; (CombinerParameters)&quot;, e);</span>
+<span class="nc" id="L1554">				}</span>
+
+<span class="nc" id="L1556">				combiningAlgParameters.add(combiningAlgParameter);</span>
+<span class="nc" id="L1557">			}</span>
+<span class="nc bnc" id="L1558" title="All 2 branches missed.">			else if (policyChildElt instanceof VariableDefinition)</span>
+			{
+<span class="nc" id="L1560">				final VariableDefinition varDef = (VariableDefinition) policyChildElt;</span>
+<span class="nc" id="L1561">				final Deque&lt;String&gt; varDefLongestVarRefChain = new ArrayDeque&lt;&gt;();</span>
+				final VariableReference&lt;?&gt; var;
+				try
+				{
+<span class="nc" id="L1565">					var = expressionFactory.addVariable(varDef, defaultXPathCompiler, varDefLongestVarRefChain);</span>
+				}
+<span class="nc" id="L1567">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L1569">					throw new IllegalArgumentException(policyFriendlyId + &quot;: invalid child #&quot; + childIndex + &quot; (VariableDefinition)&quot;, e);</span>
+<span class="nc" id="L1570">				}</span>
+
+<span class="nc bnc" id="L1572" title="All 2 branches missed.">				if (var != null)</span>
+				{
+					/*
+					 * Conflicts can occur between variables defined in this policy but also with others already in a wider scope, i.e. defined in parent/ancestor policy
+					 */
+<span class="nc" id="L1577">					throw new IllegalArgumentException(policyFriendlyId + &quot;: Duplicable VariableDefinition for VariableId = &quot; + var.getVariableId());</span>
+				}
+
+<span class="nc" id="L1580">				localVariableIds.add(varDef.getVariableId());</span>
+				/*
+				 * check whether the longest VariableReference chain in the VariableDefinition is longer than what we've got so far
+				 */
+<span class="nc" id="L1584">				final int sizeOfVarDefLongestVarRefChain = varDefLongestVarRefChain.size();</span>
+<span class="nc bnc" id="L1585" title="All 2 branches missed.">				if (sizeOfVarDefLongestVarRefChain &gt; sizeOfPolicyLongestVarRefChain)</span>
+				{
+<span class="nc" id="L1587">					sizeOfPolicyLongestVarRefChain = sizeOfVarDefLongestVarRefChain;</span>
+				}
+<span class="nc" id="L1589">			}</span>
+<span class="nc bnc" id="L1590" title="All 2 branches missed.">			else if (policyChildElt instanceof Rule)</span>
+			{
+				final RuleEvaluator ruleEvaluator;
+				try
+				{
+<span class="nc" id="L1595">					ruleEvaluator = new RuleEvaluator((Rule) policyChildElt, defaultXPathCompiler, expressionFactory);</span>
+				}
+<span class="nc" id="L1597">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L1599">					throw new IllegalArgumentException(policyFriendlyId + &quot;: Error parsing child #&quot; + childIndex + &quot; (Rule)&quot;, e);</span>
+<span class="nc" id="L1600">				}</span>
+
+<span class="nc" id="L1602">				final RuleEvaluator conflictingRuleEvaluator = ruleEvaluatorsByRuleIdInOrderOfDeclaration.putIfAbsent(ruleEvaluator.getRuleId(), ruleEvaluator);</span>
+<span class="nc bnc" id="L1603" title="All 2 branches missed.">				if (conflictingRuleEvaluator != null)</span>
+				{
+					/*
+					 * Conflict: 2 Rule elements with same RuleId -&gt; violates uniqueness of RuleId within a Policy (XACML spec)
+					 */
+<span class="nc" id="L1608">					throw new IllegalArgumentException(policyFriendlyId + &quot;: Duplicate Rule with RuleId = &quot; + conflictingRuleEvaluator.getRuleId());</span>
+				}
+			}
+
+<span class="nc" id="L1612">			childIndex++;</span>
+<span class="nc" id="L1613">		}</span>
+
+<span class="nc" id="L1615">		final PrimaryPolicyMetadata primaryPolicyMetadata = new BasePrimaryPolicyMetadata(TopLevelPolicyElementType.POLICY, policyId, policyVersion);</span>
+<span class="nc" id="L1616">		final ObligationExpressions obligationExps = policyElement.getObligationExpressions();</span>
+<span class="nc" id="L1617">		final AdviceExpressions adviceExps = policyElement.getAdviceExpressions();</span>
+<span class="nc" id="L1618">		final StaticTopLevelPolicyElementEvaluator policyEvaluator = new StaticBaseTopLevelPolicyElementEvaluator&lt;&gt;(RuleEvaluator.class, primaryPolicyMetadata, Optional.empty(),</span>
+<span class="nc bnc" id="L1619" title="All 2 branches missed.">		        policyElement.getTarget(), policyElement.getRuleCombiningAlgId(), ruleEvaluatorsByRuleIdInOrderOfDeclaration.values(), combiningAlgParameters,</span>
+<span class="nc bnc" id="L1620" title="All 2 branches missed.">		        obligationExps == null ? null : obligationExps.getObligationExpressions(), adviceExps == null ? null : adviceExps.getAdviceExpressions(),</span>
+<span class="nc" id="L1621">		        Collections.&lt;String&gt;unmodifiableList(localVariableIds), defaultXPathCompiler, expressionFactory, combiningAlgRegistry);</span>
+
+		/*
+		 * We are done parsing expressions in this policy, including VariableReferences, it's time to remove variables scoped to this policy from the variable manager
+		 */
+<span class="nc bnc" id="L1626" title="All 2 branches missed.">		for (final String varId : localVariableIds)</span>
+		{
+<span class="nc" id="L1628">			expressionFactory.removeVariable(varId);</span>
+<span class="nc" id="L1629">		}</span>
+
+<span class="nc" id="L1631">		return policyEvaluator;</span>
+	}
+
+	private interface PolicyRefEvaluatorFactory&lt;INSTANCE extends PolicyRefEvaluator&gt;
+	{
+
+		INSTANCE getInstance(TopLevelPolicyElementType refPolicyType, String idRefPolicyId, Optional&lt;PolicyVersionPatterns&gt; versionConstraints, Deque&lt;String&gt; policySetRefChainWithIdRefIfPolicySet);
+	}
+
+<span class="nc bnc" id="L1640" title="All 2 branches missed.">	private static final class StaticPolicyRefEvaluatorFactory implements PolicyRefEvaluatorFactory&lt;StaticPolicyRefEvaluator&gt;</span>
+	{
+		private final StaticRefPolicyProvider refPolicyProvider;
+
+		private StaticPolicyRefEvaluatorFactory(final StaticRefPolicyProvider refPolicyProvider)
+<span class="nc" id="L1645">		{</span>
+<span class="nc bnc" id="L1646" title="All 4 branches missed.">			assert refPolicyProvider != null;</span>
+<span class="nc" id="L1647">			this.refPolicyProvider = refPolicyProvider;</span>
+<span class="nc" id="L1648">		}</span>
+
+		@Override
+		public StaticPolicyRefEvaluator getInstance(final TopLevelPolicyElementType refPolicyType, final String refPolicyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints,
+		        final Deque&lt;String&gt; policySetRefChainWithRefPolicyIfPolicySet)
+		{
+			final StaticTopLevelPolicyElementEvaluator policy;
+			try
+			{
+<span class="nc" id="L1657">				policy = refPolicyProvider.get(refPolicyType, refPolicyId, versionConstraints, policySetRefChainWithRefPolicyIfPolicySet);</span>
+			}
+<span class="nc" id="L1659">			catch (final IndeterminateEvaluationException e)</span>
+			{
+<span class="nc" id="L1661">				throw new IllegalArgumentException(&quot;Error resolving statically or parsing &quot; + PolicyRefEvaluator.toString(refPolicyType, refPolicyId, versionConstraints)</span>
+				        + &quot; into its referenced policy (via static policy provider)&quot;, e);
+<span class="nc" id="L1663">			}</span>
+
+<span class="nc bnc" id="L1665" title="All 2 branches missed.">			if (policy == null)</span>
+			{
+<span class="nc" id="L1667">				throw new IllegalArgumentException(&quot;No &quot; + refPolicyType + &quot; matching reference: id = &quot; + refPolicyId + &quot;, &quot; + versionConstraints);</span>
+			}
+
+<span class="nc" id="L1670">			return new StaticPolicyRefEvaluator(policy, versionConstraints);</span>
+		}
+	}
+
+<span class="nc bnc" id="L1674" title="All 2 branches missed.">	private static final class DynamicPolicyRefEvaluatorFactory implements PolicyRefEvaluatorFactory&lt;PolicyRefEvaluator&gt;</span>
+	{
+		private final RefPolicyProvider refPolicyProvider;
+
+		private DynamicPolicyRefEvaluatorFactory(final RefPolicyProvider refPolicyProvider)
+<span class="nc" id="L1679">		{</span>
+<span class="nc bnc" id="L1680" title="All 4 branches missed.">			assert refPolicyProvider != null;</span>
+<span class="nc" id="L1681">			this.refPolicyProvider = refPolicyProvider;</span>
+<span class="nc" id="L1682">		}</span>
+
+		@Override
+		public PolicyRefEvaluator getInstance(final TopLevelPolicyElementType refPolicyType, final String refPolicyId, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints,
+		        final Deque&lt;String&gt; policySetRefChainWithRefPolicyIfPolicySet)
+		{
+			// dynamic reference resolution
+<span class="nc bnc" id="L1689" title="All 2 branches missed.">			if (refPolicyType == TopLevelPolicyElementType.POLICY)</span>
+			{
+<span class="nc" id="L1691">				return new DynamicPolicyRefEvaluator(refPolicyId, versionConstraints, refPolicyProvider);</span>
+			}
+
+<span class="nc" id="L1694">			return new DynamicPolicySetRefEvaluator(refPolicyId, versionConstraints, refPolicyProvider, policySetRefChainWithRefPolicyIfPolicySet);</span>
+		}
+	}
+
+	private static &lt;PRE extends PolicyRefEvaluator&gt; PRE getInstanceGeneric(final PolicyRefEvaluatorFactory&lt;PRE&gt; policyRefEvaluatorFactory, final TopLevelPolicyElementType refPolicyType,
+	        final IdReferenceType idRef, final Deque&lt;String&gt; policySetRefChainWithIdRefIfPolicySet) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L1701" title="All 6 branches missed.">		assert policyRefEvaluatorFactory != null &amp;&amp; idRef != null;</span>
+
+<span class="nc" id="L1703">		final PolicyVersionPatterns versionConstraints = new PolicyVersionPatterns(idRef.getVersion(), idRef.getEarliestVersion(), idRef.getLatestVersion());</span>
+<span class="nc" id="L1704">		return policyRefEvaluatorFactory.getInstance(refPolicyType, idRef.getValue(), Optional.of(versionConstraints), policySetRefChainWithIdRefIfPolicySet);</span>
+	}
+
+	/**
+	 * Instantiates Policy(Set) Reference evaluator from XACML Policy(Set)IdReference
+	 *
+	 * @param idRef
+	 *            Policy(Set)IdReference
+	 * @param refPolicyProvider
+	 *            Policy(Set)IdReference resolver/Provider
+	 * @param refPolicyType
+	 *            type of policy referenced, i.e. whether it refers to Policy or PolicySet
+	 * @param policySetRefChainWithIdRefIfPolicySet
+	 *            null if {@code refPolicyType == TopLevelPolicyElementType.POLICY}; else it is the chain of PolicySets linked via PolicySetIdReferences, from the root PolicySet up to this reference
+	 *            target (last item is the {@code idRef} value). Each item is a PolicySetId of a PolicySet that is referenced by the previous item (except the first item which is the root policy) and
+	 *            references the next one. This chain is used to control PolicySetIdReferences found within the result policy, in order to detect loops (circular references) and prevent exceeding
+	 *            reference depth.
+	 *            &lt;p&gt;
+	 *            Beware that we only keep the IDs in the chain, and not the version, because we consider that a reference loop on the same policy ID is not allowed, no matter what the version is.
+	 *            &lt;p&gt;
+	 *            (Do not use a Queue for {@code ancestorPolicySetRefChain} as it is FIFO, and we need LIFO and iteration in order of insertion, so different from Collections.asLifoQueue(Deque) as
+	 *            well.)
+	 *            &lt;/p&gt;
+	 * @return instance instance of PolicyReference
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code refPolicyProvider} undefined, or there is no policy of type {@code refPolicyType} matching {@code idRef} to be found by {@code refPolicyProvider}, or PolicySetIdReference
+	 *             loop detected or PolicySetIdReference depth exceeds the max enforced by {@code policyProvider}
+	 */
+	public static PolicyRefEvaluator getInstance(final TopLevelPolicyElementType refPolicyType, final IdReferenceType idRef, final RefPolicyProvider refPolicyProvider,
+	        final Deque&lt;String&gt; policySetRefChainWithIdRefIfPolicySet) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L1735" title="All 2 branches missed.">		final PolicyRefEvaluatorFactory&lt;? extends PolicyRefEvaluator&gt; factory = refPolicyProvider instanceof StaticRefPolicyProvider</span>
+		        ? new StaticPolicyRefEvaluatorFactory((StaticRefPolicyProvider) refPolicyProvider)
+		        : new DynamicPolicyRefEvaluatorFactory(refPolicyProvider);
+<span class="nc" id="L1738">		return getInstanceGeneric(factory, refPolicyType, idRef, policySetRefChainWithIdRefIfPolicySet);</span>
+	}
+
+	/**
+	 * Instantiates Static Policy(Set) Reference evaluator from XACML Policy(Set)IdReference, &quot;static&quot; meaning that given {@code idRef} and {@code refPolicyType}, the returned policy is always the
+	 * same statically defined policy
+	 *
+	 * @param idRef
+	 *            Policy(Set)IdReference
+	 * @param refPolicyProvider
+	 *            Policy(Set)IdReference resolver/Provider
+	 * @param refPolicyType
+	 *            type of policy referenced, i.e. whether it refers to Policy or PolicySet
+	 * @param ancestorPolicySetRefChain
+	 *            chain of ancestor PolicySets linked via PolicySetIdReferences, from the root PolicySet up to the Policy(Set) reference being resolved by this method (excluded). &lt;b&gt;Null/empty if
+	 *            {@code policyElement} this method is used to resolve the root PolicySet (no ancestor).&lt;/b&gt; Each item is a PolicySetId of a PolicySet that is referenced by the previous item (except
+	 *            the first item which is the root policy) and references the next one. This chain is used to control PolicySetIdReferences found within the result policy, in order to detect loops
+	 *            (circular references) and prevent exceeding reference depth.
+	 *            &lt;p&gt;
+	 *            Beware that we only keep the IDs in the chain, and not the version, because we consider that a reference loop on the same policy ID is not allowed, no matter what the version is.
+	 *            &lt;p&gt;
+	 *            (Do not use a Queue for {@code ancestorPolicySetRefChain} as it is FIFO, and we need LIFO and iteration in order of insertion, so different from Collections.asLifoQueue(Deque) as
+	 *            well.)
+	 *            &lt;/p&gt;
+	 * @return instance instance of PolicyReference
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code refPolicyProvider} undefined, or there is no policy of type {@code refPolicyType} matching {@code idRef} to be found by {@code refPolicyProvider}, or PolicySetIdReference
+	 *             loop detected or PolicySetIdReference depth exceeds the max enforced by {@code policyProvider}
+	 */
+	public static StaticPolicyRefEvaluator getInstanceStatic(final TopLevelPolicyElementType refPolicyType, final IdReferenceType idRef, final StaticRefPolicyProvider refPolicyProvider,
+	        final Deque&lt;String&gt; ancestorPolicySetRefChain) throws IllegalArgumentException
+	{
+<span class="nc" id="L1770">		final StaticPolicyRefEvaluatorFactory factory = new StaticPolicyRefEvaluatorFactory(refPolicyProvider);</span>
+<span class="nc" id="L1771">		return getInstanceGeneric(factory, refPolicyType, idRef, ancestorPolicySetRefChain);</span>
+	}
+
+<span class="nc bnc" id="L1774" title="All 2 branches missed.">	private static abstract class PolicySetElementEvaluatorFactory&lt;INSTANCE extends TopLevelPolicyElementEvaluator, COMBINED_ELT extends PolicyEvaluator&gt;</span>
+	{
+		protected final PrimaryPolicyMetadata policyMetadata;
+		protected final XPathCompiler defaultXPathCompiler;
+		protected final Map&lt;String, String&gt; namespacePrefixesByURI;
+		protected final ExpressionFactory expressionFactory;
+		protected final CombiningAlgRegistry combiningAlgorithmRegistry;
+
+		private PolicySetElementEvaluatorFactory(final PrimaryPolicyMetadata policyMetadata, final DefaultsType policyDefaults, final XPathCompiler parentDefaultXPathCompiler,
+		        final Map&lt;String, String&gt; namespacePrefixesByURI, final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgorithmRegistry)
+<span class="nc" id="L1784">		{</span>
+<span class="nc bnc" id="L1785" title="All 6 branches missed.">			assert policyMetadata != null &amp;&amp; combiningAlgorithmRegistry != null;</span>
+<span class="nc" id="L1786">			this.policyMetadata = policyMetadata;</span>
+			/*
+			 * Inherited PolicyDefaults is policyDefaults if not null, the parentPolicyDefaults otherwise
+			 */
+<span class="nc bnc" id="L1790" title="All 2 branches missed.">			if (policyDefaults == null)</span>
+			{
+<span class="nc" id="L1792">				defaultXPathCompiler = parentDefaultXPathCompiler;</span>
+			}
+			else
+			{
+				try
+				{
+<span class="nc" id="L1798">					defaultXPathCompiler = XmlUtils.newXPathCompiler(policyDefaults.getXPathVersion(), namespacePrefixesByURI);</span>
+				}
+<span class="nc" id="L1800">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L1802">					throw new IllegalArgumentException(policyMetadata + &quot;: Invalid PolicySetDefaults/XPathVersion or XML namespace prefix/URI undefined&quot;, e);</span>
+<span class="nc" id="L1803">				}</span>
+			}
+
+<span class="nc" id="L1806">			this.namespacePrefixesByURI = namespacePrefixesByURI;</span>
+<span class="nc" id="L1807">			this.expressionFactory = expressionFactory;</span>
+<span class="nc" id="L1808">			this.combiningAlgorithmRegistry = combiningAlgorithmRegistry;</span>
+<span class="nc" id="L1809">		}</span>
+
+		protected final StaticPolicyEvaluator getChildStaticPolicyEvaluator(final int childIndex, final Policy policyChildElt)
+		{
+			final StaticPolicyEvaluator childElement;
+			try
+			{
+<span class="nc" id="L1816">				childElement = PolicyEvaluators.getInstance(policyChildElt, defaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry);</span>
+			}
+<span class="nc" id="L1818">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L1820">				throw new IllegalArgumentException(this.policyMetadata + &quot;: invalid child #&quot; + childIndex + &quot; (Policy)&quot;, e);</span>
+<span class="nc" id="L1821">			}</span>
+
+<span class="nc" id="L1823">			return childElement;</span>
+		}
+
+		protected abstract Deque&lt;String&gt; joinPolicySetRefChains(final Deque&lt;String&gt; policyRefChain1, final List&lt;String&gt; policyRefChain2);
+
+		protected abstract COMBINED_ELT getChildPolicyEvaluator(int childIndex, Policy policyChildElt);
+
+		protected abstract COMBINED_ELT getChildPolicySetEvaluator(int childIndex, PolicySet policySetChildElt, Deque&lt;String&gt; policySetRefChain);
+
+		/**
+		 * 
+		 * @param childIndex
+		 *            index of this child policyRef element among all its parent's children (in order of declaration)
+		 * @param refPolicyType
+		 *            type of reference target (Policy or PolicySet
+		 * @param idRef
+		 *            policy reference
+		 * @param policySetRefChainWithArgIfPolicySet
+		 *            policySet reference chain that includes {@code idRef} value (target policyset ID) iff {@code refPolicyType == TopLevelPolicyElementType.POLICY_SET} (reference target is a
+		 *            PolicySet)
+		 * @return target policy evaluator
+		 */
+		protected abstract COMBINED_ELT getChildPolicyRefEvaluator(int childIndex, TopLevelPolicyElementType refPolicyType, IdReferenceType idRef, Deque&lt;String&gt; policySetRefChainWithArgIfPolicySet);
+
+		protected abstract INSTANCE getInstance(PrimaryPolicyMetadata primaryPolicyMetadata, Target target, String policyCombiningAlgId, Iterable&lt;COMBINED_ELT&gt; combinedElements,
+		        Iterable&lt;CombiningAlgParameter&lt;? extends COMBINED_ELT&gt;&gt; policyCombinerParameters, List&lt;ObligationExpression&gt; obligationExpressions, List&lt;AdviceExpression&gt; adviceExpressions,
+		        List&lt;String&gt; localVariableIds);
+	}
+
+	private static final class StaticPolicySetElementEvaluatorFactory extends PolicySetElementEvaluatorFactory&lt;StaticTopLevelPolicyElementEvaluator, StaticPolicyEvaluator&gt;
+	{
+		private final StaticPolicySetChildRefsMetadataProvider extraMetadataProvider;
+		private final StaticRefPolicyProvider refPolicyProvider;
+
+		private StaticPolicySetElementEvaluatorFactory(final PrimaryPolicyMetadata primaryPolicyMetadata, final DefaultsType policyDefaults, final StaticRefPolicyProvider refPolicyProvider,
+		        final XPathCompiler parentDefaultXPathCompiler, final Map&lt;String, String&gt; namespacePrefixesByURI, final ExpressionFactory expressionFactory,
+		        final CombiningAlgRegistry combiningAlgorithmRegistry)
+		{
+<span class="nc" id="L1861">			super(primaryPolicyMetadata, policyDefaults, parentDefaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry);</span>
+<span class="nc" id="L1862">			this.extraMetadataProvider = new StaticPolicySetChildRefsMetadataProvider(primaryPolicyMetadata);</span>
+<span class="nc" id="L1863">			this.refPolicyProvider = refPolicyProvider;</span>
+<span class="nc" id="L1864">		}</span>
+
+		@Override
+		protected Deque&lt;String&gt; joinPolicySetRefChains(final Deque&lt;String&gt; policyRefChain1, final List&lt;String&gt; policyRefChain2)
+		{
+<span class="nc" id="L1869">			return refPolicyProvider.joinPolicyRefChains(policyRefChain1, policyRefChain2);</span>
+		}
+
+		@Override
+		protected StaticPolicyEvaluator getChildPolicyEvaluator(final int childIndex, final Policy policyChildElt)
+		{
+<span class="nc" id="L1875">			return getChildStaticPolicyEvaluator(childIndex, policyChildElt);</span>
+		}
+
+		@Override
+		protected StaticPolicyEvaluator getChildPolicySetEvaluator(final int childIndex, final PolicySet policySetChildElt, final Deque&lt;String&gt; policySetRefChain)
+		{
+			final StaticPolicyEvaluator childElement;
+			try
+			{
+<span class="nc bnc" id="L1884" title="All 2 branches missed.">				childElement = PolicyEvaluators.getInstanceStatic(policySetChildElt, defaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry, refPolicyProvider,</span>
+				        policySetRefChain == null ? null : new ArrayDeque&lt;&gt;(policySetRefChain));
+			}
+<span class="nc" id="L1887">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L1889">				throw new IllegalArgumentException(this.policyMetadata + &quot;: Invalid child #&quot; + childIndex + &quot; (PolicySet)&quot;, e);</span>
+<span class="nc" id="L1890">			}</span>
+
+			/*
+			 * This child PolicySet may have extra metadata such as nested policy references that we need to merge into the parent PolicySet's metadata
+			 */
+<span class="nc" id="L1895">			final Optional&lt;PolicyRefsMetadata&gt; childPolicyRefsMetadata = childElement.getPolicyRefsMetadata();</span>
+<span class="nc bnc" id="L1896" title="All 2 branches missed.">			if (childPolicyRefsMetadata.isPresent())</span>
+			{
+<span class="nc" id="L1898">				extraMetadataProvider.updateMetadata(childPolicyRefsMetadata.get());</span>
+			}
+
+<span class="nc" id="L1901">			return childElement;</span>
+		}
+
+		@Override
+		protected StaticPolicyEvaluator getChildPolicyRefEvaluator(final int childIndex, final TopLevelPolicyElementType refPolicyType, final IdReferenceType idRef,
+		        final Deque&lt;String&gt; ancestorPolicySetRefChain)
+		{
+<span class="nc bnc" id="L1908" title="All 2 branches missed.">			if (refPolicyProvider == null)</span>
+			{
+<span class="nc" id="L1910">				throw new IllegalArgumentException(this.policyMetadata + &quot;: invalid child #&quot; + childIndex</span>
+				        + &quot; (PolicyIdReference): no refPolicyProvider (module responsible for resolving Policy(Set)IdReferences) defined to support it.&quot;);
+			}
+
+<span class="nc" id="L1914">			final StaticPolicyRefEvaluator childElement = PolicyEvaluators.getInstanceStatic(refPolicyType, idRef, refPolicyProvider, ancestorPolicySetRefChain);</span>
+<span class="nc" id="L1915">			final Optional&lt;PolicyRefsMetadata&gt; childPolicyRefsMetadata = childElement.getPolicyRefsMetadata();</span>
+<span class="nc bnc" id="L1916" title="All 2 branches missed.">			if (childPolicyRefsMetadata.isPresent())</span>
+			{
+<span class="nc" id="L1918">				extraMetadataProvider.updateMetadata(childPolicyRefsMetadata.get());</span>
+			}
+
+<span class="nc" id="L1921">			return childElement;</span>
+		}
+
+		@Override
+		protected StaticTopLevelPolicyElementEvaluator getInstance(final PrimaryPolicyMetadata primaryPolicyMetadata, final Target policyTarget, final String policyCombiningAlgId,
+		        final Iterable&lt;StaticPolicyEvaluator&gt; combinedElements, final Iterable&lt;CombiningAlgParameter&lt;? extends StaticPolicyEvaluator&gt;&gt; policyCombinerParameters,
+		        final List&lt;ObligationExpression&gt; obligationExpressions, final List&lt;AdviceExpression&gt; adviceExpressions, final List&lt;String&gt; localVariableIds)
+		{
+<span class="nc" id="L1929">			return new StaticBaseTopLevelPolicyElementEvaluator&lt;&gt;(StaticPolicyEvaluator.class, primaryPolicyMetadata, extraMetadataProvider.getMetadata(), policyTarget, policyCombiningAlgId,</span>
+			        combinedElements, policyCombinerParameters, obligationExpressions, adviceExpressions, localVariableIds, defaultXPathCompiler, expressionFactory, combiningAlgorithmRegistry);
+		}
+	}
+
+	private static final class DynamicPolicySetElementEvaluatorFactory extends PolicySetElementEvaluatorFactory&lt;TopLevelPolicyElementEvaluator, PolicyEvaluator&gt;
+	{
+		private final DynamicPolicySetChildRefsMetadataProvider extraMetadataProvider;
+		private final RefPolicyProvider refPolicyProvider;
+
+		private DynamicPolicySetElementEvaluatorFactory(final PrimaryPolicyMetadata primaryPolicyMetadata, final DefaultsType policyDefaults, final RefPolicyProvider refPolicyProvider,
+		        final XPathCompiler parentDefaultXPathCompiler, final Map&lt;String, String&gt; namespacePrefixesByURI, final ExpressionFactory expressionFactory,
+		        final CombiningAlgRegistry combiningAlgorithmRegistry)
+		{
+<span class="nc" id="L1943">			super(primaryPolicyMetadata, policyDefaults, parentDefaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry);</span>
+<span class="nc" id="L1944">			this.extraMetadataProvider = new DynamicPolicySetChildRefsMetadataProvider();</span>
+<span class="nc" id="L1945">			this.refPolicyProvider = refPolicyProvider;</span>
+<span class="nc" id="L1946">		}</span>
+
+		@Override
+		protected Deque&lt;String&gt; joinPolicySetRefChains(final Deque&lt;String&gt; policyRefChain1, final List&lt;String&gt; policyRefChain2)
+		{
+<span class="nc" id="L1951">			return refPolicyProvider.joinPolicyRefChains(policyRefChain1, policyRefChain2);</span>
+		}
+
+		@Override
+		protected PolicyEvaluator getChildPolicyEvaluator(final int childIndex, final Policy policyChildElt)
+		{
+<span class="nc" id="L1957">			return getChildStaticPolicyEvaluator(childIndex, policyChildElt);</span>
+		}
+
+		@Override
+		protected PolicyEvaluator getChildPolicySetEvaluator(final int childIndex, final PolicySet policySetChildElt, final Deque&lt;String&gt; policySetRefChain)
+		{
+			final PolicyEvaluator childElement;
+			try
+			{
+<span class="nc bnc" id="L1966" title="All 2 branches missed.">				childElement = PolicyEvaluators.getInstance(policySetChildElt, defaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry, refPolicyProvider,</span>
+				        policySetRefChain == null ? null : new ArrayDeque&lt;&gt;(policySetRefChain));
+			}
+<span class="nc" id="L1969">			catch (final IllegalArgumentException e)</span>
+			{
+<span class="nc" id="L1971">				throw new IllegalArgumentException(this.policyMetadata + &quot;: Invalid child #&quot; + childIndex + &quot; (PolicySet)&quot;, e);</span>
+<span class="nc" id="L1972">			}</span>
+
+			/*
+			 * This child PolicySet may have extra metadata such as nested policy references that we need to merge into the parent PolicySet's metadata
+			 */
+<span class="nc" id="L1977">			extraMetadataProvider.addChildPolicySetElementOrRef(childElement);</span>
+<span class="nc" id="L1978">			return childElement;</span>
+		}
+
+		@Override
+		protected PolicyEvaluator getChildPolicyRefEvaluator(final int childIndex, final TopLevelPolicyElementType refPolicyType, final IdReferenceType idRef,
+		        final Deque&lt;String&gt; policySetRefChainWithArgIfPolicySet)
+		{
+<span class="nc bnc" id="L1985" title="All 2 branches missed.">			if (refPolicyProvider == null)</span>
+			{
+<span class="nc" id="L1987">				throw new IllegalArgumentException(this.policyMetadata + &quot;: invalid child #&quot; + childIndex</span>
+				        + &quot; (PolicyIdReference): no refPolicyProvider (module responsible for resolving Policy(Set)IdReferences) defined to support it.&quot;);
+			}
+
+<span class="nc" id="L1991">			final PolicyRefEvaluator childElement = PolicyEvaluators.getInstance(refPolicyType, idRef, refPolicyProvider, policySetRefChainWithArgIfPolicySet);</span>
+<span class="nc" id="L1992">			extraMetadataProvider.addChildPolicySetElementOrRef(childElement);</span>
+<span class="nc" id="L1993">			return childElement;</span>
+		}
+
+		@Override
+		protected TopLevelPolicyElementEvaluator getInstance(final PrimaryPolicyMetadata primaryPolicyMetadata, final Target policyTarget, final String policyCombiningAlgId,
+		        final Iterable&lt;PolicyEvaluator&gt; combinedElements, final Iterable&lt;CombiningAlgParameter&lt;? extends PolicyEvaluator&gt;&gt; policyCombinerParameters,
+		        final List&lt;ObligationExpression&gt; obligationExpressions, final List&lt;AdviceExpression&gt; adviceExpressions, final List&lt;String&gt; localVariableIds)
+		{
+<span class="nc" id="L2001">			return new DynamicPolicySetEvaluator(primaryPolicyMetadata, extraMetadataProvider, policyTarget, policyCombiningAlgId, combinedElements, policyCombinerParameters, obligationExpressions,</span>
+			        adviceExpressions, localVariableIds, defaultXPathCompiler, expressionFactory, combiningAlgorithmRegistry);
+		}
+	}
+
+	/**
+	 * Generic creation of PolicySet evaluator
+	 * 
+	 * @param policySetRefChainWithArgIffRefTarget
+	 *            null/empty if {@code policyElement} is the root policySet; else it is the chain of top-level (as opposed to nested inline) PolicySets linked by PolicySetIdReferences from the root
+	 *            PolicySet up to (and including) the top-level (PolicySetIdReference-targeted) PolicySet that encloses or is {@code policyElement}
+	 */
+	private static &lt;TLPEE extends TopLevelPolicyElementEvaluator, COMBINED_EVALUATOR extends PolicyEvaluator&gt; TLPEE getInstanceGeneric(
+	        final PolicySetElementEvaluatorFactory&lt;TLPEE, COMBINED_EVALUATOR&gt; policyEvaluatorFactory, final PolicySet policyElement, final Deque&lt;String&gt; policySetRefChainWithArgIffRefTarget)
+	        throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L2017" title="All 6 branches missed.">		assert policyEvaluatorFactory != null &amp;&amp; policyElement != null;</span>
+
+		// final Set&lt;PrimaryPolicyMetadata&gt; enclosedPolicies = HashCollections.newUpdatableSet();
+
+<span class="nc" id="L2021">		final String policyId = policyElement.getPolicySetId();</span>
+
+		/*
+		 * Elements defined in xs:choice of PolicySetType in XACML schema (Policy(Set)/Policy(Set)IdReference/CombinerParameters/Policy(Set)CombinerParameters
+		 */
+<span class="nc" id="L2026">		final List&lt;Serializable&gt; jaxbPolicySetChoiceElements = policyElement.getPolicySetsAndPoliciesAndPolicySetIdReferences();</span>
+		/*
+		 * Prepare the list of evaluators combined by the combining algorithm in this PolicySet, i.e. Policy(Set)/Policy(Set)IdReference evaluators. combinedEvaluators.size() &lt;=
+		 * jaxbPolicySetChoiceElements.size() since combinedEvaluators does not include *CombinerParameter evaluators
+		 */
+<span class="nc" id="L2031">		final List&lt;COMBINED_EVALUATOR&gt; combinedEvaluators = new ArrayList&lt;&gt;(jaxbPolicySetChoiceElements.size());</span>
+
+		/**
+		 * Why isn't there any VariableDefinition in XACML PolicySet like in Policy? If there were, we would keep a copy of variable IDs defined in this policy, to remove them from the global manager
+		 * at the end of parsing this PolicySet. They should not be visible outside the scope of this.
+		 * &lt;p&gt;
+		 * final Set&lt;String&gt; variableIds = HashCollections.newUpdatableSet(jaxbPolicySetChoiceElements.size());
+		 */
+
+		/*
+		 * Map to get child Policies by their ID so that we can resolve Policies associated with PolicyCombinerParameters Size cannot get bigger than jaxbPolicySetChoiceElements.size()
+		 */
+<span class="nc" id="L2043">		final Map&lt;String, COMBINED_EVALUATOR&gt; childPolicyEvaluatorsByPolicyId = HashCollections.newUpdatableMap(jaxbPolicySetChoiceElements.size());</span>
+
+		/*
+		 * Map to get child PolicySets by their ID so that we can resolve PolicySets associated with PolicySetCombinerParameters Size cannot get bigger than jaxbPolicySetChoiceElements.size()
+		 */
+<span class="nc" id="L2048">		final Map&lt;String, COMBINED_EVALUATOR&gt; childPolicySetEvaluatorsByPolicySetId = HashCollections.newUpdatableMap(jaxbPolicySetChoiceElements.size());</span>
+
+		/*
+		 * *CombinerParameters (combining algorithm parameters), size &lt;= jaxbPolicySetChoiceElements.size()
+		 */
+<span class="nc" id="L2053">		final List&lt;CombiningAlgParameter&lt;? extends COMBINED_EVALUATOR&gt;&gt; combiningAlgParameters = new ArrayList&lt;&gt;(jaxbPolicySetChoiceElements.size());</span>
+<span class="nc" id="L2054">		int childIndex = 0;</span>
+<span class="nc bnc" id="L2055" title="All 2 branches missed.">		for (final Serializable policyChildElt : jaxbPolicySetChoiceElements)</span>
+		{
+<span class="nc bnc" id="L2057" title="All 2 branches missed.">			if (policyChildElt instanceof PolicyCombinerParameters)</span>
+			{
+<span class="nc" id="L2059">				final String combinedPolicyId = ((PolicyCombinerParameters) policyChildElt).getPolicyIdRef();</span>
+<span class="nc" id="L2060">				final COMBINED_EVALUATOR childPolicyEvaluator = childPolicyEvaluatorsByPolicyId.get(combinedPolicyId);</span>
+<span class="nc bnc" id="L2061" title="All 2 branches missed.">				if (childPolicyEvaluator == null)</span>
+				{
+<span class="nc" id="L2063">					throw new IllegalArgumentException(policyEvaluatorFactory.policyMetadata + &quot;:  invalid PolicyCombinerParameters: referencing undefined child Policy #&quot; + combinedPolicyId</span>
+					        + &quot; (no such policy defined before this element)&quot;);
+				}
+
+				final BaseCombiningAlgParameter&lt;COMBINED_EVALUATOR&gt; combiningAlgParameter;
+				try
+				{
+<span class="nc" id="L2070">					combiningAlgParameter = new BaseCombiningAlgParameter&lt;&gt;(childPolicyEvaluator, ((CombinerParametersType) policyChildElt).getCombinerParameters(),</span>
+					        policyEvaluatorFactory.expressionFactory, policyEvaluatorFactory.defaultXPathCompiler);
+				}
+<span class="nc" id="L2073">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L2075">					throw new IllegalArgumentException(policyEvaluatorFactory.policyMetadata + &quot;: invalid child #&quot; + childIndex + &quot; (PolicyCombinerParameters)&quot;, e);</span>
+<span class="nc" id="L2076">				}</span>
+
+<span class="nc" id="L2078">				combiningAlgParameters.add(combiningAlgParameter);</span>
+
+<span class="nc" id="L2080">			}</span>
+<span class="nc bnc" id="L2081" title="All 2 branches missed.">			else if (policyChildElt instanceof PolicySetCombinerParameters)</span>
+			{
+<span class="nc" id="L2083">				final String combinedPolicySetId = ((PolicySetCombinerParameters) policyChildElt).getPolicySetIdRef();</span>
+<span class="nc" id="L2084">				final COMBINED_EVALUATOR combinedPolicySetEvaluator = childPolicySetEvaluatorsByPolicySetId.get(combinedPolicySetId);</span>
+<span class="nc bnc" id="L2085" title="All 2 branches missed.">				if (combinedPolicySetEvaluator == null)</span>
+				{
+<span class="nc" id="L2087">					throw new IllegalArgumentException(policyEvaluatorFactory.policyMetadata + &quot;:  invalid PolicySetCombinerParameters: referencing undefined child PolicySet #&quot; + combinedPolicySetId</span>
+					        + &quot; (no such policySet defined before this element)&quot;);
+				}
+
+				final BaseCombiningAlgParameter&lt;COMBINED_EVALUATOR&gt; combiningAlgParameter;
+				try
+				{
+<span class="nc" id="L2094">					combiningAlgParameter = new BaseCombiningAlgParameter&lt;&gt;(combinedPolicySetEvaluator, ((CombinerParametersType) policyChildElt).getCombinerParameters(),</span>
+					        policyEvaluatorFactory.expressionFactory, policyEvaluatorFactory.defaultXPathCompiler);
+				}
+<span class="nc" id="L2097">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L2099">					throw new IllegalArgumentException(policyEvaluatorFactory.policyMetadata + &quot;: invalid child #&quot; + childIndex + &quot; (PolicySetCombinerParameters)&quot;, e);</span>
+<span class="nc" id="L2100">				}</span>
+
+<span class="nc" id="L2102">				combiningAlgParameters.add(combiningAlgParameter);</span>
+<span class="nc" id="L2103">			}</span>
+<span class="nc bnc" id="L2104" title="All 2 branches missed.">			else if (policyChildElt instanceof JAXBElement)</span>
+			{
+<span class="nc" id="L2106">				final JAXBElement&lt;?&gt; jaxbPolicyChildElt = (JAXBElement&lt;?&gt;) policyChildElt;</span>
+<span class="nc" id="L2107">				final String eltNameLocalPart = jaxbPolicyChildElt.getName().getLocalPart();</span>
+<span class="nc bnc" id="L2108" title="All 2 branches missed.">				if (eltNameLocalPart.equals(XacmlNodeName.POLICY_ID_REFERENCE.value()))</span>
+				{
+<span class="nc" id="L2110">					final IdReferenceType policyChildIdRef = (IdReferenceType) jaxbPolicyChildElt.getValue();</span>
+<span class="nc" id="L2111">					final COMBINED_EVALUATOR childEvaluator = policyEvaluatorFactory.getChildPolicyRefEvaluator(childIndex, TopLevelPolicyElementType.POLICY, policyChildIdRef, null);</span>
+<span class="nc" id="L2112">					combinedEvaluators.add(childEvaluator);</span>
+<span class="nc" id="L2113">					final COMBINED_EVALUATOR duplicate = childPolicySetEvaluatorsByPolicySetId.putIfAbsent(childEvaluator.getPolicyId(), childEvaluator);</span>
+<span class="nc bnc" id="L2114" title="All 2 branches missed.">					if (duplicate != null)</span>
+					{
+<span class="nc" id="L2116">						throw new IllegalArgumentException(&quot;Duplicate PolicyIdReference's id = &quot; + childEvaluator.getPolicyId());</span>
+					}
+<span class="nc" id="L2118">				}</span>
+<span class="nc bnc" id="L2119" title="All 2 branches missed.">				else if (eltNameLocalPart.equals(XacmlNodeName.POLICYSET_ID_REFERENCE.value()))</span>
+				{
+<span class="nc" id="L2121">					final IdReferenceType policyChildIdRef = (IdReferenceType) jaxbPolicyChildElt.getValue();</span>
+<span class="nc" id="L2122">					final String policyChildId = policyChildIdRef.getValue();</span>
+					/*
+					 * Add this new reference to policyChildIdRef to the policyRef chain arg of getChildPolicyRefEvaluator(...). If policySetRefChainWithArgIffRefTarget is null/empty, policyElement is
+					 * the root policy (no ancestor in the chain), therefore it should be added before policyChildIdRef, as the antecedent; Else non-empty policySetRefChainWithArgIffRefTarget's last
+					 * item is either policyElement (iff it is a policy ref's target) or the top-level (as opposed to nested inline) PolicySet that encloses policyElement, in which either case we just
+					 * add policyChildIdRef to the chain.
+					 */
+<span class="nc bnc" id="L2129" title="All 4 branches missed.">					final Deque&lt;String&gt; newPolicySetRefChainWithArgIffRefTarget = policySetRefChainWithArgIffRefTarget == null || policySetRefChainWithArgIffRefTarget.isEmpty()</span>
+<span class="nc" id="L2130">					        ? new ArrayDeque&lt;&gt;(Arrays.asList(policyId, policyChildId))</span>
+<span class="nc" id="L2131">					        : policyEvaluatorFactory.joinPolicySetRefChains(policySetRefChainWithArgIffRefTarget, Collections.singletonList(policyChildId));</span>
+<span class="nc" id="L2132">					final COMBINED_EVALUATOR childEvaluator = policyEvaluatorFactory.getChildPolicyRefEvaluator(childIndex, TopLevelPolicyElementType.POLICY_SET, policyChildIdRef,</span>
+					        newPolicySetRefChainWithArgIffRefTarget);
+<span class="nc" id="L2134">					combinedEvaluators.add(childEvaluator);</span>
+<span class="nc" id="L2135">					final COMBINED_EVALUATOR duplicate = childPolicySetEvaluatorsByPolicySetId.put(policyChildId, childEvaluator);</span>
+<span class="nc bnc" id="L2136" title="All 2 branches missed.">					if (duplicate != null)</span>
+					{
+<span class="nc" id="L2138">						throw new IllegalArgumentException(&quot;Duplicate PolicySetIdReference's id = &quot; + policyChildId);</span>
+					}
+<span class="nc" id="L2140">				}</span>
+<span class="nc bnc" id="L2141" title="All 2 branches missed.">				else if (eltNameLocalPart.equals(XacmlNodeName.COMBINER_PARAMETERS.value()))</span>
+				{
+					/*
+					 * CombinerParameters that is not Policy(Set)CombinerParameters already tested before
+					 */
+					final BaseCombiningAlgParameter&lt;COMBINED_EVALUATOR&gt; combiningAlgParameter;
+					try
+					{
+<span class="nc" id="L2149">						combiningAlgParameter = new BaseCombiningAlgParameter&lt;&gt;(null, ((CombinerParametersType) jaxbPolicyChildElt.getValue()).getCombinerParameters(),</span>
+						        policyEvaluatorFactory.expressionFactory, policyEvaluatorFactory.defaultXPathCompiler);
+					}
+<span class="nc" id="L2152">					catch (final IllegalArgumentException e)</span>
+					{
+<span class="nc" id="L2154">						throw new IllegalArgumentException(policyEvaluatorFactory.policyMetadata + &quot;: invalid child #&quot; + childIndex + &quot; (CombinerParameters)&quot;, e);</span>
+<span class="nc" id="L2155">					}</span>
+
+<span class="nc" id="L2157">					combiningAlgParameters.add(combiningAlgParameter);</span>
+				}
+<span class="nc" id="L2159">			}</span>
+<span class="nc bnc" id="L2160" title="All 2 branches missed.">			else if (policyChildElt instanceof PolicySet)</span>
+			{
+<span class="nc" id="L2162">				final PolicySet childPolicy = (PolicySet) policyChildElt;</span>
+				/*
+				 * XACML spec §5.1: &quot;ensure that no two policies visible to the PDP have the same identifier&quot;
+				 */
+<span class="nc" id="L2166">				final String childPolicyId = childPolicy.getPolicySetId();</span>
+				/*
+				 * Create/Update the policySet ref chain if necessary. If policySetRefChainWithArgIffRefTarget is null/empty, this means policyElement is the root policyset (no antecedent), and we
+				 * create a chain with its ID, to know the antecedent of the next encountered policyset ref (which may be found deep under multiple levels of nested PolicySets).; else
+				 * policySetRefChainWithArgIffRefTarget's last item is either policyElement (iff it is a policy ref's target) or the top-level (as opposed to nested inline) PolicySet that encloses
+				 * policyElement, in which either case we already have the info we need in the chain so keep it as is.
+				 */
+<span class="nc bnc" id="L2173" title="All 4 branches missed.">				final Deque&lt;String&gt; newPolicySetRefChain = policySetRefChainWithArgIffRefTarget == null || policySetRefChainWithArgIffRefTarget.isEmpty()</span>
+<span class="nc" id="L2174">				        ? new ArrayDeque&lt;&gt;(Collections.singletonList(policyId))</span>
+				        : policySetRefChainWithArgIffRefTarget;
+<span class="nc" id="L2176">				final COMBINED_EVALUATOR childEvaluator = policyEvaluatorFactory.getChildPolicySetEvaluator(childIndex, childPolicy, newPolicySetRefChain);</span>
+<span class="nc" id="L2177">				combinedEvaluators.add(childEvaluator);</span>
+<span class="nc" id="L2178">				final COMBINED_EVALUATOR duplicate = childPolicySetEvaluatorsByPolicySetId.putIfAbsent(childPolicyId, childEvaluator);</span>
+<span class="nc bnc" id="L2179" title="All 2 branches missed.">				if (duplicate != null)</span>
+				{
+<span class="nc" id="L2181">					throw new IllegalArgumentException(&quot;Duplicate PolicySetId = &quot; + childPolicyId);</span>
+				}
+<span class="nc" id="L2183">			}</span>
+<span class="nc bnc" id="L2184" title="All 2 branches missed.">			else if (policyChildElt instanceof Policy)</span>
+			{
+<span class="nc" id="L2186">				final Policy childPolicy = (Policy) policyChildElt;</span>
+				/*
+				 * XACML spec §5.1: &quot;ensure that no two policies visible to the PDP have the same identifier&quot;
+				 */
+<span class="nc" id="L2190">				final String childPolicyId = childPolicy.getPolicyId();</span>
+<span class="nc" id="L2191">				final COMBINED_EVALUATOR childEvaluator = policyEvaluatorFactory.getChildPolicyEvaluator(childIndex, childPolicy);</span>
+<span class="nc" id="L2192">				combinedEvaluators.add(childEvaluator);</span>
+<span class="nc" id="L2193">				final COMBINED_EVALUATOR duplicate = childPolicyEvaluatorsByPolicyId.putIfAbsent(childPolicyId, childEvaluator);</span>
+<span class="nc bnc" id="L2194" title="All 2 branches missed.">				if (duplicate != null)</span>
+				{
+<span class="nc" id="L2196">					throw new IllegalArgumentException(&quot;Duplicate PolicyId = &quot; + childPolicyId);</span>
+				}
+			}
+
+			/*
+			 * Why isn't there any VariableDefinition in XACML PolicySet defined by OASIS XACML 3.0 spec, like in Policy? If there were, the following code would be used (same as in PolicyEvaluator
+			 * class).
+			 */
+			// else if (policySetChildElt instanceof VariableDefinition)
+			// {
+			// final VariableDefinition varDef = (VariableDefinition)
+			// policyChildElt;
+			// final Deque&lt;String&gt; varDefLongestVarRefChain = new
+			// ArrayDeque&lt;&gt;();
+			// final VariableReference&lt;?&gt; var;
+			// try
+			// {
+			// var = expressionFactory.addVariable(varDef, defaultXPathCompiler,
+			// varDefLongestVarRefChain);
+			// } catch (IllegalArgumentException e)
+			// {
+			// throw new IllegalArgumentException(policyFriendlyId + &quot;: invalid
+			// child #&quot; + childIndex + &quot; (VariableDefinition)&quot;, e);
+			// }
+			//
+			// if (var != null)
+			// {
+			// /*
+			// * Conflicts can occur between variables defined in this policy
+			// but also with others already in a wider scope, i.e. defined in
+			// * parent/ancestor policy
+			// */
+			// throw new IllegalArgumentException(policyFriendlyId + &quot;:
+			// Duplicable VariableDefinition for VariableId=&quot; +
+			// var.getVariableId());
+			// }
+			//
+			// localVariableIds.add(varDef.getVariableId());
+			// // check whether the longest VariableReference chain in the
+			// VariableDefinition is longer than what we've got so far
+			// final int sizeOfVarDefLongestVarRefChain =
+			// varDefLongestVarRefChain.size();
+			// if(sizeOfVarDefLongestVarRefChain &gt;
+			// sizeOfPolicyLongestVarRefChain) {
+			// sizeOfPolicyLongestVarRefChain = sizeOfVarDefLongestVarRefChain;
+			// }
+			// }
+
+<span class="nc" id="L2244">			childIndex++;</span>
+<span class="nc" id="L2245">		}</span>
+
+		/*
+		 * Why isn't there any VariableDefinition in XACML PolicySet like in Policy? If there were, the final following code would be used: We are done parsing expressions in this policy, including
+		 * VariableReferences, it's time to remove variables scoped to this policy from the variable manager
+		 */
+		// for (final String varId : variableIds)
+		// {
+		// expFactory.remove(varId);
+		// }
+
+<span class="nc" id="L2256">		final ObligationExpressions obligationExps = policyElement.getObligationExpressions();</span>
+<span class="nc" id="L2257">		final AdviceExpressions adviceExps = policyElement.getAdviceExpressions();</span>
+<span class="nc" id="L2258">		final List&lt;String&gt; localVariableIds = Collections.emptyList();</span>
+<span class="nc bnc" id="L2259" title="All 2 branches missed.">		return policyEvaluatorFactory.getInstance(policyEvaluatorFactory.policyMetadata, policyElement.getTarget(), policyElement.getPolicyCombiningAlgId(), combinedEvaluators, combiningAlgParameters,</span>
+<span class="nc bnc" id="L2260" title="All 2 branches missed.">		        obligationExps == null ? null : obligationExps.getObligationExpressions(), adviceExps == null ? null : adviceExps.getAdviceExpressions(), localVariableIds);</span>
+	}
+
+	/**
+	 * Creates statically defined PolicySet handler from XACML PolicySet element
+	 *
+	 * @param policyElement
+	 *            PolicySet (XACML) without any dynamic policy references
+	 * @param parentDefaultXPathCompiler
+	 *            XPath compiler corresponding to parent PolicySet's default XPath version, or null if either no parent or no default XPath version defined in parent
+	 * @param namespacePrefixesByURI
+	 *            namespace prefix-URI mappings from the original XACML PolicySet (XML) document, to be used for namespace-aware XPath evaluation; null or empty iff XPath support disabled
+	 * @param expressionFactory
+	 *            Expression factory/parser
+	 * @param combiningAlgorithmRegistry
+	 *            policy/rule combining algorithm registry
+	 * @param refPolicyProvider
+	 *            static policy-by-reference (Policy(Set)IdReference) Provider - all references statically resolved - to find references used in this policyset
+	 * @param policySetRefChainWithPolicyElementIfRefTarget
+	 *            null/empty if {@code policyElement} is a root PolicySet; else it is the chain of top-level (as opposed to nested inline) PolicySets linked via PolicySetIdReferences, from the root
+	 *            PolicySet up to - and including - the top-level PolicySet that encloses or is {@code policyElement} (i.e. it a reference's target). Each item is a PolicySetId of a PolicySet that is
+	 *            referenced by the previous item (except the first item which is the root policy) and references the next one. This chain is used to control PolicySetIdReferences found within the
+	 *            result policy, in order to detect loops (circular references) and prevent exceeding reference depth.
+	 *            &lt;p&gt;
+	 *            Beware that we only keep the IDs in the chain, and not the version, because we consider that a reference loop on the same policy ID is not allowed, no matter what the version is.
+	 *            &lt;p&gt;
+	 *            (Do not use a Queue for {@code ancestorPolicySetRefChain} as it is FIFO, and we need LIFO and iteration in order of insertion, so different from Collections.asLifoQueue(Deque) as
+	 *            well.)
+	 *            &lt;/p&gt;
+	 * @return instance
+	 * @throws java.lang.IllegalArgumentException
+	 *             if any argument (e.g. {@code policyElement}) is invalid
+	 */
+	public static StaticTopLevelPolicyElementEvaluator getInstanceStatic(final PolicySet policyElement, final XPathCompiler parentDefaultXPathCompiler,
+	        final Map&lt;String, String&gt; namespacePrefixesByURI, final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgorithmRegistry,
+	        final StaticRefPolicyProvider refPolicyProvider, final Deque&lt;String&gt; policySetRefChainWithPolicyElementIfRefTarget) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L2297" title="All 2 branches missed.">		if (policyElement == null)</span>
+		{
+<span class="nc" id="L2299">			throw NULL_XACML_POLICYSET_ARG_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L2302">		final PrimaryPolicyMetadata policyMetadata = new BasePrimaryPolicyMetadata(TopLevelPolicyElementType.POLICY_SET, policyElement.getPolicySetId(), new PolicyVersion(policyElement.getVersion()));</span>
+<span class="nc" id="L2303">		final StaticPolicySetElementEvaluatorFactory factory = new StaticPolicySetElementEvaluatorFactory(policyMetadata, policyElement.getPolicySetDefaults(), refPolicyProvider,</span>
+		        parentDefaultXPathCompiler, namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry);
+<span class="nc" id="L2305">		return getInstanceGeneric(factory, policyElement, policySetRefChainWithPolicyElementIfRefTarget);</span>
+	}
+
+	/**
+	 * Creates PolicySet handler from XACML PolicySet element with additional check of duplicate Policy(Set)Ids against a list of Policy(Set)s parsed during the PDP initialization so far
+	 *
+	 * @param policyElement
+	 *            PolicySet (XACML)
+	 * @param parentDefaultXPathCompiler
+	 *            XPath compiler corresponding to parent PolicySet's default XPath version, or null if either no parent or no default XPath version defined in parent
+	 * @param namespacePrefixesByURI
+	 *            namespace prefix-URI mappings from the original XACML PolicySet (XML) document, to be used for namespace-aware XPath evaluation; null or empty iff XPath support disabled
+	 * @param expressionFactory
+	 *            Expression factory/parser
+	 * @param combiningAlgorithmRegistry
+	 *            policy/rule combining algorithm registry
+	 * @param refPolicyProvider
+	 *            policy-by-reference (Policy(Set)IdReference) Provider to find references used in this policyset
+	 * @param ancestorPolicySetRefChain
+	 *            chain of ancestor PolicySets linked via PolicySetIdReferences, from the root PolicySet up to {@code policyElement} (excluded). &lt;b&gt;Null/empty if {@code policyElement} is the root
+	 *            PolicySet (no ancestor).&lt;/b&gt; Each item is a PolicySetId of a PolicySet that is referenced by the previous item (except the first item which is the root policy) and references the
+	 *            next one. This chain is used to control PolicySetIdReferences found within the result policy, in order to detect loops (circular references) and prevent exceeding reference depth.
+	 *            &lt;p&gt;
+	 *            Beware that we only keep the IDs in the chain, and not the version, because we consider that a reference loop on the same policy ID is not allowed, no matter what the version is.
+	 *            &lt;p&gt;
+	 *            (Do not use a Queue for {@code ancestorPolicySetRefChain} as it is FIFO, and we need LIFO and iteration in order of insertion, so different from Collections.asLifoQueue(Deque) as
+	 *            well.)
+	 *            &lt;/p&gt;
+	 * @return instance
+	 * @throws java.lang.IllegalArgumentException
+	 *             if any argument (e.g. {@code policyElement}) is invalid
+	 */
+	public static TopLevelPolicyElementEvaluator getInstance(final PolicySet policyElement, final XPathCompiler parentDefaultXPathCompiler, final Map&lt;String, String&gt; namespacePrefixesByURI,
+	        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgorithmRegistry, final RefPolicyProvider refPolicyProvider, final Deque&lt;String&gt; ancestorPolicySetRefChain)
+	        throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L2341" title="All 2 branches missed.">		if (policyElement == null)</span>
+		{
+<span class="nc" id="L2343">			throw NULL_XACML_POLICYSET_ARG_EXCEPTION;</span>
+		}
+
+<span class="nc" id="L2346">		final PrimaryPolicyMetadata policyMetadata = new BasePrimaryPolicyMetadata(TopLevelPolicyElementType.POLICY_SET, policyElement.getPolicySetId(), new PolicyVersion(policyElement.getVersion()));</span>
+<span class="nc bnc" id="L2347" title="All 2 branches missed.">		final PolicySetElementEvaluatorFactory&lt;?, ?&gt; factory = refPolicyProvider instanceof StaticRefPolicyProvider</span>
+<span class="nc" id="L2348">		        ? new StaticPolicySetElementEvaluatorFactory(policyMetadata, policyElement.getPolicySetDefaults(), (StaticRefPolicyProvider) refPolicyProvider, parentDefaultXPathCompiler,</span>
+		                namespacePrefixesByURI, expressionFactory, combiningAlgorithmRegistry)
+<span class="nc" id="L2350">		        : new DynamicPolicySetElementEvaluatorFactory(policyMetadata, policyElement.getPolicySetDefaults(), refPolicyProvider, parentDefaultXPathCompiler, namespacePrefixesByURI,</span>
+		                expressionFactory, combiningAlgorithmRegistry);
+<span class="nc" id="L2352">		return getInstanceGeneric(factory, policyElement, ancestorPolicySetRefChain);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

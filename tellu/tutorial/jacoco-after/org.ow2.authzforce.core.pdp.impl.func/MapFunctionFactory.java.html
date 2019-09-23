@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MapFunctionFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">MapFunctionFactory.java</span></div><h1>MapFunctionFactory.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.List;
+
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.expression.Expressions;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.GenericHigherOrderFunctionFactory;
+import org.ow2.authzforce.core.pdp.api.func.HigherOrderBagFunction;
+import org.ow2.authzforce.core.pdp.api.value.AttributeDatatype;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValue;
+import org.ow2.authzforce.core.pdp.api.value.Bag;
+import org.ow2.authzforce.core.pdp.api.value.Bags;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.impl.func.StandardHigherOrderBagFunctions.OneBagOnlyHigherOrderFunction;
+
+/**
+ *
+ * Map function factory
+ *
+ * 
+ * @version $Id: $
+ */
+final class MapFunctionFactory extends GenericHigherOrderFunctionFactory
+{
+<span class="fc" id="L47">	private static final IllegalArgumentException NULL_SUB_FUNCTION_RETURN_TYPE_ARG_EXCEPTION = new IllegalArgumentException(</span>
+			&quot;Cannot create generic function with null subFunctionReturnTypeFactory (sub-function return type factory) arg&quot;);
+
+	/**
+	 * 
+	 * map function
+	 * 
+	 * @param &lt;SUB_RETURN_T&gt;
+	 *            subfunction return type
+	 * 
+	 */
+	private static final class MapFunction&lt;SUB_RETURN_T extends AttributeValue&gt; extends OneBagOnlyHigherOrderFunction&lt;Bag&lt;SUB_RETURN_T&gt;, SUB_RETURN_T&gt;
+	{
+
+		private static final class Call&lt;SUB_RETURN extends AttributeValue&gt; extends OneBagOnlyHigherOrderFunction.Call&lt;Bag&lt;SUB_RETURN&gt;, SUB_RETURN&gt;
+		{
+			private final Datatype&lt;SUB_RETURN&gt; returnBagElementType;
+			private final String indeterminateSubFuncEvalMessagePrefix;
+
+			private Call(final String functionId, final Datatype&lt;Bag&lt;SUB_RETURN&gt;&gt; returnType, final FirstOrderFunction&lt;SUB_RETURN&gt; subFunction, final List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag,
+					final Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput, List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag)
+			{
+<span class="fc" id="L69">				super(functionId, returnType, subFunction, primitiveInputsBeforeBag, bagInput, primitiveInputsAfterBag);</span>
+<span class="fc" id="L70">				this.returnBagElementType = subFunction.getReturnType();</span>
+<span class="fc" id="L71">				this.indeterminateSubFuncEvalMessagePrefix = &quot;Function '&quot; + functionId + &quot;': Error calling sub-function (first argument) with bag arg (#&quot; + this.bagArgIndex + &quot;) = &quot;;</span>
+<span class="fc" id="L72">			}</span>
+
+			@Override
+			protected Bag&lt;SUB_RETURN&gt; evaluate(final Bag&lt;?&gt; bagArg, final EvaluationContext context) throws IndeterminateEvaluationException {
+				/*
+				 * Prepare sub-function call's remaining args (bag arg and subsequent ones if any)
+				 */
+<span class="fc" id="L79">				final AttributeValue[] argsAfterBagInclusive = new AttributeValue[this.numOfArgsAfterBagInclusive];</span>
+				/*
+				 * Index i=0 is for the bag element value, resolved in the second for loop below.
+				 */
+<span class="fc" id="L83">				int i = 1;</span>
+				/*
+				 * See BaseFirstOrderFunctionCall#evalPrimitiveArgs(...)
+				 */
+<span class="fc bfc" id="L87" title="All 2 branches covered.">				for (final Expression&lt;?&gt; primitiveArgExprAfterBag : this.primitiveArgExprsAfterBag)</span>
+				{
+					// get and evaluate the next parameter
+					/*
+					 * The types of arguments have already been checked with checkInputs(), so casting to returnType should work.
+					 */
+					final AttributeValue argVal;
+					try
+					{
+<span class="fc" id="L96">						argVal = Expressions.evalPrimitive(primitiveArgExprAfterBag, context);</span>
+<span class="nc" id="L97">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L99">						throw new IndeterminateEvaluationException(&quot;Indeterminate arg #&quot; + (this.bagArgIndex + i), e.getStatusCode(), e);</span>
+<span class="fc" id="L100">					}</span>
+
+<span class="fc" id="L102">					argsAfterBagInclusive[i] = argVal;</span>
+<span class="fc" id="L103">					i++;</span>
+<span class="fc" id="L104">				}</span>
+
+<span class="fc" id="L106">				final Collection&lt;SUB_RETURN&gt; results = new ArrayDeque&lt;&gt;(bagArg.size());</span>
+<span class="fc bfc" id="L107" title="All 2 branches covered.">				for (final AttributeValue bagElement : bagArg)</span>
+				{
+<span class="fc" id="L109">					argsAfterBagInclusive[0] = bagElement;</span>
+					final SUB_RETURN subResult;
+					try
+					{
+<span class="fc" id="L113">						subResult = subFuncCall.evaluate(context, argsAfterBagInclusive);</span>
+<span class="nc" id="L114">					} catch (final IndeterminateEvaluationException e)</span>
+					{
+<span class="nc" id="L116">						throw new IndeterminateEvaluationException(indeterminateSubFuncEvalMessagePrefix + bagElement, e.getStatusCode(), e);</span>
+<span class="fc" id="L117">					}</span>
+
+<span class="fc" id="L119">					results.add(subResult);</span>
+<span class="fc" id="L120">				}</span>
+
+<span class="fc" id="L122">				return Bags.newBag(returnBagElementType, results);</span>
+			}
+		}
+
+		/**
+		 * Creates Map function for specific sub-function's return type
+		 * 
+		 * @param subFunctionReturnType
+		 *            sub-function return type
+		 */
+		private MapFunction(final String functionId, final AttributeDatatype&lt;SUB_RETURN_T&gt; returnType)
+		{
+<span class="fc" id="L134">			super(functionId, returnType.getBagDatatype(), returnType);</span>
+<span class="fc" id="L135">		}</span>
+
+		@Override
+		protected OneBagOnlyHigherOrderFunction.Call&lt;Bag&lt;SUB_RETURN_T&gt;, SUB_RETURN_T&gt; newFunctionCall(final FirstOrderFunction&lt;SUB_RETURN_T&gt; subFunc,
+				final List&lt;Expression&lt;?&gt;&gt; primitiveInputsBeforeBag, final Expression&lt;? extends Bag&lt;?&gt;&gt; bagInput, final List&lt;Expression&lt;?&gt;&gt; primitiveInputsAfterBag) {
+<span class="fc" id="L140">			return new Call&lt;&gt;(this.getId(), this.getReturnType(), subFunc, primitiveInputsBeforeBag, bagInput, primitiveInputsAfterBag);</span>
+		}
+
+	}
+
+	private final String functionId;
+
+	MapFunctionFactory(final String functionId)
+<span class="fc" id="L148">	{</span>
+<span class="fc" id="L149">		this.functionId = functionId;</span>
+<span class="fc" id="L150">	}</span>
+
+	@Override
+	public String getId() {
+<span class="fc" id="L154">		return functionId;</span>
+	}
+
+	@Override
+	public &lt;SUB_RETURN extends AttributeValue&gt; HigherOrderBagFunction&lt;?, SUB_RETURN&gt; getInstance(final Datatype&lt;SUB_RETURN&gt; subFunctionReturnType) throws IllegalArgumentException {
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">		if (subFunctionReturnType == null)</span>
+		{
+<span class="nc" id="L161">			throw NULL_SUB_FUNCTION_RETURN_TYPE_ARG_EXCEPTION;</span>
+		}
+
+<span class="pc bpc" id="L164" title="1 of 2 branches missed.">		if (!(subFunctionReturnType instanceof AttributeDatatype&lt;?&gt;))</span>
+		{
+<span class="nc" id="L166">			throw new IllegalArgumentException(</span>
+					&quot;Invalid sub-function's return type specified for function '&quot; + functionId + &quot;': &quot; + subFunctionReturnType + &quot;. Expected: any primitive attribute datatype.&quot;);
+		}
+
+<span class="fc" id="L170">		return new MapFunction&lt;&gt;(functionId, (AttributeDatatype&lt;SUB_RETURN&gt;) subFunctionReturnType);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

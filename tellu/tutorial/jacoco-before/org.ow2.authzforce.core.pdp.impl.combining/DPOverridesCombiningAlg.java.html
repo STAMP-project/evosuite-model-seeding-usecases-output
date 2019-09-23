@@ -1,0 +1,1023 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DPOverridesCombiningAlg.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">DPOverridesCombiningAlg.java</span></div><h1>DPOverridesCombiningAlg.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.EnumMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecision;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecisions;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.UpdatableCollections;
+import org.ow2.authzforce.core.pdp.api.UpdatableList;
+import org.ow2.authzforce.core.pdp.api.combining.BaseCombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgParameter;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.impl.combining.CombiningAlgEvaluators.RulesWithSameEffectEvaluator;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DecisionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.EffectType;
+
+/**
+ * 
+ * Standard *-overrides combining algorithm.
+ *
+ */
+final class DPOverridesCombiningAlg&lt;T extends Decidable&gt; extends BaseCombiningAlg&lt;T&gt;
+{
+	/**
+	 * &quot;Ordered&quot; Deny/Permit-overrides combining algorithm evaluator; &quot;ordered&quot; means combined elements are evaluated in the same order as in the input collection (constructor parameter
+	 * 'combinedElements'), i.e. no re-ordering.
+	 */
+<span class="nc bnc" id="L62" title="All 2 branches missed.">	private static final class OrderPreservingCombiningAlgEvaluator extends BaseCombiningAlg.Evaluator&lt;Decidable&gt;</span>
+	{
+		/**
+		 * Helper to combine (not-overriding) decision results until a decision overrides or there is no more element to combine
+		 */
+		private static final class DecisionResultCollector
+		{
+			private final UpdatableList&lt;PrimaryPolicyMetadata&gt; combinedApplicablePolicyIdList;
+			/*
+			 * Replaces atLeastOneErrorDP from XACML spec. atLeastOneErrorDP == true &lt;=&gt; firstIndeterminateDPResult != null
+			 */
+<span class="nc" id="L73">			private ExtendedDecision firstIndeterminateDPResult = null;</span>
+			/*
+			 * Replaces atLeastOneError${overriding_effect} from XACML spec. atLeastOneError${overriding_effect} == true &lt;=&gt; firstIndeterminate${overriding_effect} != null
+			 */
+<span class="nc" id="L77">			private ExtendedDecision firstIndeterminateOverridingEffect = null;</span>
+			/*
+			 * Replaces atLeastOneError${overridden_effect} from XACML spec. atLeastOneError${overridden_effect} == true &lt;=&gt; firstIndeterminate${overridden_effect} != null
+			 */
+<span class="nc" id="L81">			private ExtendedDecision firstIndeterminateOverriddenEffect = null;</span>
+
+			/**
+			 * Replaces atLeastOnePermit (resp. atLeastOneDeny) from description of permit-overrides (resp. deny-overrides) in the XACML spec.
+			 * &lt;p&gt;
+			 * atLeastOnePermit (resp. atLeastOneDeny) == false &lt;=&gt; combinedPepActions == null.
+			 * &lt;p&gt;
+			 * At this point, we don't know yet whether the PEP actions of combined/children's Permit/Deny decisions will be added to the final result's PEP actions, since we don't know yet whether
+			 * the final decision is Permit/Deny.
+			 */
+<span class="nc" id="L91">			private UpdatableList&lt;PepAction&gt; combinedPepActions = null;</span>
+
+			DecisionResultCollector(final boolean returnApplicablePolicyIdList)
+<span class="nc" id="L94">			{</span>
+				/*
+				 * Since we may combine multiple elements before returning a final decision, we have to collect them in a list; and since we don't know yet whether the final decision is NotApplicable,
+				 * we cannot add collected applicable policies straight to outApplicablePolicyIdList. So we create a temporary list until we know the final decision applies.
+				 */
+<span class="nc bnc" id="L99" title="All 2 branches missed.">				combinedApplicablePolicyIdList = returnApplicablePolicyIdList ? UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;newUpdatableList()</span>
+<span class="nc" id="L100">				        : UpdatableCollections.&lt;PrimaryPolicyMetadata&gt;emptyList();</span>
+<span class="nc" id="L101">			}</span>
+
+			/**
+			 * Return new result's applicable policies combined (added last) with the ones previously found, or only the ones combined so far if result == null
+			 * 
+			 */
+			List&lt;PrimaryPolicyMetadata&gt; getApplicablePolicies(final DecisionResult result)
+			{
+<span class="nc bnc" id="L109" title="All 2 branches missed.">				if (result != null)</span>
+				{
+<span class="nc" id="L111">					combinedApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+				}
+<span class="nc" id="L113">				return combinedApplicablePolicyIdList.copy();</span>
+			}
+
+			/**
+			 * Add intermediate (not final a priori) Deny/Permit result (update applicable policies and PEP actions), i.e. a Permit (resp. Deny) result for deny-overrides (resp. permit-overrides)
+			 */
+			void addSubResultDP(final DecisionResult result)
+			{
+<span class="nc" id="L121">				combinedApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">				if (combinedPepActions == null)</span>
+				{
+					// first Permit
+<span class="nc" id="L125">					combinedPepActions = UpdatableCollections.newUpdatableList();</span>
+				}
+
+<span class="nc" id="L128">				combinedPepActions.addAll(result.getPepActions());</span>
+<span class="nc" id="L129">			}</span>
+
+			/**
+			 * Add intermediate (not final a priori) Indeterminate${overriding_effect} result (update applicable policies, etc.)
+			 */
+			void addSubResultIndeterminateInOverridingEffect(final DecisionResult result)
+			{
+<span class="nc" id="L136">				combinedApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">				if (firstIndeterminateOverridingEffect == null)</span>
+				{
+<span class="nc" id="L139">					firstIndeterminateOverridingEffect = result;</span>
+				}
+<span class="nc" id="L141">			}</span>
+
+			/**
+			 * Add intermediate (not final a priori) Indeterminate${overridden_effect} result (update applicable policies, etc.)
+			 */
+			void addSubResultIndeterminateInOverriddenEffect(final DecisionResult result)
+			{
+<span class="nc" id="L148">				combinedApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">				if (firstIndeterminateOverriddenEffect == null)</span>
+				{
+<span class="nc" id="L151">					firstIndeterminateOverriddenEffect = result;</span>
+				}
+<span class="nc" id="L153">			}</span>
+
+			/**
+			 * Add intermediate (not final a priori) IndeterminateDP result (update applicable policies, etc.)
+			 */
+			void addSubResultIndeterminateDP(final DecisionResult result)
+			{
+<span class="nc" id="L160">				combinedApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">				if (firstIndeterminateDPResult == null)</span>
+				{
+<span class="nc" id="L163">					firstIndeterminateDPResult = result;</span>
+				}
+<span class="nc" id="L165">			}</span>
+
+			/**
+			 * Get any occurred IndeterminateDP result
+			 */
+			ExtendedDecision getFirstIndeterminateDP()
+			{
+<span class="nc" id="L172">				return firstIndeterminateDPResult;</span>
+			}
+
+			/**
+			 * Get any occurred Indeterminate${overriding_effect} result
+			 */
+			ExtendedDecision getFirstIndeterminateWithOverridingEffect()
+			{
+<span class="nc" id="L180">				return firstIndeterminateOverridingEffect;</span>
+			}
+
+			/**
+			 * Get any occurred Indeterminate${overridden_effect} result
+			 */
+			ExtendedDecision getFirstIndeterminateWithOverriddenEffect()
+			{
+<span class="nc" id="L188">				return firstIndeterminateOverriddenEffect;</span>
+			}
+
+			/**
+			 * Get combined PEP actions of intermediate results
+			 */
+			UpdatableList&lt;PepAction&gt; getPepActions()
+			{
+<span class="nc" id="L196">				return combinedPepActions;</span>
+			}
+		}
+
+		private interface SubDecisionHandler
+		{
+			/**
+			 * Handles the decision result of one of the combined elements
+			 * 
+			 * @param result
+			 *            decision result of a combined element to handle
+			 * @param resultCollector
+			 *            used to collect the result (added/combined with previous ones), if the decision does not override, to be reused later at the end of the evaluation
+			 * @return true iff the result overrides all others (is final), e.g. Deny for deny-overrides
+			 */
+			boolean handle(DecisionResult result, DecisionResultCollector resultCollector);
+		}
+
+<span class="nc" id="L214">		private static final SubDecisionHandler OVERRIDING_SUBDECISIONHANDLER = (result, resultCollector) -&gt; true;</span>
+
+<span class="nc" id="L216">		private static final SubDecisionHandler OVERRIDDEN_DP_SUBDECISIONHANDLER = (result, resultCollector) -&gt; {</span>
+<span class="nc" id="L217">			resultCollector.addSubResultDP(result);</span>
+<span class="nc" id="L218">			return false;</span>
+		};
+
+<span class="nc" id="L221">		private static final SubDecisionHandler NOT_APPLICABLE_SUBDECISIONHANDLER = (result, resultCollector) -&gt; false;</span>
+
+<span class="nc" id="L223">		private static final SubDecisionHandler INDETERMINATE_OVERRIDING_EFFECT_SUBDECISIONHANDLER = (result, resultCollector) -&gt; {</span>
+<span class="nc" id="L224">			resultCollector.addSubResultIndeterminateInOverridingEffect(result);</span>
+<span class="nc" id="L225">			return false;</span>
+		};
+
+<span class="nc" id="L228">		private static final SubDecisionHandler INDETERMINATE_OVERRIDDEN_EFFECT_SUBDECISIONHANDLER = (result, resultCollector) -&gt; {</span>
+<span class="nc" id="L229">			resultCollector.addSubResultIndeterminateInOverriddenEffect(result);</span>
+<span class="nc" id="L230">			return false;</span>
+		};
+
+<span class="nc" id="L233">		private static final SubDecisionHandler INDETERMINATE_DP_SUBDECISIONHANDLER = (result, resultCollector) -&gt; {</span>
+<span class="nc" id="L234">			resultCollector.addSubResultIndeterminateDP(result);</span>
+<span class="nc" id="L235">			return false;</span>
+		};
+
+<span class="nc bnc" id="L238" title="All 2 branches missed.">		private static final class IndeterminateSubDecisionHandler implements SubDecisionHandler</span>
+		{
+			private final Map&lt;DecisionType, SubDecisionHandler&gt; indeterminateResultHandlersByExtendedIndeterminateType;
+
+			private IndeterminateSubDecisionHandler(final Map&lt;DecisionType, SubDecisionHandler&gt; indeterminateResultHandlersByExtendedIndeterminateType)
+<span class="nc" id="L243">			{</span>
+<span class="nc" id="L244">				this.indeterminateResultHandlersByExtendedIndeterminateType = indeterminateResultHandlersByExtendedIndeterminateType;</span>
+<span class="nc" id="L245">			}</span>
+
+			@Override
+			public boolean handle(final DecisionResult result, final DecisionResultCollector resultCollector)
+			{
+<span class="nc" id="L250">				final DecisionType extIndeterminate = result.getExtendedIndeterminate();</span>
+<span class="nc bnc" id="L251" title="All 6 branches missed.">				assert extIndeterminate != null &amp;&amp; extIndeterminate != DecisionType.NOT_APPLICABLE;</span>
+<span class="nc" id="L252">				return this.indeterminateResultHandlersByExtendedIndeterminateType.get(extIndeterminate).handle(result, resultCollector);</span>
+			}
+
+		}
+
+		private final ExtendedDecision decisionForOverridingEffect;
+		private final ExtendedDecision decisionForOverriddenEffect;
+<span class="nc" id="L259">		private final Map&lt;DecisionType, SubDecisionHandler&gt; resultHandlersByDecisionType = new EnumMap&lt;&gt;(DecisionType.class);</span>
+
+		OrderPreservingCombiningAlgEvaluator(final Iterable&lt;? extends Decidable&gt; combinedElements, final EffectType overridingEffect)
+		{
+<span class="nc" id="L263">			super(combinedElements);</span>
+<span class="nc" id="L264">			resultHandlersByDecisionType.put(DecisionType.NOT_APPLICABLE, NOT_APPLICABLE_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L265">			final Map&lt;DecisionType, SubDecisionHandler&gt; indeterminateResultHandlersByExtendedIndeterminateType = new EnumMap&lt;&gt;(DecisionType.class);</span>
+<span class="nc" id="L266">			indeterminateResultHandlersByExtendedIndeterminateType.put(DecisionType.INDETERMINATE, INDETERMINATE_DP_SUBDECISIONHANDLER);</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">			if (overridingEffect == EffectType.DENY)</span>
+			{
+				// deny-overrides
+<span class="nc" id="L270">				this.decisionForOverridingEffect = ExtendedDecisions.SIMPLE_DENY;</span>
+<span class="nc" id="L271">				this.decisionForOverriddenEffect = ExtendedDecisions.SIMPLE_PERMIT;</span>
+<span class="nc" id="L272">				resultHandlersByDecisionType.put(DecisionType.DENY, OVERRIDING_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L273">				indeterminateResultHandlersByExtendedIndeterminateType.put(DecisionType.DENY, INDETERMINATE_OVERRIDING_EFFECT_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L274">				resultHandlersByDecisionType.put(DecisionType.PERMIT, OVERRIDDEN_DP_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L275">				indeterminateResultHandlersByExtendedIndeterminateType.put(DecisionType.PERMIT, INDETERMINATE_OVERRIDDEN_EFFECT_SUBDECISIONHANDLER);</span>
+			} else
+			{
+<span class="nc" id="L278">				this.decisionForOverridingEffect = ExtendedDecisions.SIMPLE_PERMIT;</span>
+<span class="nc" id="L279">				this.decisionForOverriddenEffect = ExtendedDecisions.SIMPLE_DENY;</span>
+<span class="nc" id="L280">				resultHandlersByDecisionType.put(DecisionType.PERMIT, OVERRIDING_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L281">				indeterminateResultHandlersByExtendedIndeterminateType.put(DecisionType.PERMIT, INDETERMINATE_OVERRIDING_EFFECT_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L282">				resultHandlersByDecisionType.put(DecisionType.DENY, OVERRIDDEN_DP_SUBDECISIONHANDLER);</span>
+<span class="nc" id="L283">				indeterminateResultHandlersByExtendedIndeterminateType.put(DecisionType.DENY, INDETERMINATE_OVERRIDDEN_EFFECT_SUBDECISIONHANDLER);</span>
+			}
+
+<span class="nc" id="L286">			resultHandlersByDecisionType.put(DecisionType.INDETERMINATE, new IndeterminateSubDecisionHandler(indeterminateResultHandlersByExtendedIndeterminateType));</span>
+<span class="nc" id="L287">		}</span>
+
+		@Override
+		public ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; outPepActions, final UpdatableList&lt;PrimaryPolicyMetadata&gt; outApplicablePolicyIdList)
+		{
+<span class="nc bnc" id="L292" title="All 4 branches missed.">			assert outPepActions != null;</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">			final DecisionResultCollector resultCollector = new DecisionResultCollector(outApplicablePolicyIdList != null);</span>
+
+<span class="nc bnc" id="L295" title="All 2 branches missed.">			for (final Decidable combinedElement : getCombinedElements())</span>
+			{
+				// evaluate the policy
+<span class="nc" id="L298">				final DecisionResult result = combinedElement.evaluate(context);</span>
+<span class="nc" id="L299">				final boolean isResultOverriding = resultHandlersByDecisionType.get(result.getDecision()).handle(result, resultCollector);</span>
+
+				/*
+				 * XACML §7.18: Obligations &amp; Advice: do not return Obligations/Advice of the rule, policy, or policy set that does not match the decision resulting from evaluating the enclosing
+				 * policy set. For example, if the final decision is Permit, we should add to outPepActions only the PEP actions from Permit decisions (permitPepActions)
+				 */
+<span class="nc bnc" id="L305" title="All 2 branches missed.">				if (isResultOverriding)</span>
+				{
+					/*
+					 * result overrides all others, return it right away after updating output applicable policies and PEP actions
+					 */
+<span class="nc bnc" id="L310" title="All 2 branches missed.">					if (outApplicablePolicyIdList != null)</span>
+					{
+<span class="nc" id="L312">						outApplicablePolicyIdList.addAll(resultCollector.getApplicablePolicies(result));</span>
+					}
+
+<span class="nc" id="L315">					outPepActions.addAll(result.getPepActions());</span>
+<span class="nc" id="L316">					return this.decisionForOverridingEffect;</span>
+				}
+
+<span class="nc" id="L319">			}</span>
+
+			/*
+			 * There was no overriding Deny/Permit decision, i.e. Deny (resp. Permit) in case of deny-overrides (resp. permit-overrides) alg, else: if any Indeterminate{DP}, then Indeterminate{DP}
+			 */
+<span class="nc" id="L324">			final ExtendedDecision firstIndeterminateDP = resultCollector.getFirstIndeterminateDP();</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">			if (firstIndeterminateDP != null)</span>
+			{
+				// at least one Indeterminate{DP}
+<span class="nc bnc" id="L328" title="All 2 branches missed.">				if (outApplicablePolicyIdList != null)</span>
+				{
+<span class="nc" id="L330">					outApplicablePolicyIdList.addAll(resultCollector.getApplicablePolicies(null));</span>
+				}
+
+<span class="nc" id="L333">				return firstIndeterminateDP;</span>
+			}
+
+<span class="nc" id="L336">			final List&lt;PrimaryPolicyMetadata&gt; combinedApplicablePolicies = resultCollector.getApplicablePolicies(null);</span>
+<span class="nc" id="L337">			final UpdatableList&lt;PepAction&gt; combinedPepActionsOfNotOverridingDP = resultCollector.getPepActions();</span>
+<span class="nc" id="L338">			final ExtendedDecision firstIndeterminateWithOverridingEffect = resultCollector.getFirstIndeterminateWithOverridingEffect();</span>
+<span class="nc" id="L339">			final ExtendedDecision firstIndeterminateWithOverriddenEffect = resultCollector.getFirstIndeterminateWithOverriddenEffect();</span>
+
+			/*
+			 * ${overriding_effect} = Deny and ${overridden_effect} = Permit (resp. Deny) in case of deny-overrides (resp. permit-overrides) algorithm.
+			 * 
+			 * If any Indeterminate{overriding_effect}, then: if ( any Indeterminate{overridden_effect} or any decision with ${overridden_effect} ) -&gt; Indeterminate{DP}; else -&gt;
+			 * Indeterminate{overriding_effect} (this is a simplified equivalent of the algo in the spec)
+			 */
+			/*
+			 * atLeastOne${overridden_effect} == true &lt;=&gt; ${overridden_effect}PepActions != null
+			 */
+<span class="nc bnc" id="L350" title="All 2 branches missed.">			if (firstIndeterminateWithOverridingEffect != null)</span>
+			{
+<span class="nc bnc" id="L352" title="All 2 branches missed.">				if (outApplicablePolicyIdList != null)</span>
+				{
+<span class="nc" id="L354">					outApplicablePolicyIdList.addAll(combinedApplicablePolicies);</span>
+				}
+
+<span class="nc bnc" id="L357" title="All 4 branches missed.">				return ExtendedDecisions.newIndeterminate(</span>
+<span class="nc" id="L358">				        firstIndeterminateWithOverriddenEffect != null || combinedPepActionsOfNotOverridingDP != null ? DecisionType.INDETERMINATE : decisionForOverridingEffect.getDecision(),</span>
+<span class="nc" id="L359">				        firstIndeterminateWithOverridingEffect.getCauseForIndeterminate().get());</span>
+			}
+
+			/*
+			 * If we got a decision with overridden effect (e.g. Permit in case of deny-overrides algo) or Indeterminate{overridden_effect}, return it, otherwise it's NOT_APPLICABLE
+			 */
+<span class="nc bnc" id="L365" title="All 2 branches missed.">			if (combinedPepActionsOfNotOverridingDP != null)</span>
+			{
+<span class="nc bnc" id="L367" title="All 2 branches missed.">				if (outApplicablePolicyIdList != null)</span>
+				{
+<span class="nc" id="L369">					outApplicablePolicyIdList.addAll(combinedApplicablePolicies);</span>
+				}
+
+<span class="nc" id="L372">				outPepActions.addAll(combinedPepActionsOfNotOverridingDP);</span>
+<span class="nc" id="L373">				return decisionForOverriddenEffect;</span>
+			}
+
+<span class="nc bnc" id="L376" title="All 2 branches missed.">			if (firstIndeterminateWithOverriddenEffect != null)</span>
+			{
+<span class="nc bnc" id="L378" title="All 2 branches missed.">				if (outApplicablePolicyIdList != null)</span>
+				{
+<span class="nc" id="L380">					outApplicablePolicyIdList.addAll(combinedApplicablePolicies);</span>
+				}
+
+<span class="nc" id="L383">				return firstIndeterminateWithOverriddenEffect;</span>
+			}
+
+<span class="nc" id="L386">			return ExtendedDecisions.SIMPLE_NOT_APPLICABLE;</span>
+		}
+	}
+
+	/**
+	 * Combining algorithm evaluator that evaluates rules in a specific order: 1) rules with overriding Effect (in same order as in the constructor argument 'rulesWithOverridingEffect'), 2) other
+	 * rules (with overridden effect)
+	 */
+<span class="nc bnc" id="L394" title="All 2 branches missed.">	private static final class OverridingEffectFirstRuleCombiningAlgEvaluator extends RulesWithSameEffectEvaluator</span>
+	{
+		private final ImmutableList&lt;RuleEvaluator&gt; otherRules;
+		private final DecisionType overriddenEffectAsDecision;
+		private final ExtendedDecision overriddenEffectAsExtDecision;
+
+		/**
+		 * Constructor
+		 * 
+		 * @param rulesWithOverridingEffect
+		 *            combined Rules with overriding Effect. Must be non-null and non-empty.
+		 * @param otherRules
+		 *            combined Rules with opposite/overridden Effect. Must be non-null and non-empty.
+		 */
+		OverridingEffectFirstRuleCombiningAlgEvaluator(final Collection&lt;RuleEvaluator&gt; rulesWithOverridingEffect, final Collection&lt;RuleEvaluator&gt; otherRules)
+		{
+<span class="nc" id="L410">			super(rulesWithOverridingEffect);</span>
+
+<span class="nc bnc" id="L412" title="All 6 branches missed.">			assert otherRules != null &amp;&amp; !otherRules.isEmpty();</span>
+
+			// first rule's effect assumed the same for all
+<span class="nc" id="L415">			final EffectType overriddenEffect = otherRules.iterator().next().getEffect();</span>
+
+<span class="nc bnc" id="L417" title="All 6 branches missed.">			assert rulesWithOverridingEffect.iterator().next().getEffect() != overriddenEffect &amp;&amp; haveSameEffect(overriddenEffect, otherRules);</span>
+
+<span class="nc bnc" id="L419" title="All 2 branches missed.">			if (overriddenEffect == EffectType.DENY)</span>
+			{
+<span class="nc" id="L421">				this.overriddenEffectAsDecision = DecisionType.DENY;</span>
+<span class="nc" id="L422">				this.overriddenEffectAsExtDecision = ExtendedDecisions.SIMPLE_DENY;</span>
+			} else
+			{
+<span class="nc" id="L425">				this.overriddenEffectAsDecision = DecisionType.PERMIT;</span>
+<span class="nc" id="L426">				this.overriddenEffectAsExtDecision = ExtendedDecisions.SIMPLE_PERMIT;</span>
+			}
+
+<span class="nc" id="L429">			this.otherRules = ImmutableList.copyOf(otherRules);</span>
+<span class="nc" id="L430">		}</span>
+
+		/**
+		 * Evaluate rules with overridden Effect in the case when the evaluation of the rules with overriding Effect returned Indeterminate
+		 * 
+		 * @param indeterminateFromRulesWithOverridingEffect
+		 *            Indeterminate result from previous evaluation of rules with overridING effect
+		 * @return final decision
+		 */
+		private ExtendedDecision evaluateRulesWithOverriddenEffect(final EvaluationContext context, final ExtendedDecision indeterminateFromRulesWithOverridingEffect)
+		{
+			/*
+			 * indeterminateFromRulesWithOverridingEffect's decision assumed Indeterminate{overriding_effect}, overriding_effect = D (resp. P) if overriding Effect is Deny (resp. Permit)
+			 */
+<span class="nc bnc" id="L444" title="All 6 branches missed.">			assert indeterminateFromRulesWithOverridingEffect != null &amp;&amp; indeterminateFromRulesWithOverridingEffect.getDecision() == DecisionType.INDETERMINATE;</span>
+
+<span class="nc bnc" id="L446" title="All 2 branches missed.">			for (final RuleEvaluator rule : otherRules)</span>
+			{
+<span class="nc" id="L448">				final DecisionResult evalResult = rule.evaluate(context);</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">				if (evalResult.getDecision() != DecisionType.NOT_APPLICABLE)</span>
+				{
+					/**
+					 * decision is the overridden Effect or Indeterminate{overridden_effect}, which we have to combine with previous result (from rules with overriding Effect)
+					 * Indeterminate{overriding_effect}. For example,
+					 * &lt;p&gt;
+					 * IndeterminateD and (IndeterminateP or Permit)
+					 * &lt;/p&gt;
+					 * &lt;p&gt;
+					 * OR
+					 * &lt;/p&gt;
+					 * &lt;p&gt;
+					 * IndeterminateP and (IndeterminateD or Deny)
+					 * &lt;/p&gt;
+					 * &lt;p&gt;
+					 * =&gt; IndeterminateDP in both cases
+					 * &lt;/p&gt;
+					 */
+<span class="nc" id="L467">					return ExtendedDecisions.newIndeterminate(DecisionType.INDETERMINATE, indeterminateFromRulesWithOverridingEffect.getCauseForIndeterminate().get());</span>
+				}
+
+				// Else decision is NotApplicable, do nothing, continue
+<span class="nc" id="L471">			}</span>
+
+			/*
+			 * All other rules (with overridden effect) NotApplicable -&gt; initial Indeterminate result unchanged
+			 */
+<span class="nc" id="L476">			return indeterminateFromRulesWithOverridingEffect;</span>
+		}
+
+		/**
+		 * Evaluate rules with overridden Effect in the case when the evaluation of the rules with overriding Effect returned NotApplicable
+		 * 
+		 * @return final decision
+		 */
+		private ExtendedDecision evaluateRulesWithOverriddenEffect(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; updatablePepActions)
+		{
+			/**
+			 * Replaces atLeastOnePermit (resp. atLeastOneDeny) from description of deny-overrides (resp. permit-overrides) in the XACML spec.
+			 * &lt;p&gt;
+			 * atLeastOnePermit/atLeastOneDeny == false &lt;=&gt; combinedPepActions == null.
+			 * &lt;p&gt;
+			 * At this point, we don't know yet whether the PEP actions of combined/children's Permit/Deny decisions will be added to the final result's PEP actions, since we don't know yet whether
+			 * the final decision is Permit/Deny.
+			 */
+<span class="nc" id="L494">			UpdatableList&lt;PepAction&gt; combinedPepActions = null;</span>
+
+<span class="nc" id="L496">			ExtendedDecision firstIndeterminateInOverriddenEffect = null;</span>
+<span class="nc bnc" id="L497" title="All 2 branches missed.">			for (final RuleEvaluator rule : otherRules)</span>
+			{
+<span class="nc" id="L499">				final DecisionResult evalResult = rule.evaluate(context);</span>
+<span class="nc" id="L500">				final DecisionType decision = evalResult.getDecision();</span>
+<span class="nc bnc" id="L501" title="All 2 branches missed.">				if (decision == overriddenEffectAsDecision)</span>
+				{
+					// Permit/Deny
+<span class="nc bnc" id="L504" title="All 2 branches missed.">					if (combinedPepActions == null)</span>
+					{
+<span class="nc" id="L506">						combinedPepActions = UpdatableCollections.newUpdatableList();</span>
+					}
+
+<span class="nc" id="L509">					combinedPepActions.addAll(evalResult.getPepActions());</span>
+				}
+
+				/*
+				 * If the decision is Indeterminate, save the indeterminate cause for the final Indeterminate result (if first Indeterminate), only used if no other rule with determinate result
+				 * checked above is found.
+				 */
+<span class="nc bnc" id="L516" title="All 4 branches missed.">				if (decision == DecisionType.INDETERMINATE &amp;&amp; firstIndeterminateInOverriddenEffect == null)</span>
+				{
+					// first Indeterminate for overridden effect
+<span class="nc" id="L519">					firstIndeterminateInOverriddenEffect = evalResult;</span>
+				}
+<span class="nc" id="L521">			}</span>
+
+			// if(atLeastOnePermit/atLeastOneDeny)...
+<span class="nc bnc" id="L524" title="All 2 branches missed.">			if (combinedPepActions != null)</span>
+			{
+<span class="nc" id="L526">				updatablePepActions.addAll(combinedPepActions);</span>
+<span class="nc" id="L527">				return this.overriddenEffectAsExtDecision;</span>
+			}
+
+			/*
+			 * All decisions were NotApplicable or Indeterminate{overridden_effect}
+			 */
+			// at Least One Indeterminate
+<span class="nc bnc" id="L534" title="All 2 branches missed.">			if (firstIndeterminateInOverriddenEffect != null)</span>
+			{
+<span class="nc" id="L536">				return firstIndeterminateInOverriddenEffect;</span>
+			}
+
+			// All decisions were NotApplicable -&gt; NotApplicable
+<span class="nc" id="L540">			return ExtendedDecisions.SIMPLE_NOT_APPLICABLE;</span>
+		}
+
+		@Override
+		public ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; updatablePepActions,
+		        final UpdatableList&lt;PrimaryPolicyMetadata&gt; updatableApplicablePolicyIdList)
+		{
+<span class="nc" id="L547">			final ExtendedDecision extDecisionFromRulesWithOverridingEffect = super.evaluate(context, updatablePepActions, updatableApplicablePolicyIdList);</span>
+<span class="nc bnc" id="L548" title="All 3 branches missed.">			switch (extDecisionFromRulesWithOverridingEffect.getDecision())</span>
+			{
+				case DENY:
+				case PERMIT:
+<span class="nc" id="L552">					return extDecisionFromRulesWithOverridingEffect;</span>
+
+				case INDETERMINATE:
+					// Optimize
+<span class="nc" id="L556">					return evaluateRulesWithOverriddenEffect(context, extDecisionFromRulesWithOverridingEffect);</span>
+				default:
+					// NotApplicable
+					// Optimize
+<span class="nc" id="L560">					return evaluateRulesWithOverriddenEffect(context, updatablePepActions);</span>
+			}
+		}
+
+	}
+
+	private interface RuleCollector
+	{
+		void addNonEmptyRuleWithOverridingEffect(RuleEvaluator rule);
+
+		boolean hasRuleWithOverriddenEffectAndPepAction();
+
+		void addFirstEmptyRuleWithOverriddenEffect(RuleEvaluator rule);
+
+		void addNonEmptyRuleWithOverriddenEffectButNoPepAction(RuleEvaluator rule);
+
+		void addRuleWithOverriddenEffectAndPepActions(RuleEvaluator rule);
+
+		boolean hasRuleWithOverridingEffect();
+
+		boolean hasRuleWithOverriddenEffect();
+
+		CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverridingEffect();
+
+		CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverriddenEffect();
+
+		CombiningAlg.Evaluator getDPOverridesRuleCombiningAlgEvaluator(EffectType overridingEffect);
+	}
+
+	private interface RuleCollectorFactory
+	{
+		RuleCollector newInstance();
+	}
+
+	/**
+	 * Rule collector that preserve the order of the rules, i.e. order of insertion/appending, as opposed to OverridingEffectFirstRuleCollector
+	 */
+<span class="nc bnc" id="L597" title="All 2 branches missed.">	private static class OrderPreservingRuleCollector implements RuleCollector</span>
+	{
+<span class="nc" id="L599">		boolean atLeastOneRuleWithOverridingEffect = false;</span>
+<span class="nc" id="L600">		boolean atLeastOneRuleWithOverriddenEffectButNoPepAction = false;</span>
+<span class="nc" id="L601">		boolean atLeastOneRuleWithOverriddenEffectAndPepAction = false;</span>
+<span class="nc" id="L602">		final List&lt;RuleEvaluator&gt; addedRules = new ArrayList&lt;&gt;();</span>
+
+		@Override
+		public void addNonEmptyRuleWithOverridingEffect(final RuleEvaluator rule)
+		{
+<span class="nc" id="L607">			atLeastOneRuleWithOverridingEffect = true;</span>
+<span class="nc" id="L608">			addedRules.add(rule);</span>
+<span class="nc" id="L609">		}</span>
+
+		@Override
+		public void addNonEmptyRuleWithOverriddenEffectButNoPepAction(final RuleEvaluator rule)
+		{
+<span class="nc bnc" id="L614" title="All 4 branches missed.">			assert !rule.hasAnyPepAction();</span>
+<span class="nc" id="L615">			atLeastOneRuleWithOverriddenEffectButNoPepAction = true;</span>
+<span class="nc" id="L616">			addedRules.add(rule);</span>
+<span class="nc" id="L617">		}</span>
+
+		@Override
+		public void addRuleWithOverriddenEffectAndPepActions(final RuleEvaluator rule)
+		{
+<span class="nc bnc" id="L622" title="All 4 branches missed.">			assert rule.hasAnyPepAction();</span>
+<span class="nc" id="L623">			atLeastOneRuleWithOverriddenEffectAndPepAction = true;</span>
+<span class="nc" id="L624">			addedRules.add(rule);</span>
+<span class="nc" id="L625">		}</span>
+
+		@Override
+		public void addFirstEmptyRuleWithOverriddenEffect(final RuleEvaluator rule)
+		{
+<span class="nc" id="L630">			atLeastOneRuleWithOverriddenEffectButNoPepAction = true;</span>
+			/*
+			 * Remove all rules with overridden Effect but no PEP action, since they have no effect if there is an empty rule (that always successfully evaluate to overridden Effect)
+			 */
+<span class="nc" id="L634">			final Iterator&lt;RuleEvaluator&gt; it = addedRules.iterator();</span>
+<span class="nc bnc" id="L635" title="All 2 branches missed.">			while (it.hasNext())</span>
+			{
+<span class="nc" id="L637">				final RuleEvaluator addedRule = it.next();</span>
+<span class="nc bnc" id="L638" title="All 2 branches missed.">				if (!addedRule.hasAnyPepAction())</span>
+				{
+					/*
+					 * No PEP action
+					 */
+<span class="nc" id="L643">					it.remove();</span>
+<span class="nc bnc" id="L644" title="All 2 branches missed.">					if (LOGGER.isWarnEnabled())</span>
+					{
+<span class="nc" id="L646">						LOGGER.warn(</span>
+						        &quot;ordered-{}-overrides algorithm: Ignoring/removing {} (Effect={}) because it does not affect the result, since it does no have any PEP action and we already found an empty Rule ({}) with same Effect (always returns {}).&quot;,
+<span class="nc bnc" id="L648" title="All 2 branches missed.">						        rule.getEffect() == EffectType.DENY ? &quot;permit&quot; : &quot;deny&quot;, addedRule, addedRule.getEffect(), rule, addedRule.getEffect());</span>
+					}
+				}
+<span class="nc" id="L651">			}</span>
+
+<span class="nc" id="L653">			addedRules.add(rule);</span>
+<span class="nc" id="L654">		}</span>
+
+		@Override
+		public boolean hasRuleWithOverridingEffect()
+		{
+<span class="nc" id="L659">			return atLeastOneRuleWithOverridingEffect;</span>
+		}
+
+		@Override
+		public boolean hasRuleWithOverriddenEffect()
+		{
+<span class="nc bnc" id="L665" title="All 4 branches missed.">			return atLeastOneRuleWithOverriddenEffectButNoPepAction || atLeastOneRuleWithOverriddenEffectAndPepAction;</span>
+		}
+
+		@Override
+		public boolean hasRuleWithOverriddenEffectAndPepAction()
+		{
+<span class="nc" id="L671">			return atLeastOneRuleWithOverriddenEffectAndPepAction;</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverridingEffect()
+		{
+<span class="nc bnc" id="L677" title="All 4 branches missed.">			assert !hasRuleWithOverriddenEffect();</span>
+<span class="nc" id="L678">			return new CombiningAlgEvaluators.RulesWithSameEffectEvaluator(addedRules);</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverriddenEffect()
+		{
+<span class="nc bnc" id="L684" title="All 4 branches missed.">			assert !hasRuleWithOverridingEffect();</span>
+<span class="nc" id="L685">			return new CombiningAlgEvaluators.RulesWithSameEffectEvaluator(addedRules);</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getDPOverridesRuleCombiningAlgEvaluator(final EffectType overridingEffect)
+		{
+<span class="nc" id="L691">			return new OrderPreservingCombiningAlgEvaluator(addedRules, overridingEffect);</span>
+		}
+
+	}
+
+	/**
+	 * 
+	 * Rule collector that groups rules by Effect, with overridding Effect first (e.g. Deny rules before Permit rules if algorithm is deny-overrides)
+	 *
+	 */
+<span class="nc bnc" id="L701" title="All 2 branches missed.">	private static class OverridingEffectFirstRuleCollector implements RuleCollector</span>
+	{
+		/*
+		 * We will reorder rules with overriding Effect (e.g. Deny for deny-overrides algorithm) before rules with overridden Effect (e.g. Permit for deny-overrides algorithm) since order does not
+		 * matter and overriding Effect overrides/prevails.
+		 */
+<span class="nc" id="L707">		final Deque&lt;RuleEvaluator&gt; nonEmptyRulesWithOverridingEffect = new ArrayDeque&lt;&gt;();</span>
+<span class="nc" id="L708">		final Deque&lt;RuleEvaluator&gt; rulesWithOverriddenEffectButNoPepAction = new ArrayDeque&lt;&gt;();</span>
+<span class="nc" id="L709">		final Deque&lt;RuleEvaluator&gt; rulesWithOverriddenEffectAndPepActions = new ArrayDeque&lt;&gt;();</span>
+
+		@Override
+		public void addNonEmptyRuleWithOverridingEffect(final RuleEvaluator rule)
+		{
+<span class="nc" id="L714">			nonEmptyRulesWithOverridingEffect.addLast(rule);</span>
+<span class="nc" id="L715">		}</span>
+
+		@Override
+		public void addNonEmptyRuleWithOverriddenEffectButNoPepAction(final RuleEvaluator rule)
+		{
+<span class="nc bnc" id="L720" title="All 4 branches missed.">			assert !rule.hasAnyPepAction();</span>
+<span class="nc" id="L721">			rulesWithOverriddenEffectButNoPepAction.addLast(rule);</span>
+<span class="nc" id="L722">		}</span>
+
+		@Override
+		public void addRuleWithOverriddenEffectAndPepActions(final RuleEvaluator rule)
+		{
+<span class="nc bnc" id="L727" title="All 4 branches missed.">			assert rule.hasAnyPepAction();</span>
+<span class="nc" id="L728">			rulesWithOverriddenEffectAndPepActions.addLast(rule);</span>
+<span class="nc" id="L729">		}</span>
+
+		@Override
+		public void addFirstEmptyRuleWithOverriddenEffect(final RuleEvaluator rule)
+		{
+			/*
+			 * We may ignore all other rules with same overridden Effect and without PEP action
+			 */
+<span class="nc bnc" id="L737" title="All 2 branches missed.">			if (LOGGER.isWarnEnabled())</span>
+			{
+<span class="nc" id="L739">				LOGGER.warn(</span>
+				        &quot;{}-overrides algorithm: found empty rule {} (Effect = {}) -&gt; Ignoring/removing all rules found so far with same Effect and without any PEP action ( {} ) because they do not affect the final result.&quot;,
+<span class="nc bnc" id="L741" title="All 2 branches missed.">				        rule.getEffect() == EffectType.DENY ? &quot;permit&quot; : &quot;deny&quot;, rule, rule.getEffect(), rulesWithOverriddenEffectButNoPepAction);</span>
+			}
+<span class="nc" id="L743">			rulesWithOverriddenEffectButNoPepAction.clear();</span>
+<span class="nc" id="L744">			rulesWithOverriddenEffectButNoPepAction.addLast(rule);</span>
+<span class="nc" id="L745">		}</span>
+
+		@Override
+		public boolean hasRuleWithOverridingEffect()
+		{
+<span class="nc bnc" id="L750" title="All 2 branches missed.">			return !nonEmptyRulesWithOverridingEffect.isEmpty();</span>
+		}
+
+		@Override
+		public boolean hasRuleWithOverriddenEffect()
+		{
+<span class="nc bnc" id="L756" title="All 4 branches missed.">			return !rulesWithOverriddenEffectButNoPepAction.isEmpty() || !rulesWithOverriddenEffectAndPepActions.isEmpty();</span>
+		}
+
+		@Override
+		public boolean hasRuleWithOverriddenEffectAndPepAction()
+		{
+<span class="nc bnc" id="L762" title="All 2 branches missed.">			return !rulesWithOverriddenEffectAndPepActions.isEmpty();</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverridingEffect()
+		{
+<span class="nc bnc" id="L768" title="All 6 branches missed.">			assert rulesWithOverriddenEffectButNoPepAction.isEmpty() &amp;&amp; rulesWithOverriddenEffectAndPepActions.isEmpty();</span>
+<span class="nc" id="L769">			return new CombiningAlgEvaluators.RulesWithSameEffectEvaluator(nonEmptyRulesWithOverridingEffect);</span>
+		}
+
+		private Deque&lt;RuleEvaluator&gt; getRulesWithOverriddenEffect()
+		{
+<span class="nc bnc" id="L774" title="All 2 branches missed.">			if (rulesWithOverriddenEffectButNoPepAction.isEmpty())</span>
+			{
+<span class="nc" id="L776">				return rulesWithOverriddenEffectAndPepActions;</span>
+			}
+
+<span class="nc bnc" id="L779" title="All 2 branches missed.">			if (rulesWithOverriddenEffectAndPepActions.isEmpty())</span>
+			{
+<span class="nc" id="L781">				return rulesWithOverriddenEffectButNoPepAction;</span>
+			}
+
+<span class="nc" id="L784">			final Deque&lt;RuleEvaluator&gt; rulesWithOverriddenEffect = new ArrayDeque&lt;&gt;(rulesWithOverriddenEffectButNoPepAction.size() + rulesWithOverriddenEffectAndPepActions.size());</span>
+<span class="nc" id="L785">			rulesWithOverriddenEffect.addAll(rulesWithOverriddenEffectButNoPepAction);</span>
+<span class="nc" id="L786">			rulesWithOverriddenEffect.addAll(rulesWithOverriddenEffectAndPepActions);</span>
+<span class="nc" id="L787">			return rulesWithOverriddenEffect;</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getRuleCombiningAlgEvaluatorAssumingAllWithOverriddenEffect()
+		{
+<span class="nc bnc" id="L793" title="All 4 branches missed.">			assert nonEmptyRulesWithOverridingEffect.isEmpty();</span>
+<span class="nc" id="L794">			return new CombiningAlgEvaluators.RulesWithSameEffectEvaluator(getRulesWithOverriddenEffect());</span>
+		}
+
+		@Override
+		public CombiningAlg.Evaluator getDPOverridesRuleCombiningAlgEvaluator(final EffectType overridingEffect)
+		{
+<span class="nc" id="L800">			return new OverridingEffectFirstRuleCombiningAlgEvaluator(nonEmptyRulesWithOverridingEffect, getRulesWithOverriddenEffect());</span>
+		}
+	}
+
+<span class="nc" id="L804">	private static final Logger LOGGER = LoggerFactory.getLogger(DPOverridesCombiningAlg.class);</span>
+
+<span class="nc" id="L806">	private static final RuleCollectorFactory OVERRIDING_EFFECT_FIRST_RULE_COLLECTOR_FACTORY = () -&gt; {</span>
+<span class="nc" id="L807">		LOGGER.debug(</span>
+		        &quot;Rule combining algorithm is permit/deny-overrides: 'children may be processed in any order' (XACML). This implementation will process Rules with overriding Effect first, then the others without PEP action, and finally the others with PEP action(s)&quot;);
+<span class="nc" id="L809">		return new OverridingEffectFirstRuleCollector();</span>
+	};
+
+<span class="nc" id="L812">	private static final RuleCollectorFactory ORDER_PRESERVING_RULE_COLLECTOR_FACTORY = () -&gt; new OrderPreservingRuleCollector();</span>
+
+	private final EffectType overridingEffect;
+	private final EffectType overriddenEffect;
+	private final RuleCollectorFactory ruleCollectorFactory;
+	private final CombiningAlg.Evaluator constantOverridingEffectDecisionEvaluator;
+	private final CombiningAlg.Evaluator constantOverriddenEffectDecisionEvaluator;
+
+	/**
+	 * Constructor
+	 * 
+	 * @param algId
+	 *            combining algorithm ID
+	 * @param overridingEffect
+	 *            overriding effect (e.g. Deny for deny-overrides algorithm)
+	 * @param isOrdered
+	 *            true iff combined elements must be evaluated in order of declaration, i.e. in same order as in 'combinedElements' argument of {@link #getInstance(Iterable, Iterable)}. If false, the
+	 *            order is changed, in particular optimized by evaluating rules with overriding Effect first.
+	 */
+	DPOverridesCombiningAlg(final String algId, final Class&lt;T&gt; combinedType, final EffectType overridingEffect, final boolean isOrdered)
+	{
+<span class="nc" id="L833">		super(algId, combinedType);</span>
+<span class="nc" id="L834">		this.overridingEffect = overridingEffect;</span>
+<span class="nc bnc" id="L835" title="All 2 branches missed.">		if (overridingEffect == EffectType.DENY)</span>
+		{
+<span class="nc" id="L837">			overriddenEffect = EffectType.PERMIT;</span>
+<span class="nc" id="L838">			constantOverridingEffectDecisionEvaluator = CombiningAlgEvaluators.DENY_CONSTANT_EVALUATOR;</span>
+<span class="nc" id="L839">			constantOverriddenEffectDecisionEvaluator = CombiningAlgEvaluators.PERMIT_CONSTANT_EVALUATOR;</span>
+		} else
+		{
+			// Overriding Effect is Permit
+<span class="nc" id="L843">			overriddenEffect = EffectType.DENY;</span>
+<span class="nc" id="L844">			constantOverridingEffectDecisionEvaluator = CombiningAlgEvaluators.PERMIT_CONSTANT_EVALUATOR;</span>
+<span class="nc" id="L845">			constantOverriddenEffectDecisionEvaluator = CombiningAlgEvaluators.DENY_CONSTANT_EVALUATOR;</span>
+		}
+
+<span class="nc bnc" id="L848" title="All 2 branches missed.">		this.ruleCollectorFactory = isOrdered ? ORDER_PRESERVING_RULE_COLLECTOR_FACTORY : OVERRIDING_EFFECT_FIRST_RULE_COLLECTOR_FACTORY;</span>
+<span class="nc" id="L849">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public CombiningAlg.Evaluator getInstance(final Iterable&lt;CombiningAlgParameter&lt;? extends T&gt;&gt; params, final Iterable&lt;? extends T&gt; combinedElements)
+	        throws UnsupportedOperationException, IllegalArgumentException
+	{
+		// if no element -&gt; NotApplicable
+<span class="nc bnc" id="L857" title="All 2 branches missed.">		if (combinedElements == null)</span>
+		{
+<span class="nc" id="L859">			LOGGER.warn(&quot;{}: no element to combine -&gt; optimization: replacing with equivalent evaluator returning constant NotApplicable decision&quot;, this);</span>
+<span class="nc" id="L860">			return CombiningAlgEvaluators.NOT_APPLICABLE_CONSTANT_EVALUATOR;</span>
+		}
+
+<span class="nc" id="L863">		final Iterator&lt;? extends Decidable&gt; combinedEltIterator = combinedElements.iterator();</span>
+<span class="nc bnc" id="L864" title="All 2 branches missed.">		if (!combinedEltIterator.hasNext())</span>
+		{
+			// empty (no element to combine)
+<span class="nc" id="L867">			LOGGER.warn(&quot;{}: no element to combine -&gt; optimization: replacing with equivalent evaluator returning constant NotApplicable decision&quot;, this);</span>
+<span class="nc" id="L868">			return CombiningAlgEvaluators.NOT_APPLICABLE_CONSTANT_EVALUATOR;</span>
+		}
+
+		/*
+		 * If combined elements are Rules, we can optimize
+		 */
+<span class="nc bnc" id="L874" title="All 2 branches missed.">		if (!RuleEvaluator.class.isAssignableFrom(getCombinedElementType()))</span>
+		{
+<span class="nc" id="L876">			return new OrderPreservingCombiningAlgEvaluator(combinedElements, this.overridingEffect);</span>
+		}
+
+		// combined elements are Rules, we can optimize
+		/*
+		 * There is at least one Rule. Prepare to iterate over Rules and collect them in a specific way (depending on whether it is &quot;ordered-*-overrides&quot; kind of algorithm or not).
+		 */
+<span class="nc" id="L883">		final RuleCollector ruleCollector = ruleCollectorFactory.newInstance();</span>
+
+		/*
+		 * 
+		 * If we find any empty Rule in overridden Effect (no target/condition/pep_action), we don't need to look at other rules with such Effect and no PEP action; because if there is no rule with
+		 * overriding Effect, this rule is enough to return the overridden Effect as decision, and PEP actions come from all other rules with same Effect and PEP actions (e.g. if algorithm is
+		 * deny-overrides, then if there is no applicable Deny rule, if there is any empty Permit rule, the result is Permit with PEP actions combined from all other Permit rules with PEP actions)
+		 */
+<span class="nc" id="L891">		RuleEvaluator firstEmptyRuleWithOverriddenEffect = null;</span>
+
+<span class="nc bnc" id="L893" title="All 2 branches missed.">		while (combinedEltIterator.hasNext())</span>
+		{
+<span class="nc" id="L895">			final RuleEvaluator rule = (RuleEvaluator) combinedEltIterator.next();</span>
+<span class="nc bnc" id="L896" title="All 2 branches missed.">			if (rule.getEffect() == overridingEffect)</span>
+			{
+				/*
+				 * If rule's effect is the overriding Effect and it has no target/condition/pep_actions, then rule will always return this Effect -&gt; {overriding_effect}-overrides alg always evaluates
+				 * to ${overriding_effect} (ignore/remove all other rules). ({overriding_effect} = Permit if algorithm is Permit-overrides, or Deny if algorithm is Deny-overrides in this statement.)
+				 */
+<span class="nc bnc" id="L902" title="All 2 branches missed.">				if (rule.isEmptyEquivalent())</span>
+				{
+<span class="nc" id="L904">					LOGGER.warn(</span>
+					        &quot;{}: {} with Effect={} is empty (no target/condition/pep_actions) =&gt; always returns {} =&gt; algorithm will always return {} =&gt; other combined rules have no effect =&gt; will be ignored/removed.&quot;,
+					        this, rule, this.overridingEffect, this.overridingEffect, this.overridingEffect);
+<span class="nc" id="L907">					return constantOverridingEffectDecisionEvaluator;</span>
+				}
+
+				/*
+				 * Rule is not empty, i.e. has a target/condition/actions, therefore may not necessarily return its (overriding) Effect as decision
+				 */
+<span class="nc" id="L913">				ruleCollector.addNonEmptyRuleWithOverridingEffect(rule);</span>
+<span class="nc" id="L914">				continue;</span>
+			}
+
+			/*
+			 * Rule Effect = {overridden_Effect} (e.g. Permit if algorithm is deny-overrides)
+			 * 
+			 * In the end, if there is no applicable rule with overridING Effect, and if there is an empty rule with such overridden Effect, we already know that the result is always the overridden
+			 * Effect with PEP actions from all other rules with same Effect and PEP action(s).
+			 */
+<span class="nc bnc" id="L923" title="All 2 branches missed.">			if (firstEmptyRuleWithOverriddenEffect != null)</span>
+			{
+<span class="nc bnc" id="L925" title="All 2 branches missed.">				if (rule.hasAnyPepAction())</span>
+				{
+
+					// rule has PEP action(s), therefore it matters if final result is overridden Effect
+<span class="nc" id="L929">					ruleCollector.addRuleWithOverriddenEffectAndPepActions(rule);</span>
+<span class="nc" id="L930">					continue;</span>
+				}
+
+				/*
+				 * Rule has no PEP action Ignore this new Rule with overridden Effect and no PEP action; it will have no effect since we are sure the empty rule (that we already found) with overridden
+				 * Effect will successfully evaluate.
+				 */
+<span class="nc" id="L937">				LOGGER.warn(</span>
+				        &quot;{}: Ignoring/removing {} (Effect={}) because it does not affect the result, since it does no have any PEP action and we already found an empty Rule ({}) found with same Effect (always returns {}).&quot;,
+				        this, rule, overriddenEffect, firstEmptyRuleWithOverriddenEffect, overriddenEffect);
+				// continue looking for rules with overriding Effect
+<span class="nc" id="L941">				continue;</span>
+
+			}
+
+			// No empty Rule with overridden Effect found yet (firstEmptyRuleWithOverriddenEffect == null)
+<span class="nc bnc" id="L946" title="All 2 branches missed.">			if (rule.isEmptyEquivalent())</span>
+			{
+				// rule has no PEP action -&gt; firstEmptyRuleWithOverriddenEffect == null
+				/*
+				 * This is the first declared empty Rule with overridden Effect -&gt; always returns the overridden Effect as decision; we can ignore/remove other Rules with overridden Effect unless they
+				 * have PEP actions (have no effect anymore)
+				 */
+<span class="nc" id="L953">				LOGGER.warn(</span>
+				        &quot;{}: {} (Effect={}) is empty (no target/condition/pep_actions) =&gt; always returns {} =&gt; algorithm will always return {} unless some {} rule applies =&gt; other combined {} rules without any PEP action have no effect =&gt; will be ignored/removed.&quot;,
+				        this, rule, overriddenEffect, overriddenEffect, overriddenEffect, overridingEffect, overriddenEffect);
+<span class="nc" id="L956">				firstEmptyRuleWithOverriddenEffect = rule;</span>
+<span class="nc" id="L957">				ruleCollector.addFirstEmptyRuleWithOverriddenEffect(rule);</span>
+				// continue looking for rules with overriding Effect or with PEP actions
+<span class="nc" id="L959">				continue;</span>
+			}
+
+			/*
+			 * Non-empty Rule with overridden Effect found yet and current rule is not empty
+			 */
+<span class="nc bnc" id="L965" title="All 2 branches missed.">			if (rule.hasAnyPepAction())</span>
+			{
+<span class="nc" id="L967">				ruleCollector.addRuleWithOverriddenEffectAndPepActions(rule);</span>
+			} else
+			{
+<span class="nc" id="L970">				ruleCollector.addNonEmptyRuleWithOverriddenEffectButNoPepAction(rule);</span>
+			}
+
+<span class="nc" id="L973">		} // END while</span>
+
+		/*
+		 * There is at least one rule and there is no empty Rule with overriding Effect.
+		 * 
+		 * If there is no rule with overriding Effect...
+		 */
+<span class="nc bnc" id="L980" title="All 2 branches missed.">		if (!ruleCollector.hasRuleWithOverridingEffect())</span>
+		{
+			/*
+			 * No Rule with overriding Effect (whether empty or not) -&gt; at least one Rule with overridden Effect and all rules have this same overridden Effect. If we found an empty rule with
+			 * overridden Effect and no other with PEP action, the decision is the constant overridden Effect without PEP action.
+			 */
+<span class="nc bnc" id="L986" title="All 4 branches missed.">			if (firstEmptyRuleWithOverriddenEffect != null &amp;&amp; !ruleCollector.hasRuleWithOverriddenEffectAndPepAction())</span>
+			{
+				/*
+				 * no Rule with overriding Effect or PEP action, but one empty rule with overridden Effect -&gt; final result is the overridden Effect as simple decision (no PEP action) always
+				 */
+<span class="nc" id="L991">				LOGGER.warn(</span>
+				        &quot;{}: the only combined rule is empty {} Rule ({}) =&gt; algorithm will always return this {} =&gt; optimization: replacing with equivalent evaluator returning constant {} decision&quot;,
+				        this, this.overriddenEffect, firstEmptyRuleWithOverriddenEffect, this.overriddenEffect, this.overriddenEffect);
+<span class="nc" id="L994">				return constantOverriddenEffectDecisionEvaluator;</span>
+			}
+
+			/*
+			 * (All rules have same overridden Effect, and) either there is no empty rule OR there is at least one with PEP action
+			 */
+<span class="nc" id="L1000">			return ruleCollector.getRuleCombiningAlgEvaluatorAssumingAllWithOverriddenEffect();</span>
+		}
+
+		/*
+		 * There is at least one non-empty rule with overriding Effect.
+		 * 
+		 * If there is no rule with overridden Effect...
+		 */
+
+<span class="nc bnc" id="L1009" title="All 2 branches missed.">		if (!ruleCollector.hasRuleWithOverriddenEffect())</span>
+		{
+			/*
+			 * No rule with overridden Effect -&gt; only non-empty rules with same overriding Effect
+			 */
+<span class="nc" id="L1014">			return ruleCollector.getRuleCombiningAlgEvaluatorAssumingAllWithOverridingEffect();</span>
+		}
+
+		/*
+		 * At least one Rule with overridden Effect and only non-empty rules with overriding Effect
+		 */
+<span class="nc" id="L1020">		return ruleCollector.getDPOverridesRuleCombiningAlgEvaluator(overridingEffect);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

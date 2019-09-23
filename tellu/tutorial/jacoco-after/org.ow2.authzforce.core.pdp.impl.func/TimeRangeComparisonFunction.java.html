@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TimeRangeComparisonFunction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">TimeRangeComparisonFunction.java</span></div><h1>TimeRangeComparisonFunction.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Deque;
+import java.util.List;
+import java.util.TimeZone;
+
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.expression.Expression;
+import org.ow2.authzforce.core.pdp.api.func.BaseFirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.FirstOrderFunctionCall;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunction;
+import org.ow2.authzforce.core.pdp.api.func.SingleParameterTypedFirstOrderFunctionSignature;
+import org.ow2.authzforce.core.pdp.api.value.BooleanValue;
+import org.ow2.authzforce.core.pdp.api.value.Datatype;
+import org.ow2.authzforce.core.pdp.api.value.StandardDatatypes;
+import org.ow2.authzforce.core.pdp.api.value.TimeValue;
+
+/**
+ * Time range comparison function (XACML 2.0: time-in-range), which takes three time values and returns true if the first value falls between the second and the third value
+ * &lt;p&gt;
+ * Note that this function allows any time ranges less than 24 hours. In other words, it is not bound by normal day boundaries (midnight GMT), but by the minimum time in the range. This means that
+ * ranges like 9am-5pm are supported, as are ranges like 5pm-9am.
+ * 
+ * @version $Id: $
+ */
+final class TimeRangeComparisonFunction extends SingleParameterTypedFirstOrderFunction&lt;BooleanValue, TimeValue&gt;
+{
+
+	/**
+	 * Default constructor.
+	 * 
+	 * @param functionId
+	 *            function ID
+	 */
+	TimeRangeComparisonFunction(final String functionId)
+	{
+		/**
+		 * boolean timeInRange(time,time,time)
+		 */
+<span class="fc" id="L59">		super(functionId, StandardDatatypes.BOOLEAN, false, Arrays.asList(StandardDatatypes.TIME, StandardDatatypes.TIME, StandardDatatypes.TIME));</span>
+<span class="fc" id="L60">	}</span>
+
+	private static final class Call extends BaseFirstOrderFunctionCall.EagerSinglePrimitiveTypeEval&lt;BooleanValue, TimeValue&gt;
+	{
+		/**
+		 * XACML says: &quot;If no time zone is provided for the first argument, it SHALL use the default time zone at the context handler.&quot;
+		 */
+<span class="fc" id="L67">		private static final TimeZone DEFAULT_TZ = TimeZone.getDefault();</span>
+
+		/**
+		 * Evaluates the time-in-range function, which takes three &lt;code&gt;TimeAttributeValue&lt;/code&gt; values. This function return true if the first value falls between the second and third values (ie.,
+		 * on or after the second time and on or before the third time). If no time zone is specified for the second and/or third time value, then the timezone from the first time value is used. This
+		 * lets you say time-in-range(current-time, 9am, 5pm) and always have the evaluation happen in your current-time timezone.
+		 * 
+		 * @param arg
+		 *            time to be checked against the lower and upper bounds
+		 * @param lowerBound
+		 *            lower time bound
+		 * @param upperBound
+		 *            upper time bound
+		 * @return true iff arg is in range [lowerBound, upperBound]
+		 * 
+		 * 
+		 */
+		public static boolean eval(final TimeValue arg, final TimeValue lowerBound, final TimeValue upperBound)
+		{
+			// get the three time values
+<span class="fc" id="L87">			final Calendar calCheckedWhetherInRange = arg.getUnderlyingValue().toGregorianCalendar();</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">			if (calCheckedWhetherInRange.getTimeZone() == null)</span>
+			{
+<span class="nc" id="L90">				calCheckedWhetherInRange.setTimeZone(DEFAULT_TZ);</span>
+			}
+
+<span class="fc" id="L93">			final Calendar startCal = lowerBound.getUnderlyingValue().toGregorianCalendar();</span>
+<span class="pc bpc" id="L94" title="1 of 2 branches missed.">			if (startCal.getTimeZone() == null)</span>
+			{
+<span class="nc" id="L96">				startCal.setTimeZone(calCheckedWhetherInRange.getTimeZone());</span>
+			}
+<span class="fc" id="L98">			final Calendar endCal = upperBound.getUnderlyingValue().toGregorianCalendar();</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">			if (endCal.getTimeZone() == null)</span>
+			{
+<span class="nc" id="L101">				endCal.setTimeZone(calCheckedWhetherInRange.getTimeZone());</span>
+			}
+
+			/*
+			 * Reminder: year/month/day of underlying Calendars in TimeValues are all set to DatatypeConstants.FIELD_UNDEFINED. So the date does not matter in calendar comparison, we only compare
+			 * times of the day so ignoring the date, the checked time of the day might be before the lower time bound but still be in range if considered this is the time on the next day. In this
+			 * case, startCal is on day N, and calCheckedWhetherInRange on day N+1.
+			 */
+			/*
+			 * Boolean below says whether the checked time is strictly after the start time if considered on the *same day*, i.e. in terms of time of day.
+			 */
+<span class="fc" id="L112">			final boolean isCheckedDayTimeStrictlyBeforeStartDayTime = calCheckedWhetherInRange.before(startCal);</span>
+<span class="fc bfc" id="L113" title="All 2 branches covered.">			if (startCal.after(endCal))</span>
+			{
+				/*
+				 * start time of the day &gt; end time of the day, for instance 02:00:00 &gt; 01:00:00 so we consider the end time (01:00:00) on the next day (later than the second argument - end time - by
+				 * less than 24h, the spec says). So we interpret the time interval as the date interval [startTime on day N, endTime on day N+1]. If checked time of day &lt; start time of day (compared
+				 * on the same day), then checked time can only be on day after to be in range
+				 */
+<span class="fc bfc" id="L120" title="All 2 branches covered.">				if (isCheckedDayTimeStrictlyBeforeStartDayTime)</span>
+				{
+					/*
+					 * Time checked is strictly before start time. If considered on the same day, it is not in range. Else considered on day N+1, ie same day as end time. So let's compare with end
+					 * time. Time checked is in range if and only if before or equals end time (on day N+1), i.e. not strictly after
+					 */
+<span class="fc bfc" id="L126" title="All 2 branches covered.">					return !calCheckedWhetherInRange.after(endCal);</span>
+				}
+
+				/*
+				 * Time checked is after or equal to start time, so it is in range (on day N), as we already consider end time to be on day N+1
+				 */
+<span class="fc" id="L132">				return true;</span>
+			}
+
+			/*
+			 * Start time &lt;= end time -&gt; all considered on the same day
+			 */
+<span class="fc bfc" id="L138" title="All 2 branches covered.">			if (isCheckedDayTimeStrictlyBeforeStartDayTime)</span>
+			{
+				// checked time &lt; start time -&gt; out of range
+<span class="fc" id="L141">				return false;</span>
+			}
+
+			/*
+			 * Checked time &gt;= start time. Time checked is in range if and only if before or equals end time, so not strictly after
+			 */
+<span class="fc bfc" id="L147" title="All 2 branches covered.">			return !calCheckedWhetherInRange.after(endCal);</span>
+		}
+
+		private Call(final SingleParameterTypedFirstOrderFunctionSignature&lt;BooleanValue, TimeValue&gt; functionSignature, final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes)
+		{
+<span class="fc" id="L152">			super(functionSignature, argExpressions, remainingArgTypes);</span>
+<span class="fc" id="L153">		}</span>
+
+		@Override
+		protected BooleanValue evaluate(final Deque&lt;TimeValue&gt; argStack) throws IndeterminateEvaluationException
+		{
+			/*
+			 * args.poll() returns the first element and remove it from the stack, so that next poll() returns the next element (and removes it from the stack), etc.
+			 */
+<span class="fc" id="L161">			return BooleanValue.valueOf(eval(argStack.poll(), argStack.poll(), argStack.poll()));</span>
+		}
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public FirstOrderFunctionCall&lt;BooleanValue&gt; newCall(final List&lt;Expression&lt;?&gt;&gt; argExpressions, final Datatype&lt;?&gt;... remainingArgTypes) throws IllegalArgumentException
+	{
+<span class="fc" id="L169">		return new Call(functionSignature, argExpressions, remainingArgTypes);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

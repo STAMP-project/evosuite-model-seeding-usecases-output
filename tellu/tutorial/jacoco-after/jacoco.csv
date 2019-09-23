@@ -1,0 +1,222 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.StringRegexpMatchCallFactory,5,27,1,1,0,6,1,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,SubstringFunction.Call,10,108,0,2,2,19,0,3,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.SubtractOperator,0,15,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.new EqualTypeMatchFunction.Matcher() {...},0,7,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.new EqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalOrFunction,0,22,0,0,0,3,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.new EqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.new EqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.new EqualTypeMatchFunction.CallFactoryBuilder() {...},0,9,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.AbsOperator,0,8,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AllOfCallFactory,0,16,0,2,0,6,0,4,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNotFunction,0,17,0,0,0,3,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.OneBagOnlyHigherOrderFunction.Call,19,108,3,5,3,23,4,4,1,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagFunction.Call,30,102,6,6,7,19,7,3,1,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers.StringRegexpMatchCallFactory.new EqualTypeMatchFunction.Matcher() {...},4,3,0,0,1,1,1,1,1,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagAnyFunction,17,101,0,10,2,27,0,8,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators,0,13,0,0,0,3,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticFunction,54,119,6,10,7,27,6,6,0,4
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNotFunction.new BaseFirstOrderFunctionCall.EagerSinglePrimitiveTypeEval() {...},0,14,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AnyOfAny,0,46,0,2,0,7,0,4,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TemporalArithmeticOperators.TimeAddDurationOperator,0,7,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.MultiplyOperator,0,13,0,0,0,4,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagFunction,0,78,0,6,0,13,0,6,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringN11nFunction,0,31,0,0,0,6,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNOfFunction.CallWithVarArg0,105,0,6,0,19,0,5,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalOrFunction.Call,53,95,5,7,8,20,3,5,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,ImmutableFunctionRegistry,14,50,3,5,4,12,5,4,2,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanOneBagOnlyFunction,0,16,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticFunction.Call,0,37,0,0,0,7,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardDatatypeConverters.FromStringConverter,0,14,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TemporalArithmeticFunction,0,41,0,0,0,6,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanOneBagOnlyFunction.CallFactory.new StandardHigherOrderBagFunctions.OneBagOnlyHigherOrderFunction.Call() {...},18,49,0,4,2,9,0,4,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,MapFunctionFactory,21,29,2,2,2,8,2,4,0,4
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.new NumericArithmeticFunction.StaticOperation() {...},0,8,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardDatatypeConverters.ToStringConverter,0,9,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.DivideOperator,0,15,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.AddOperator,0,13,0,0,0,4,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardNonEqualTypeMatchers,0,17,0,0,0,4,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TimeRangeComparisonFunction.Call,11,77,3,13,3,18,3,9,0,4
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNOfFunction.Call,94,150,21,15,21,33,13,8,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringConcatenateFunction,0,30,0,0,0,3,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AllOfAny,0,6,0,0,0,2,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.OneBagOnlyHigherOrderFunction,0,137,0,12,0,27,0,9,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardEqualTypeMatchers,0,21,0,0,0,5,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,XPathNodeCountFunction,6,21,0,0,1,3,1,1,1,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.new NumericArithmeticFunction.StaticOperation() {...},0,15,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,NumericArithmeticOperators.new NumericArithmeticFunction.StaticOperation() {...},0,8,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,XPathNodeCountFunction.CallFactory.Call,114,0,2,0,21,0,3,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalAndFunction.CallFactory,0,15,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,MapFunctionFactory.MapFunction,0,20,0,0,0,3,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TemporalArithmeticFunction.Call,10,61,0,0,2,12,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AllOfAll,17,61,0,8,2,18,0,6,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,MapFunctionFactory.MapFunction.Call,36,96,0,4,4,20,0,4,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalAndFunction,0,27,0,0,0,4,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TemporalArithmeticOperators.TimeSubtractDurationOperator,0,7,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,SubstringFunction,141,168,11,19,11,34,12,8,1,4
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardDatatypeConverters.new StandardDatatypeConverters.ToStringConverter() {...},0,6,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderBagFunction,0,18,0,0,0,3,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringN11nFunction.CallFactory,0,18,0,0,0,5,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AnyOfCallFactory,0,16,0,2,0,6,0,4,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanOneBagOnlyFunction.CallFactory,0,30,0,0,0,5,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AnyOfAll,0,6,0,0,0,2,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringN11nFunction.new StringN11nFunction.StringNormalizer() {...},0,6,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringN11nFunction.CallFactory.new BaseFirstOrderFunctionCall.EagerSinglePrimitiveTypeEval() {...},0,17,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringN11nFunction.new StringN11nFunction.StringNormalizer() {...},0,7,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,XPathNodeCountFunction.CallFactory,9,6,0,0,1,3,1,1,1,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,ConstantResultFirstOrderFunctionCall,9,12,0,0,3,5,3,2,3,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,TimeRangeComparisonFunction,0,30,0,0,0,3,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardDatatypeConverters,3,25,0,0,2,5,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardNonEqualTypeMatchers.new NonEqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.AnyOfAny.AnyOfAnyFunctionCall,55,164,4,16,11,39,4,10,1,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardNonEqualTypeMatchers.new NonEqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardNonEqualTypeMatchers.new NonEqualTypeMatchFunction.Matcher() {...},0,9,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNOfFunction,18,118,2,8,2,17,2,6,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardNonEqualTypeMatchers.new NonEqualTypeMatchFunction.Matcher() {...},0,11,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalAndFunction.CallFactory.Call,53,95,5,7,8,20,3,5,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StringConcatenateFunction.new BaseFirstOrderFunctionCall.EagerSinglePrimitiveTypeEval() {...},0,31,0,2,0,5,0,3,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,LogicalNOfFunction.CallWithFixedArg0,0,27,0,0,0,5,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagAnyFunction.new StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagAnyFunction.ArgSelector() {...},0,7,0,0,0,3,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagFunction.new StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagFunction.Call() {...},0,20,0,0,0,2,0,2,0,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagAnyFunction.new StandardHigherOrderBagFunctions.BooleanHigherOrderTwoBagAnyFunction.ArgSelector() {...},0,7,0,0,0,3,0,3,0,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.func,StandardFunction,42,2433,6,12,9,232,7,8,1,5
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,ConditionEvaluators,94,0,10,0,21,0,7,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator.PermitDecisionWithPepActionResutFactory,14,0,0,0,4,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,ConditionEvaluators.BooleanExpressionEvaluator,33,0,6,0,7,0,6,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator.new RuleEvaluator.DecisionResultFactory() {...},30,0,6,0,6,0,9,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator.new RuleEvaluator.DecisionResultFactory() {...},30,0,6,0,6,0,9,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,ConditionEvaluators.new BooleanEvaluator() {...},8,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator.DecisionWithPepActionResultFactory,85,0,10,0,20,0,10,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator.DenyDecisionWithPepActionResutFactory,14,0,0,0,4,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.rule,RuleEvaluator,363,0,34,0,81,0,29,0,12,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefPolicyProvider,691,0,88,0,143,0,53,0,9,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,FlattenedPolicyTree,198,0,22,0,44,0,21,0,10,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefPolicyProvider.Factory,282,0,26,0,49,0,19,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.PolicySetElementEvaluatorFactory,93,0,10,0,19,0,8,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicyRefEvaluator,14,0,0,0,4,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicTopLevelPolicyElementRefEvaluator,193,0,10,0,42,0,14,0,9,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.PepActionAppendingDPResultFactory,100,0,15,0,23,0,11,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefBasedRootPolicyProvider,115,0,2,0,16,0,5,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.StaticPolicySetChildRefsMetadataProvider,77,0,14,0,14,0,11,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.StaticPolicyRefEvaluatorFactory,79,0,8,0,12,0,7,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.StaticBaseTopLevelPolicyElementEvaluator,21,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyMap,70,0,10,0,15,0,9,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicySetChildRefsMetadataProvider.GetMetadataResult,42,0,10,0,11,0,8,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicTopLevelPolicyElementRefEvaluator.RefResolvedResult,53,0,12,0,13,0,9,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyVersions,110,0,22,0,30,0,19,0,8,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicySetEvaluator,23,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.PolicyRefEvaluator,128,0,18,0,22,0,19,0,10,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicySetElementEvaluatorFactory,131,0,4,0,18,0,8,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicySetChildRefsMetadataProvider,126,0,12,0,27,0,9,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.BaseTopLevelPolicyElementEvaluator,664,0,70,0,145,0,56,0,20,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRootPolicyProvider,182,0,10,0,39,0,11,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators,1142,0,102,0,206,0,62,0,11,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRootPolicyProvider.Factory,95,0,8,0,17,0,8,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefPolicyProvider.PolicyWithNamespaces,15,0,0,0,6,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefPolicyProvider.InitOnlyRefPolicyProvider,125,0,12,0,29,0,10,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.BasePolicyRefsMetadata,35,0,8,0,8,0,8,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicyRefEvaluatorFactory,44,0,8,0,8,0,7,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.DynamicPolicySetRefEvaluator,60,0,14,0,11,0,11,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,RootPolicyEvaluators.StaticView,53,0,8,0,12,0,9,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,CoreRefBasedRootPolicyProvider.Factory,22,0,0,0,5,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.StaticPolicySetElementEvaluatorFactory,150,0,8,0,22,0,10,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.BaseCombiningAlgParameter,68,0,4,0,18,0,5,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,RootPolicyEvaluators,3,0,0,0,1,0,1,0,1,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,RootPolicyEvaluators.Base,119,0,12,0,31,0,12,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.BaseTopLevelPolicyElementEvaluator.EvalResults,82,0,16,0,16,0,11,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.policy,PolicyEvaluators.StaticPolicyRefEvaluator,74,0,0,0,14,0,6,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,OnlyOneApplicableCombiningAlg,13,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OrderPreservingRuleCollector,185,0,30,0,36,0,27,0,12,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,LegacyDenyOverridesCombiningAlg,21,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPUnlessPDCombiningAlg,200,0,20,0,40,0,13,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,StandardCombiningAlgorithm,508,0,6,0,59,0,7,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,StandardCombiningAlgorithm.new Function() {...},22,0,6,0,3,0,6,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OverridingEffectFirstRuleCombiningAlgEvaluator,189,0,43,0,42,0,27,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OrderPreservingCombiningAlgEvaluator.IndeterminateSubDecisionHandler,37,0,8,0,7,0,7,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators.ConstantDecisionEvaluator,10,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,FirstApplicableCombiningAlg.Evaluator,67,0,12,0,19,0,9,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,OnlyOneApplicableCombiningAlg.Evaluator,116,0,21,0,29,0,14,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators.new CombiningAlgEvaluators.ConstantDecisionEvaluator() {...},6,0,0,0,2,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators.new CombiningAlgEvaluators.ConstantDecisionEvaluator() {...},6,0,0,0,2,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OrderPreservingCombiningAlgEvaluator.DecisionResultCollector,104,0,12,0,32,0,16,0,10,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators.new CombiningAlgEvaluators.ConstantDecisionEvaluator() {...},6,0,0,0,2,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPUnlessPDCombiningAlg.Evaluator,113,0,22,0,30,0,14,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OrderPreservingCombiningAlgEvaluator,279,0,36,0,71,0,27,0,9,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators.RulesWithSameEffectEvaluator,114,0,28,0,24,0,18,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg.OverridingEffectFirstRuleCollector,208,0,36,0,34,0,31,0,13,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,LegacyPermitOverridesCombiningAlg,21,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,CombiningAlgEvaluators,13,0,0,0,3,0,1,0,1,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,ImmutableCombiningAlgRegistry,77,0,8,0,11,0,7,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,FirstApplicableCombiningAlg,71,0,12,0,20,0,9,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPUnlessPDCombiningAlg.OverridingEffectFirstRuleCombiningAlgEvaluator,171,0,36,0,37,0,22,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.combining,DPOverridesCombiningAlg,294,0,32,0,58,0,21,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,StandardEnvironmentAttributeSource,40,0,0,0,6,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,StaticRefPolicyProvider,36,0,4,0,14,0,7,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,InOutProcChain,26,0,0,0,12,0,6,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,Pdp,267,0,26,0,96,0,48,0,35,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,ObjectFactory,23,0,0,0,7,0,6,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,StaticRefBasedRootPolicyProvider,16,0,0,0,8,0,4,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.xmlns.pdp,StaticRootPolicyProvider,16,0,0,0,8,0,4,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,DepthLimitingExpressionFactory,457,98,82,8,84,26,52,5,8,4
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,ApplyExpressions,263,0,18,0,47,0,12,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,AttributeSelectorExpressions.AttributeSelectorExpressionWithContextSelector,190,0,14,0,26,0,12,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,AttributeSelectorExpressions.ExtensibleAttributeSelectorExpression,762,0,52,0,146,0,43,0,17,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,AttributeSelectorExpressions,32,0,4,0,7,0,4,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,DepthLimitingExpressionFactory.DynamicVariableReference,79,0,10,0,17,0,10,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,AttributeSelectorExpressions.AttributeSelectorExpressionWithoutContextSelector,30,0,6,0,7,0,8,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,ApplyExpressions.VariableApplyExpression,17,0,0,0,6,0,4,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,DepthLimitingExpressionFactory.ConstantVariableReference,42,0,8,0,9,0,9,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,DepthLimitingExpressionFactory.BaseVariableReference,31,0,6,0,8,0,7,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.expression,ApplyExpressions.ConstantApplyExpression,5,0,0,0,2,0,1,0,1,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,DefaultEnvironmentProperties,95,0,16,0,23,0,13,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler.OASISCatalogManager,183,0,36,0,46,0,25,0,7,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.NonCachingIndividualDecisionRequestEvaluator,88,0,16,0,18,0,12,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualDecisionRequestEvaluator,156,0,20,0,33,0,17,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,MatchEvaluator,161,0,10,0,34,0,8,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,TargetEvaluators.new BooleanEvaluator() {...},8,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AttributeAssignmentExpressionEvaluator.AttributeBagExpression,19,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IssuedToNonIssuedAttributeCopyingRequestBuilder,41,0,6,0,7,0,6,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AnyOfEvaluator,140,0,16,0,38,0,11,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AttributeAssignmentExpressionEvaluator.SingleAttributeValueExpression,15,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.new BasePdpEngine.StandardEnvironmentAttributeIssuer() {...},40,0,0,0,8,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.new BasePdpEngine.StandardEnvironmentAttributeIssuer() {...},5,0,0,0,2,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,IndividualDecisionRequestContext,353,0,24,0,75,0,33,0,21,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AttributeAssignmentExpressionEvaluator,198,0,12,0,28,0,13,0,7,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualRequestEvaluatorWithCacheIgnoringEvaluationContext,185,0,26,0,42,0,17,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,CloseableAttributeProvider,128,30,18,4,35,9,13,3,2,3
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,PdpBean,80,91,5,11,15,25,9,10,4,7
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.NonIssuedLikeIssuedAttributeHandlingRequestBuilder,47,0,4,0,10,0,7,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler.OASISCatalogManager.new CatalogResolver() {...},31,0,6,0,10,0,5,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,ImmutablePdpExtensionRegistry,0,11,0,0,0,3,0,1,0,1
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,PdpExtensions,471,0,40,0,70,0,29,0,9,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualDecisionRequestEvaluator.new BasePdpEngine.IndividualDecisionRequestEvaluator.RequestAndPdpIssuedNamedAttributesMerger() {...},10,0,2,0,2,0,3,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualDecisionRequestEvaluator.new BasePdpEngine.IndividualDecisionRequestEvaluator.RequestAndPdpIssuedNamedAttributesMerger() {...},21,0,6,0,6,0,5,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualDecisionRequestEvaluator.new BasePdpEngine.IndividualDecisionRequestEvaluator.RequestAndPdpIssuedNamedAttributesMerger() {...},41,0,12,0,9,0,8,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,CloseableAttributeProvider.ModuleAdapter,45,0,4,0,12,0,7,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,ModularAttributeProvider,286,46,35,5,50,13,24,2,4,2
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,StandardEnvironmentAttribute.new Function() {...},22,0,6,0,3,0,6,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,StandardEnvironmentAttribute,75,0,0,0,10,0,4,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler.new ErrorHandler() {...},9,0,0,0,4,0,4,0,4,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,PdpEngineConfiguration,853,0,88,0,181,0,66,0,22,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,TargetEvaluators.NonEmptyTargetEvaluator,143,0,20,0,36,0,13,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,PepActionExpression,177,0,12,0,29,0,11,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,PdpModelHandler,159,0,6,0,39,0,8,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler.LSInputImpl,52,0,0,0,22,0,18,0,18,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AllOfEvaluator,139,0,16,0,38,0,11,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,AttributeAssignmentExpressionEvaluator.AttributeValueExpression,9,0,0,0,4,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine.IndividualRequestEvaluatorWithCacheUsingEvaluationContext,141,0,26,0,28,0,18,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,TargetEvaluators,30,0,6,0,8,0,5,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler.XmlSchemaResourceResolver,151,0,14,0,25,0,10,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,SchemaHandler,204,0,6,0,47,0,9,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl,BasePdpEngine,160,0,16,0,32,0,16,0,8,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,SingleDecisionXacmlJaxbRequestPreprocessor.StrictVariantFactory,15,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,MultiDecisionXacmlJaxbRequestPreprocessor,166,0,18,0,43,0,11,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,SingleDecisionXacmlJaxbRequestPreprocessor,139,0,18,0,29,0,12,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,MultiDecisionXacmlJaxbRequestPreprocessor.LaxVariantFactory,15,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,MultiDecisionXacmlJaxbRequestPreprocessor.IndividualXacmlJaxbRequestBuilder,155,0,22,0,35,0,16,0,5,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,DefaultXacmlJaxbResultPostprocessorFactory,9,0,0,0,3,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,SingleDecisionXacmlJaxbRequestPreprocessor.new DecisionRequestFactory() {...},8,0,0,0,2,0,2,0,2,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,SingleDecisionXacmlJaxbRequestPreprocessor.LaxVariantFactory,20,0,0,0,4,0,3,0,3,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,PdpEngineAdapters,241,0,32,0,39,0,22,0,6,0
+org.ow2.authzforce:authzforce-ce-core-pdp-engine,org.ow2.authzforce.core.pdp.impl.io,MultiDecisionXacmlJaxbRequestPreprocessor.StrictVariantFactory,15,0,0,0,3,0,2,0,2,0

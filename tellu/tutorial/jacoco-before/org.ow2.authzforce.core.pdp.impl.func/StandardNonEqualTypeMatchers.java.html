@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StandardNonEqualTypeMatchers.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.func</a> &gt; <span class="el_source">StandardNonEqualTypeMatchers.java</span></div><h1>StandardNonEqualTypeMatchers.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.func;
+
+import org.ow2.authzforce.core.pdp.api.func.EqualTypeMatchFunction;
+import org.ow2.authzforce.core.pdp.api.func.NonEqualTypeMatchFunction.Matcher;
+import org.ow2.authzforce.core.pdp.api.value.AnyUriValue;
+import org.ow2.authzforce.core.pdp.api.value.Rfc822NameValue;
+import org.ow2.authzforce.core.pdp.api.value.StringValue;
+
+/**
+ * Standard match functions taking two parameters of possibly different types, e.g. a string and a URI.
+ * 
+ * @version $Id: $
+ */
+final class StandardNonEqualTypeMatchers
+{
+	/**
+	 * rfc822Name-match function
+	 * 
+	 */
+<span class="fc" id="L37">	static final Matcher&lt;StringValue, Rfc822NameValue&gt; RFC822NAME_MATCHER = new Matcher&lt;StringValue, Rfc822NameValue&gt;()</span>
+<span class="fc" id="L38">	{</span>
+
+		@Override
+		public final boolean match(final StringValue arg0, final Rfc822NameValue arg1)
+		{
+<span class="fc" id="L43">			return arg1.match(arg0.getUnderlyingValue());</span>
+		}
+	};
+
+	// public static void main(String... args) throws XPathException
+	// {
+	// String input = &quot;zzztesting&quot;;
+	// String regex = &quot;^test.*&quot;;
+	// String flags = &quot;&quot;;
+	// String xpathlang = &quot;XP20&quot;;
+	// //
+	// RegularExpression compiledRegex = Configuration.getPlatform().compileRegularExpression(regex,
+	// flags, xpathlang, null);
+	// boolean isMatched = compiledRegex.containsMatch(input);
+	// System.out.println(isMatched);
+	// }
+
+	/**
+	 * anyURI-starts-with matcher. For string-starts-with, see {@link EqualTypeMatchFunction} class.
+	 * 
+	 */
+<span class="fc" id="L64">	static final Matcher&lt;StringValue, AnyUriValue&gt; ANYURI_STARTS_WITH_MATCHER = new Matcher&lt;StringValue, AnyUriValue&gt;()</span>
+<span class="fc" id="L65">	{</span>
+
+		/**
+		 * WARNING: the XACML spec defines the first argument as the prefix
+		 */
+		@Override
+		public final boolean match(final StringValue prefix, final AnyUriValue arg1)
+		{
+<span class="fc" id="L73">			return arg1.getUnderlyingValue().startsWith(prefix.getUnderlyingValue());</span>
+		}
+	};
+
+	/**
+	 * anyURI-ends-with matcher
+	 */
+<span class="fc" id="L80">	static final Matcher&lt;StringValue, AnyUriValue&gt; ANYURI_ENDS_WITH_MATCHER = new Matcher&lt;StringValue, AnyUriValue&gt;()</span>
+<span class="fc" id="L81">	{</span>
+		/**
+		 * WARNING: the XACML spec defines the first argument as the suffix
+		 */
+		@Override
+		public final boolean match(final StringValue suffix, final AnyUriValue arg1)
+		{
+<span class="fc" id="L88">			return arg1.getUnderlyingValue().endsWith(suffix.getUnderlyingValue());</span>
+		}
+	};
+
+	/**
+	 * anyURI-contains matcher
+	 * 
+	 */
+<span class="fc" id="L96">	static final Matcher&lt;StringValue, AnyUriValue&gt; ANYURI_CONTAINS_MATCHER = new Matcher&lt;StringValue, AnyUriValue&gt;()</span>
+<span class="fc" id="L97">	{</span>
+
+		/**
+		 * WARNING: the XACML spec defines the second argument as the string that must contain the other
+		 */
+		@Override
+		public final boolean match(final StringValue contained, final AnyUriValue arg1)
+		{
+<span class="fc" id="L105">			return arg1.getUnderlyingValue().contains(contained.getUnderlyingValue());</span>
+		}
+	};
+
+	private StandardNonEqualTypeMatchers()
+	{
+		// empty private constructor to prevent instantiation
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

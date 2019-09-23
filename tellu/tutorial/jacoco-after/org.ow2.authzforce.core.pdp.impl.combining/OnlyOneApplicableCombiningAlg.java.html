@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OnlyOneApplicableCombiningAlg.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">OnlyOneApplicableCombiningAlg.java</span></div><h1>OnlyOneApplicableCombiningAlg.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecision;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecisions;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.UpdatableList;
+import org.ow2.authzforce.core.pdp.api.combining.BaseCombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgParameter;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyEvaluator;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.xacml.identifiers.XacmlStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DecisionType;
+
+/**
+ * This is the standard only-one-applicable policy combining algorithm.
+ *
+ * @version $Id: $
+ */
+final class OnlyOneApplicableCombiningAlg extends BaseCombiningAlg&lt;PolicyEvaluator&gt;
+{
+
+<span class="nc bnc" id="L46" title="All 2 branches missed.">	private static final class Evaluator extends BaseCombiningAlg.Evaluator&lt;PolicyEvaluator&gt;</span>
+	{
+<span class="nc" id="L48">		private static final Logger LOGGER = LoggerFactory.getLogger(Evaluator.class);</span>
+
+		private final ExtendedDecision tooManyApplicablePoliciesIndeterminateResult;
+
+		private Evaluator(final String algId, final Iterable&lt;? extends PolicyEvaluator&gt; policyElements)
+		{
+<span class="nc" id="L54">			super(policyElements);</span>
+<span class="nc" id="L55">			this.tooManyApplicablePoliciesIndeterminateResult = ExtendedDecisions.newIndeterminate(DecisionType.INDETERMINATE,</span>
+<span class="nc" id="L56">			        new IndeterminateEvaluationException(&quot;Too many (more than one) applicable policies for algorithm: &quot; + algId, XacmlStatusCode.PROCESSING_ERROR.value()));</span>
+<span class="nc" id="L57">		}</span>
+
+		@Override
+		public ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; outPepActions, final UpdatableList&lt;PrimaryPolicyMetadata&gt; outApplicablePolicyIdList)
+		{
+<span class="nc bnc" id="L62" title="All 4 branches missed.">			assert outPepActions != null;</span>
+
+			// atLeastOne == true iff selectedPolicy != null
+<span class="nc" id="L65">			PolicyEvaluator selectedPolicy = null;</span>
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			for (final PolicyEvaluator policy : getCombinedElements())</span>
+			{
+				// see if the policy applies to the context
+				final boolean isApplicableByTarget;
+				try
+				{
+<span class="nc" id="L73">					isApplicableByTarget = policy.isApplicableByTarget(context);</span>
+<span class="nc" id="L74">				} catch (final IndeterminateEvaluationException e)</span>
+				{
+<span class="nc" id="L76">					LOGGER.info(&quot;Error checking whether {} is applicable&quot;, policy, e);</span>
+<span class="nc" id="L77">					return ExtendedDecisions.newIndeterminate(DecisionType.INDETERMINATE, e);</span>
+<span class="nc" id="L78">				}</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">				if (isApplicableByTarget)</span>
+				{
+					// if one selected (found applicable) already
+<span class="nc bnc" id="L83" title="All 2 branches missed.">					if (selectedPolicy != null)</span>
+					{
+<span class="nc" id="L85">						return tooManyApplicablePoliciesIndeterminateResult;</span>
+					}
+
+					// if this was the first applicable policy in the set, then
+					// remember it for later
+<span class="nc" id="L90">					selectedPolicy = policy;</span>
+				}
+<span class="nc" id="L92">			}</span>
+
+			/*
+			 * If we got through the loop, it means we found at most one match, then we return the evaluation result of that policy if there is a match
+			 */
+<span class="nc bnc" id="L97" title="All 2 branches missed.">			if (selectedPolicy != null)</span>
+			{
+<span class="nc" id="L99">				final DecisionResult result = selectedPolicy.evaluate(context, true);</span>
+<span class="nc bnc" id="L100" title="All 3 branches missed.">				switch (result.getDecision())</span>
+				{
+					case PERMIT:
+					case DENY:
+<span class="nc" id="L104">						outPepActions.addAll(result.getPepActions());</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">						if (outApplicablePolicyIdList != null)</span>
+						{
+<span class="nc" id="L107">							outApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+						}
+
+						break;
+					case INDETERMINATE:
+<span class="nc bnc" id="L112" title="All 2 branches missed.">						if (outApplicablePolicyIdList != null)</span>
+						{
+<span class="nc" id="L114">							outApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+						}
+
+						break;
+					default: // NotApplicable
+						break;
+				}
+
+<span class="nc" id="L122">				return result;</span>
+			}
+
+<span class="nc" id="L125">			return ExtendedDecisions.SIMPLE_NOT_APPLICABLE;</span>
+		}
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	public CombiningAlg.Evaluator getInstance(final Iterable&lt;CombiningAlgParameter&lt;? extends PolicyEvaluator&gt;&gt; params, final Iterable&lt;? extends PolicyEvaluator&gt; combinedElements)
+	{
+<span class="nc" id="L133">		return new Evaluator(this.getId(), combinedElements);</span>
+	}
+
+	/**
+	 * Standard constructor.
+	 */
+	OnlyOneApplicableCombiningAlg(final String algId)
+	{
+<span class="nc" id="L141">		super(algId, PolicyEvaluator.class);</span>
+<span class="nc" id="L142">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

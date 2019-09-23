@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LegacyDenyOverridesCombiningAlg.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">LegacyDenyOverridesCombiningAlg.java</span></div><h1>LegacyDenyOverridesCombiningAlg.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.combining.BaseCombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgParameter;
+
+/**
+ * This is the standard Deny-Overrides and Ordered-Deny-Overrides combining algorithm. It allows a single evaluation of Deny to take precedence over any number of permit, not applicable or
+ * indeterminate results. Note that since this implementation does an ordered evaluation, this class also supports the Ordered-Deny-Overrides algorithm.
+ *
+ * @version $Id: $
+ */
+final class LegacyDenyOverridesCombiningAlg extends BaseCombiningAlg&lt;Decidable&gt;
+{
+	private static final String LEGACY_ALG_WARNING = &quot;%s is a legacy combining algorithm defined in XACML versions earlier than 3.0. This implementation does not support such legacy algorithms. Use the new XACML 3.0 versions of these combining algorithms instead.&quot;;
+
+	private final UnsupportedOperationException unsupportedLegacyAlgorithmException;
+
+	LegacyDenyOverridesCombiningAlg(final String algId)
+	{
+<span class="nc" id="L39">		super(algId, Decidable.class);</span>
+<span class="nc" id="L40">		this.unsupportedLegacyAlgorithmException = new UnsupportedOperationException(String.format(LEGACY_ALG_WARNING, this));</span>
+<span class="nc" id="L41">	}</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public CombiningAlg.Evaluator getInstance(final Iterable&lt;CombiningAlgParameter&lt;? extends Decidable&gt;&gt; params, final Iterable&lt;? extends Decidable&gt; combinedElements)
+	{
+<span class="nc" id="L47">		throw this.unsupportedLegacyAlgorithmException;</span>
+		/*
+		 * boolean atLeastOnePermit = false; Obligations combinedPermitObligations = null; AssociatedAdvice combinedPermitAdvice = null; for (final IPolicy policy : policyElements) { // evaluate the
+		 * policy final DecisionResult result = policy.evaluate(context); final DecisionType effect = result.getDecision();
+		 * 
+		 * // unlike in the RuleCombining version of this alg, we always // return DENY if any Policy returns DENY or INDETERMINATE if ((effect == DecisionType.DENY) || (effect ==
+		 * DecisionType.INDETERMINATE)) { return new DecisionResult(DecisionType.DENY, result.getPepActions()); }
+		 * 
+		 * // remember if at least one Policy said PERMIT if (effect == DecisionType.PERMIT) { atLeastOnePermit = true;
+		 * 
+		 * // copy the obligations/advice in case the final result is Permit combinedPermitObligations = CombiningAlgorithm.addResultObligations(result, combinedPermitObligations);
+		 * combinedPermitAdvice = CombiningAlgorithm.addResultAdvice(result, combinedPermitAdvice); } }
+		 * 
+		 * // if we got a PERMIT, return it, otherwise it's NOT_APPLICABLE if (atLeastOnePermit) { return new Result(DecisionType.PERMIT, null, combinedPermitObligations, combinedPermitAdvice, null,
+		 * null); }
+		 * 
+		 * return new Result(DecisionType.NOT_APPLICABLE, null, null, null, null, null);
+		 */
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

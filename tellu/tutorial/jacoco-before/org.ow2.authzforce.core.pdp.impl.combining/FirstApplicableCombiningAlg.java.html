@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FirstApplicableCombiningAlg.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">FirstApplicableCombiningAlg.java</span></div><h1>FirstApplicableCombiningAlg.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Iterator;
+
+import org.ow2.authzforce.core.pdp.api.Decidable;
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecision;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecisions;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.UpdatableList;
+import org.ow2.authzforce.core.pdp.api.combining.BaseCombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgParameter;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DecisionType;
+
+/**
+ * This is the standard First-Applicable policy/rule combining algorithm. It looks through the set of policies/rules, finds the first one that applies, and returns that evaluation result.
+ *
+ * @version $Id: $
+ */
+final class FirstApplicableCombiningAlg&lt;T extends Decidable&gt; extends BaseCombiningAlg&lt;T&gt;
+{
+
+	private static final class Evaluator extends BaseCombiningAlg.Evaluator&lt;Decidable&gt;
+	{
+
+		private Evaluator(final Iterable&lt;? extends Decidable&gt; combinedElements)
+		{
+<span class="nc" id="L54">			super(combinedElements);</span>
+<span class="nc" id="L55">		}</span>
+
+		@Override
+		public ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; outPepActions, final UpdatableList&lt;PrimaryPolicyMetadata&gt; outApplicablePolicyIdList)
+		{
+<span class="nc bnc" id="L60" title="All 2 branches missed.">			for (final Decidable combinedElement : getCombinedElements())</span>
+			{
+				// evaluate the policy
+<span class="nc" id="L63">				final DecisionResult result = combinedElement.evaluate(context);</span>
+<span class="nc" id="L64">				final DecisionType decision = result.getDecision();</span>
+
+				/*
+				 * In case of PERMIT, DENY, or INDETERMINATE, we always just return that decision, so only on a rule that doesn't apply do we keep going...
+				 */
+<span class="nc bnc" id="L69" title="All 4 branches missed.">				switch (decision)</span>
+				{
+					case PERMIT:
+<span class="nc bnc" id="L72" title="All 2 branches missed.">						if (outApplicablePolicyIdList != null)</span>
+						{
+<span class="nc" id="L74">							outApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+						}
+
+<span class="nc" id="L77">						outPepActions.addAll(result.getPepActions());</span>
+<span class="nc" id="L78">						return ExtendedDecisions.SIMPLE_PERMIT;</span>
+					case DENY:
+<span class="nc bnc" id="L80" title="All 2 branches missed.">						if (outApplicablePolicyIdList != null)</span>
+						{
+<span class="nc" id="L82">							outApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+						}
+
+<span class="nc" id="L85">						outPepActions.addAll(result.getPepActions());</span>
+<span class="nc" id="L86">						return ExtendedDecisions.SIMPLE_DENY;</span>
+					case INDETERMINATE:
+<span class="nc bnc" id="L88" title="All 2 branches missed.">						if (outApplicablePolicyIdList != null)</span>
+						{
+<span class="nc" id="L90">							outApplicablePolicyIdList.addAll(result.getApplicablePolicies());</span>
+						}
+
+<span class="nc" id="L93">						return result;</span>
+					default:
+						break;
+				}
+
+<span class="nc" id="L98">			}</span>
+
+			// if we got here, then none of the rules applied
+<span class="nc" id="L101">			return ExtendedDecisions.SIMPLE_NOT_APPLICABLE;</span>
+		}
+
+	}
+
+<span class="nc" id="L106">	private static final Logger LOGGER = LoggerFactory.getLogger(FirstApplicableCombiningAlg.class);</span>
+
+	/** {@inheritDoc} */
+	@Override
+	public CombiningAlg.Evaluator getInstance(final Iterable&lt;CombiningAlgParameter&lt;? extends T&gt;&gt; params, final Iterable&lt;? extends T&gt; combinedElements)
+	        throws UnsupportedOperationException, IllegalArgumentException
+	{
+		// if no element combined -&gt; decision is overridden Effect
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (combinedElements == null)</span>
+		{
+<span class="nc" id="L116">			LOGGER.warn(&quot;{}: no element to combine -&gt; optimization: replacing with equivalent evaluator returning constant decision NotApplicable&quot;, this);</span>
+<span class="nc" id="L117">			return CombiningAlgEvaluators.NOT_APPLICABLE_CONSTANT_EVALUATOR;</span>
+		}
+
+<span class="nc" id="L120">		final Iterator&lt;? extends Decidable&gt; combinedEltIterator = combinedElements.iterator();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (!combinedEltIterator.hasNext())</span>
+		{
+			// empty (no element to combine)
+<span class="nc" id="L124">			LOGGER.warn(&quot;{}: no element to combine -&gt; optimization: replacing with equivalent evaluator returning constant decision NotApplicable&quot;, this);</span>
+<span class="nc" id="L125">			return CombiningAlgEvaluators.NOT_APPLICABLE_CONSTANT_EVALUATOR;</span>
+		}
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if (!RuleEvaluator.class.isAssignableFrom(getCombinedElementType()))</span>
+		{
+			// combined elements are not rules but policies
+<span class="nc" id="L131">			return new Evaluator(combinedElements);</span>
+		}
+
+		// combined elements are Rules, we can optimize
+		/*
+		 * There is at least one Rule. Prepare to iterate over Rules.
+		 */
+		/*
+		 * If we found any empty rule
+		 */
+<span class="nc" id="L141">		final Deque&lt;RuleEvaluator&gt; finalRules = new ArrayDeque&lt;&gt;();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		while (combinedEltIterator.hasNext())</span>
+		{
+<span class="nc" id="L144">			final RuleEvaluator rule = (RuleEvaluator) combinedEltIterator.next();</span>
+<span class="nc" id="L145">			finalRules.add(rule);</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">			if (rule.isAlwaysApplicable())</span>
+			{
+				/*
+				 * The algorithm won't go further than that
+				 */
+<span class="nc" id="L151">				break;</span>
+			}
+<span class="nc" id="L153">		}</span>
+
+		/*
+		 * if(combinedEltIterator.hasNext()), combinedElements has more elements than finalRules, so finalRules is a subset of combinedElements; else they have the same elements
+		 */
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		return new Evaluator(combinedEltIterator.hasNext() ? finalRules : combinedElements);</span>
+	}
+
+	FirstApplicableCombiningAlg(final String algId, final Class&lt;T&gt; combinedType)
+	{
+<span class="nc" id="L163">		super(algId, combinedType);</span>
+<span class="nc" id="L164">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

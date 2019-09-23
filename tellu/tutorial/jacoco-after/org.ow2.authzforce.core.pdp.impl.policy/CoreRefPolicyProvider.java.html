@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CoreRefPolicyProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.policy</a> &gt; <span class="el_source">CoreRefPolicyProvider.java</span></div><h1>CoreRefPolicyProvider.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl.policy;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import javax.xml.bind.JAXBException;
+
+import org.ow2.authzforce.core.pdp.api.EnvironmentProperties;
+import org.ow2.authzforce.core.pdp.api.IndeterminateEvaluationException;
+import org.ow2.authzforce.core.pdp.api.XmlUtils.XmlnsFilteringParser;
+import org.ow2.authzforce.core.pdp.api.XmlUtils.XmlnsFilteringParserFactory;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlgRegistry;
+import org.ow2.authzforce.core.pdp.api.expression.ExpressionFactory;
+import org.ow2.authzforce.core.pdp.api.policy.BaseStaticRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.CloseableRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyRefsMetadata;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersion;
+import org.ow2.authzforce.core.pdp.api.policy.PolicyVersionPatterns;
+import org.ow2.authzforce.core.pdp.api.policy.StaticRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.StaticTopLevelPolicyElementEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.ResourceUtils;
+
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.Policy;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.PolicySet;
+
+/**
+ * This is the core implementation of {@link StaticRefPolicyProvider} that supports static retrieval of the policies referenced by Policy(Set)IdReference. It is configured by a list of locations that
+ * represent Spring-compatible resource URLs, corresponding to XACML Policy(Set) files - each file content is expected to be a XACML Policy(Set) document - when the module is initialized. Beyond this,
+ * there is no modifying or re-loading of the policies.
+ * &lt;p&gt;
+ * A policy location may also be a file pattern in the following form: &quot;file://DIRECTORY_PATH/*SUFFIX&quot; using wilcard character '*'; in which case the location is expanded to all regular files (not
+ * subdirectories) in directory located at DIRECTORY_PATH with suffix SUFFIX (SUFFIX may be empty, i.e. no suffix). The files are NOT searched recursively on sub-directories.
+ * &lt;p&gt;
+ * Note that this class is designed to complement {@link CoreRootPolicyProvider} in charge of the root policy(set) which may refer to policies resolved by this {@link CoreRefPolicyProvider}.
+ *
+ * 
+ * @version $Id: $
+ */
+<span class="nc bnc" id="L77" title="All 2 branches missed.">public class CoreRefPolicyProvider extends BaseStaticRefPolicyProvider</span>
+{
+<span class="nc" id="L79">	private static final IllegalArgumentException NO_POLICY_ARG_EXCEPTION = new IllegalArgumentException(&quot;No Policy(Set) specified&quot;);</span>
+<span class="nc" id="L80">	private static final IllegalArgumentException ILLEGAL_COMBINING_ALG_REGISTRY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined CombiningAlgorithm registry&quot;);</span>
+<span class="nc" id="L81">	private static final IllegalArgumentException ILLEGAL_EXPRESSION_FACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined Expression factory&quot;);</span>
+<span class="nc" id="L82">	private static final IllegalArgumentException ILLEGAL_XACML_PARSER_FACTORY_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined XACML parser factory&quot;);</span>
+<span class="nc" id="L83">	private static final IllegalArgumentException ILLEGAL_POLICY_URLS_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;Undefined policy URL(s)&quot;);</span>
+<span class="nc" id="L84">	private static final Logger LOGGER = LoggerFactory.getLogger(CoreRefPolicyProvider.class);</span>
+
+	/**
+	 * Policy wrapper to keep the association between the namespace prefix-URIs from a XACML policy document and the Java instance of the policy resulting from parsing the same document
+	 *
+	 * @param &lt;P&gt;
+	 *            policy type
+	 */
+	public static final class PolicyWithNamespaces&lt;P&gt;
+	{
+		private final Map&lt;String, String&gt; nsPrefixUriMap;
+
+		/**
+		 * Get namespace prefix-URI mappings
+		 * 
+		 * @return namespace prefix-URI mappings
+		 */
+		public Map&lt;String, String&gt; getNsPrefixUriMap()
+		{
+<span class="nc" id="L103">			return nsPrefixUriMap;</span>
+		}
+
+		/**
+		 * Get policy
+		 * 
+		 * @return policy(Set)
+		 */
+		public P getPolicy()
+		{
+<span class="nc" id="L113">			return policy;</span>
+		}
+
+		private final P policy;
+
+		private PolicyWithNamespaces(final P policy, final Map&lt;String, String&gt; nsPrefixUriMap)
+<span class="nc" id="L119">		{</span>
+<span class="nc" id="L120">			this.policy = policy;</span>
+<span class="nc" id="L121">			this.nsPrefixUriMap = nsPrefixUriMap;</span>
+<span class="nc" id="L122">		}</span>
+
+	}
+
+	/**
+	 * Module factory
+	 * 
+	 */
+<span class="nc bnc" id="L130" title="All 2 branches missed.">	public static class Factory extends CloseableRefPolicyProvider.Factory&lt;org.ow2.authzforce.core.xmlns.pdp.StaticRefPolicyProvider&gt;</span>
+	{
+
+<span class="nc" id="L133">		private static final IllegalArgumentException NULL_CONF_ARGUMENT_EXCEPTION = new IllegalArgumentException(&quot;RefPolicyProvider configuration undefined&quot;);</span>
+
+		/*
+		 * Pattern: **...**.somefileextension -&gt; '**...*'.length = number of directory levels to search and '*.somefileextension' = filename pattern
+		 */
+<span class="nc" id="L138">		private static final Pattern WILDCARD_SEQ_PREFIX_PATTERN = Pattern.compile(&quot;^(\\*+)([^\\*]*)$&quot;);</span>
+
+		@Override
+		public Class&lt;org.ow2.authzforce.core.xmlns.pdp.StaticRefPolicyProvider&gt; getJaxbClass()
+		{
+<span class="nc" id="L143">			return org.ow2.authzforce.core.xmlns.pdp.StaticRefPolicyProvider.class;</span>
+		}
+
+		@Override
+		public CloseableRefPolicyProvider getInstance(final org.ow2.authzforce.core.xmlns.pdp.StaticRefPolicyProvider conf, final XmlnsFilteringParserFactory xacmlParserFactory,
+		        final int maxPolicySetRefDepth, final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry, final EnvironmentProperties environmentProperties)
+		{
+<span class="nc bnc" id="L150" title="All 2 branches missed.">			if (conf == null)</span>
+			{
+<span class="nc" id="L152">				throw NULL_CONF_ARGUMENT_EXCEPTION;</span>
+			}
+
+<span class="nc" id="L155">			final List&lt;URL&gt; policyURLs = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L156">			int policyLocationIndex = 0;</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">			for (final String policyLocationPatternBeforePlaceholderReplacement : conf.getPolicyLocations())</span>
+			{
+<span class="nc" id="L159">				final String policyLocationPattern = environmentProperties.replacePlaceholders(policyLocationPatternBeforePlaceholderReplacement);</span>
+				// Check whether the location is a file path pattern
+<span class="nc bnc" id="L161" title="All 2 branches missed.">				if (policyLocationPattern.startsWith(ResourceUtils.FILE_URL_PREFIX))</span>
+				{
+<span class="nc bnc" id="L163" title="All 2 branches missed.">					if (policyLocationPattern.endsWith(&quot;/&quot;))</span>
+					{
+<span class="nc" id="L165">						throw new IllegalArgumentException(&quot;Invalid policy location pattern: &quot; + policyLocationPattern);</span>
+					}
+
+					// location on the filesystem
+<span class="nc" id="L169">					final int index = policyLocationPattern.indexOf(&quot;/*&quot;);</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">					if (index &gt; 0)</span>
+					{
+						/*
+						 * This is a file path pattern. Separate directory location from glob pattern, and remove file: prefix from directory location to be used with Path API
+						 */
+<span class="nc" id="L175">						final String directoryLocation = policyLocationPattern.substring(ResourceUtils.FILE_URL_PREFIX.length(), index);</span>
+<span class="nc" id="L176">						final String filePathPattern = policyLocationPattern.substring(index + 1);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">						if (LOGGER.isDebugEnabled())</span>
+						{
+							// Beware of autoboxing which causes call to
+							// Integer.valueOf(...) on policyLocationIndex
+<span class="nc" id="L181">							LOGGER.debug(&quot;Policy location #{} is a filepath pattern (found '/*') -&gt; expanding to all files in directory '{}' matching pattern '{}'&quot;, policyLocationIndex,</span>
+							        directoryLocation, filePathPattern);
+						}
+
+						/*
+						 * filePathPattern starts with one or more wildcards (recursive directory listing)
+						 */
+<span class="nc" id="L188">						final Matcher filePathPatternMatcher = WILDCARD_SEQ_PREFIX_PATTERN.matcher(filePathPattern);</span>
+<span class="nc bnc" id="L189" title="All 2 branches missed.">						if (!filePathPatternMatcher.matches())</span>
+						{
+<span class="nc" id="L191">							throw new IllegalArgumentException(&quot;Invalid policy location: '&quot; + policyLocationPatternBeforePlaceholderReplacement + &quot;'. Pattern part does not match regex: &quot;</span>
+<span class="nc" id="L192">							        + WILDCARD_SEQ_PREFIX_PATTERN.pattern());</span>
+						}
+
+						/*
+						 * First captured group is the sequence of wildcards except the last one, directory levels to search = number of wildcards
+						 */
+<span class="nc" id="L198">						final String wildcardSeq = filePathPatternMatcher.group(1);</span>
+<span class="nc" id="L199">						final String filenameSuffix = filePathPatternMatcher.group(2);</span>
+						/*
+						 * WilcardSeq should start with '*'
+						 */
+<span class="nc bnc" id="L203" title="All 4 branches missed.">						assert wildcardSeq != null;</span>
+<span class="nc" id="L204">						final int maxDepth = wildcardSeq.length();</span>
+						/*
+						 * Filename suffix is filenamePattern without starting wildcard
+						 */
+<span class="nc" id="L208">						try (final Stream&lt;Path&gt; fileStream = Files.find(Paths.get(directoryLocation), maxDepth,</span>
+<span class="nc bnc" id="L209" title="All 4 branches missed.">						        (path, attrs) -&gt; attrs.isRegularFile() &amp;&amp; path.getFileName().toString().endsWith(filenameSuffix.substring(1))))</span>
+						{
+<span class="nc" id="L211">							fileStream.forEach(fp -&gt; {</span>
+<span class="nc" id="L212">								LOGGER.debug(&quot;Adding policy file: {}&quot;, fp);</span>
+								try
+								{
+<span class="nc" id="L215">									policyURLs.add(fp.toUri().toURL());</span>
+								}
+<span class="nc" id="L217">								catch (final MalformedURLException e)</span>
+								{
+<span class="nc" id="L219">									throw new RuntimeException(&quot;Error getting policy files in '&quot; + directoryLocation + &quot;' according to policy location pattern '&quot; + policyLocationPattern + &quot;'&quot;, e);</span>
+<span class="nc" id="L220">								}</span>
+<span class="nc" id="L221">							});</span>
+						}
+<span class="nc" id="L223">						catch (final IOException e)</span>
+						{
+<span class="nc" id="L225">							throw new RuntimeException(&quot;Error getting policy files in '&quot; + directoryLocation + &quot;' according to policy location pattern '&quot; + policyLocationPattern + &quot;'&quot;, e);</span>
+<span class="nc" id="L226">						}</span>
+
+						continue;
+					}
+				}
+
+				/*
+				 * Not an actual file path pattern
+				 */
+				final URL policyURL;
+				try
+				{
+					// try to load the policy location as a Spring resource
+<span class="nc" id="L239">					policyURL = ResourceUtils.getURL(policyLocationPattern);</span>
+				}
+<span class="nc" id="L241">				catch (final FileNotFoundException e)</span>
+				{
+<span class="nc" id="L243">					throw new IllegalArgumentException(&quot;Error loading policy (as Spring resource) from the following URL: &quot; + policyLocationPattern, e);</span>
+<span class="nc" id="L244">				}</span>
+
+<span class="nc bnc" id="L246" title="All 2 branches missed.">				if (policyURL == null)</span>
+				{
+<span class="nc" id="L248">					throw new IllegalArgumentException(&quot;No policy file found at the specified location: &quot; + policyLocationPattern);</span>
+				}
+
+<span class="nc" id="L251">				policyURLs.add(policyURL);</span>
+<span class="nc" id="L252">				policyLocationIndex++;</span>
+<span class="nc" id="L253">			}</span>
+
+<span class="nc" id="L255">			return CoreRefPolicyProvider.getInstance(policyURLs, conf.isIgnoreOldVersions(), xacmlParserFactory, maxPolicySetRefDepth, expressionFactory, combiningAlgRegistry);</span>
+		}
+	}
+
+	/*
+	 * Ref policy Provider used only for initialization, more particularly for parsing the PolicySets when they are referred to by others (in PolicySetIdReferences) at initialization time
+	 */
+	private static class InitOnlyRefPolicyProvider extends BaseStaticRefPolicyProvider
+	{
+
+		private final ExpressionFactory expressionFactory;
+		private final CombiningAlgRegistry combiningAlgRegistry;
+
+		// will be updated by get(...)
+		private final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyMap;
+		private final PolicyMap&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetMap;
+		private final Table&lt;String, PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; policySetMapToUpdate;
+
+		private InitOnlyRefPolicyProvider(final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyMap, final PolicyMap&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetMap,
+		        final Table&lt;String, PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; outPolicySetEvaluatorMap, final int maxPolicySetRefDepth, final ExpressionFactory expressionFactory,
+		        final CombiningAlgRegistry combiningAlgRegistry)
+		{
+<span class="nc" id="L277">			super(maxPolicySetRefDepth);</span>
+
+<span class="nc" id="L279">			this.policyMap = policyMap;</span>
+<span class="nc" id="L280">			this.policySetMapToUpdate = outPolicySetEvaluatorMap;</span>
+<span class="nc" id="L281">			this.jaxbPolicySetMap = jaxbPolicySetMap;</span>
+			// this.maxPolicySetRefDepth = maxPolicySetRefDepth;
+<span class="nc" id="L283">			this.expressionFactory = expressionFactory;</span>
+<span class="nc" id="L284">			this.combiningAlgRegistry = combiningAlgRegistry;</span>
+<span class="nc" id="L285">		}</span>
+
+		@Override
+		protected StaticTopLevelPolicyElementEvaluator getPolicy(final String policyIdRef, final Optional&lt;PolicyVersionPatterns&gt; constraints) throws IndeterminateEvaluationException
+		{
+<span class="nc" id="L290">			final Entry&lt;PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; policyEntry = policyMap.get(policyIdRef, constraints);</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">			return policyEntry == null ? null : policyEntry.getValue();</span>
+		}
+
+		@Override
+		public StaticTopLevelPolicyElementEvaluator getPolicySet(final String id, final Optional&lt;PolicyVersionPatterns&gt; versionConstraints, final Deque&lt;String&gt; policySetRefChain)
+		{
+<span class="nc" id="L297">			final Entry&lt;PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetEntry = jaxbPolicySetMap.get(id, versionConstraints);</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">			if (jaxbPolicySetEntry == null)</span>
+			{
+				// no such policy
+<span class="nc" id="L301">				return null;</span>
+			}
+
+<span class="nc" id="L304">			final PolicyVersion jaxbPolicySetVersion = jaxbPolicySetEntry.getKey();</span>
+			// Check whether already parsed
+<span class="nc" id="L306">			final StaticTopLevelPolicyElementEvaluator policySetEvaluator = policySetMapToUpdate.get(id, jaxbPolicySetVersion);</span>
+			final StaticTopLevelPolicyElementEvaluator resultPolicySetEvaluator;
+<span class="nc bnc" id="L308" title="All 2 branches missed.">			if (policySetEvaluator == null)</span>
+			{
+				/*
+				 * No matching version already parsed. Instantiate the policy evaluator
+				 */
+<span class="nc" id="L313">				final PolicyWithNamespaces&lt;PolicySet&gt; jaxbPolicySetWithNs = jaxbPolicySetEntry.getValue();</span>
+				try
+				{
+<span class="nc" id="L316">					resultPolicySetEvaluator = PolicyEvaluators.getInstanceStatic(jaxbPolicySetWithNs.policy, null, jaxbPolicySetWithNs.nsPrefixUriMap, expressionFactory, combiningAlgRegistry, this,</span>
+					        policySetRefChain);
+				}
+<span class="nc" id="L319">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L321">					throw new IllegalArgumentException(&quot;Invalid PolicySet with PolicySetId=&quot; + id + &quot;, Version=&quot; + jaxbPolicySetVersion, e);</span>
+<span class="nc" id="L322">				}</span>
+
+<span class="nc" id="L324">				policySetMapToUpdate.put(id, jaxbPolicySetVersion, resultPolicySetEvaluator);</span>
+<span class="nc" id="L325">			}</span>
+			else
+			{
+				// policySet already parsed
+<span class="nc" id="L329">				resultPolicySetEvaluator = policySetEvaluator;</span>
+				/*
+				 * check total policy ref depth if policySetRefChain != null, i.e. length of (newAncestorPolicySetRefChain + parsed policySet's longest (nested) policy ref chain) &lt;=
+				 * maxPolicySetRefDepth
+				 */
+<span class="nc bnc" id="L334" title="All 4 branches missed.">				if (policySetRefChain != null &amp;&amp; !policySetRefChain.isEmpty())</span>
+				{
+<span class="nc" id="L336">					final Optional&lt;PolicyRefsMetadata&gt; policyRefsMetadata = policySetEvaluator.getPolicyRefsMetadata();</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">					if (policyRefsMetadata.isPresent())</span>
+					{
+<span class="nc" id="L339">						joinPolicyRefChains(policySetRefChain, policyRefsMetadata.get().getLongestPolicyRefChain());</span>
+					}
+				}
+			}
+
+<span class="nc" id="L344">			return resultPolicySetEvaluator;</span>
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see org.ow2.authzforce.core.pdp.api.policy.CloseableRefPolicyProvider#close()
+		 */
+		@Override
+		public void close()
+		{
+			// Nothing to close - erase exception from the close() signature
+<span class="nc" id="L356">		}</span>
+	}
+
+	private final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyEvaluatorMap;
+	private final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policySetEvaluatorMap;
+
+	private CoreRefPolicyProvider(final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyMap, final PolicyMap&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetMap, final int maxPolicySetRefDepth,
+	        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+	{
+<span class="nc" id="L365">		super(maxPolicySetRefDepth);</span>
+<span class="nc bnc" id="L366" title="All 10 branches missed.">		assert policyMap != null &amp;&amp; jaxbPolicySetMap != null &amp;&amp; expressionFactory != null &amp;&amp; combiningAlgRegistry != null;</span>
+
+<span class="nc" id="L368">		this.policyEvaluatorMap = policyMap;</span>
+<span class="nc" id="L369">		final Table&lt;String, PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; updatablePolicySetEvaluatorTable = HashBasedTable.create();</span>
+		/*
+		 * Ref policy Provider module used only for initialization, more particularly for parsing the PolicySets when they are referred to by others (in PolicySetIdReferences)
+		 */
+<span class="nc" id="L373">		try (final InitOnlyRefPolicyProvider bootstrapRefPolicyProvider = new InitOnlyRefPolicyProvider(this.policyEvaluatorMap, jaxbPolicySetMap, updatablePolicySetEvaluatorTable,</span>
+		        maxPolicySetRefDepth, expressionFactory, combiningAlgRegistry))
+		{
+<span class="nc bnc" id="L376" title="All 2 branches missed.">			for (final Entry&lt;String, PolicyVersions&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt;&gt; jaxbPolicySetWithNsEntry : jaxbPolicySetMap.entrySet())</span>
+			{
+<span class="nc" id="L378">				final String policySetId = jaxbPolicySetWithNsEntry.getKey();</span>
+				// instantiate all policy versions for this policyId now
+<span class="nc" id="L380">				final PolicyVersions&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetVersions = jaxbPolicySetWithNsEntry.getValue();</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">				for (final Entry&lt;PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetEntry : jaxbPolicySetVersions)</span>
+				{
+
+<span class="nc" id="L384">					final PolicyVersion policySetVersion = jaxbPolicySetEntry.getKey();</span>
+					/*
+					 * Check corresponding PolicySet evaluator in policySetEvaluatorTable to check whether it is not already there, i.e. already instantiated by refPolicyProvider.get(...) because of
+					 * Policy references in previously instantiated policies (when calling PolicyEvaluators.getInstanceStatic() down below)
+					 */
+<span class="nc" id="L389">					final StaticTopLevelPolicyElementEvaluator old = updatablePolicySetEvaluatorTable.get(policySetId, policySetVersion);</span>
+<span class="nc bnc" id="L390" title="All 2 branches missed.">					if (old == null)</span>
+					{
+						// no policyset with such ID/Version instantiated yet
+						// do it now
+<span class="nc" id="L394">						final PolicyWithNamespaces&lt;PolicySet&gt; jaxbPolicySetWithNs = jaxbPolicySetEntry.getValue();</span>
+						final StaticTopLevelPolicyElementEvaluator newPolicySetEvaluator;
+						try
+						{
+<span class="nc" id="L398">							newPolicySetEvaluator = PolicyEvaluators.getInstanceStatic(jaxbPolicySetWithNs.policy, null, jaxbPolicySetWithNs.nsPrefixUriMap, expressionFactory, combiningAlgRegistry,</span>
+							        bootstrapRefPolicyProvider, null);
+						}
+<span class="nc" id="L401">						catch (final IllegalArgumentException e)</span>
+						{
+<span class="nc" id="L403">							throw new IllegalArgumentException(&quot;Invalid PolicySet with PolicySetId='&quot; + policySetId + &quot;', Version=&quot; + policySetVersion, e);</span>
+<span class="nc" id="L404">						}</span>
+
+<span class="nc" id="L406">						updatablePolicySetEvaluatorTable.put(policySetId, policySetVersion, newPolicySetEvaluator);</span>
+					}
+<span class="nc" id="L408">				}</span>
+<span class="nc" id="L409">			}</span>
+		}
+
+<span class="nc" id="L412">		this.policySetEvaluatorMap = new PolicyMap&lt;&gt;(updatablePolicySetEvaluatorTable.rowMap());</span>
+<span class="nc" id="L413">	}</span>
+
+	/**
+	 * Creates an instance from XACML/JAXB Policy(Set) elements
+	 *
+	 * @param jaxbPolicies
+	 *            XACML Policy elements
+	 * @param jaxbPolicySets
+	 *            XACML PolicySets
+	 * @param maxPolicySetRefDepth
+	 *            maximum allowed depth of PolicySet reference chain (via PolicySetIdReference): PolicySet1 -&gt; PolicySet2 -&gt; ...
+	 * @param combiningAlgRegistry
+	 *            registry of policy/rule combining algorithms
+	 * @param expressionFactory
+	 *            Expression factory for parsing Expressions used in the policy(set)
+	 * @return instance of this module
+	 * @throws java.lang.IllegalArgumentException
+	 *             if both {@code jaxbPolicies} and {@code jaxbPolicySets} are null/empty, or expressionFactory/combiningAlgRegistry undefined; or one of the Policy(Set)s is not valid or conflicts
+	 *             with another because it has same Policy(Set)Id and Version.
+	 */
+	public static CoreRefPolicyProvider getInstance(final List&lt;PolicyWithNamespaces&lt;Policy&gt;&gt; jaxbPolicies, final List&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySets, final int maxPolicySetRefDepth,
+	        final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L436" title="All 8 branches missed.">		if ((jaxbPolicies == null || jaxbPolicies.isEmpty()) &amp;&amp; (jaxbPolicySets == null || jaxbPolicySets.isEmpty()))</span>
+		{
+<span class="nc" id="L438">			throw NO_POLICY_ARG_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L441" title="All 2 branches missed.">		if (expressionFactory == null)</span>
+		{
+<span class="nc" id="L443">			throw ILLEGAL_EXPRESSION_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		if (combiningAlgRegistry == null)</span>
+		{
+<span class="nc" id="L448">			throw ILLEGAL_COMBINING_ALG_REGISTRY_ARGUMENT_EXCEPTION;</span>
+		}
+
+		final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyMap;
+<span class="nc bnc" id="L452" title="All 2 branches missed.">		if (jaxbPolicies == null)</span>
+		{
+<span class="nc" id="L454">			policyMap = new PolicyMap&lt;&gt;(Collections.&lt;String, Map&lt;PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt;&gt;emptyMap());</span>
+		}
+		else
+		{
+<span class="nc" id="L458">			final Table&lt;String, PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; updatablePolicyTable = HashBasedTable.create();</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">			for (final PolicyWithNamespaces&lt;Policy&gt; jaxbPolicyWithNs : jaxbPolicies)</span>
+			{
+<span class="nc" id="L461">				final Policy jaxbPolicy = jaxbPolicyWithNs.policy;</span>
+<span class="nc" id="L462">				final String policyId = jaxbPolicy.getPolicyId();</span>
+<span class="nc" id="L463">				final String policyVersion = jaxbPolicy.getVersion();</span>
+				final StaticTopLevelPolicyElementEvaluator policyEvaluator;
+				try
+				{
+<span class="nc" id="L467">					policyEvaluator = PolicyEvaluators.getInstance(jaxbPolicy, null, jaxbPolicyWithNs.nsPrefixUriMap, expressionFactory, combiningAlgRegistry);</span>
+				}
+<span class="nc" id="L469">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L471">					throw new IllegalArgumentException(&quot;Invalid Policy with PolicyId=&quot; + policyId + &quot;, Version=&quot; + policyVersion, e);</span>
+<span class="nc" id="L472">				}</span>
+
+<span class="nc" id="L474">				final StaticTopLevelPolicyElementEvaluator previousValue = updatablePolicyTable.put(policyId, new PolicyVersion(policyVersion), policyEvaluator);</span>
+<span class="nc bnc" id="L475" title="All 2 branches missed.">				if (previousValue != null)</span>
+				{
+<span class="nc" id="L477">					throw new IllegalArgumentException(&quot;Policy conflict: two &lt;Policy&gt;s with same PolicyId=&quot; + policyId + &quot;, Version=&quot; + policyVersion);</span>
+				}
+<span class="nc" id="L479">			}</span>
+
+<span class="nc" id="L481">			policyMap = new PolicyMap&lt;&gt;(updatablePolicyTable.rowMap());</span>
+		}
+
+		final PolicyMap&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; jaxbPolicySetMap;
+<span class="nc bnc" id="L485" title="All 2 branches missed.">		if (jaxbPolicySets == null)</span>
+		{
+<span class="nc" id="L487">			jaxbPolicySetMap = new PolicyMap&lt;&gt;(Collections.&lt;String, Map&lt;PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt;&gt;emptyMap());</span>
+		}
+		else
+		{
+<span class="nc" id="L491">			final Table&lt;String, PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt; updatablePolicySetTable = HashBasedTable.create();</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			for (final PolicyWithNamespaces&lt;PolicySet&gt; jaxbPolicySetWithNs : jaxbPolicySets)</span>
+			{
+<span class="nc" id="L494">				final PolicySet jaxbPolicySet = jaxbPolicySetWithNs.policy;</span>
+<span class="nc" id="L495">				final String policyId = jaxbPolicySet.getPolicySetId();</span>
+<span class="nc" id="L496">				final String policyVersion = jaxbPolicySet.getVersion();</span>
+				// check if any version of the same policy exist in the map
+<span class="nc" id="L498">				final PolicyWithNamespaces&lt;PolicySet&gt; previousValue = updatablePolicySetTable.put(policyId, new PolicyVersion(policyVersion), jaxbPolicySetWithNs);</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">				if (previousValue != null)</span>
+				{
+<span class="nc" id="L501">					throw new IllegalArgumentException(&quot;Policy conflict: two PolicySets with same PolicySetId=&quot; + policyId + &quot;, Version=&quot; + policyVersion);</span>
+				}
+
+				/*
+				 * PolicySets cannot be parsed before we have collected them all, because each PolicySet may refer to others via PolicySetIdReferences
+				 */
+<span class="nc" id="L507">			}</span>
+
+<span class="nc" id="L509">			jaxbPolicySetMap = new PolicyMap&lt;&gt;(updatablePolicySetTable.rowMap());</span>
+		}
+
+<span class="nc" id="L512">		return new CoreRefPolicyProvider(policyMap, jaxbPolicySetMap, maxPolicySetRefDepth, expressionFactory, combiningAlgRegistry);</span>
+	}
+
+	/**
+	 * Creates an instance from policy locations
+	 *
+	 * @param policyURLs
+	 *            location of Policy(Set) elements (JAXB) to be parsed for future reference by Policy(Set)IdReferences
+	 * @param ignoreOldPolicyVersions
+	 *            for any given policy ID, ignore all versions except the last one if there are multiple versions of the policy
+	 * @param xacmlParserFactory
+	 *            XACML parser factory for parsing any XACML Policy(Set)
+	 * @param maxPolicySetRefDepth
+	 *            maximum allowed depth of PolicySet reference chain (via PolicySetIdReference): PolicySet1 -&gt; PolicySet2 -&gt; ...; a strictly negative value means no limit
+	 * @param combiningAlgRegistry
+	 *            registry of policy/rule combining algorithms
+	 * @param expressionFactory
+	 *            Expression factory for parsing Expressions used in the policy(set)
+	 * @return instance of this class
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code policyURLs == null || policyURLs.length == 0 || xacmlParserFactory == null || expressionFactory == null || combiningAlgRegistry == null}; or one of {@code policyURLs} is
+	 *             null or is not a valid XACML Policy(Set) or conflicts with another because it has same Policy(Set)Id and Version. Beware that the Policy(Set)Issuer is ignored from this check!
+	 */
+	public static CoreRefPolicyProvider getInstance(final Collection&lt;URL&gt; policyURLs, final boolean ignoreOldPolicyVersions, final XmlnsFilteringParserFactory xacmlParserFactory,
+	        final int maxPolicySetRefDepth, final ExpressionFactory expressionFactory, final CombiningAlgRegistry combiningAlgRegistry) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L538" title="All 4 branches missed.">		if (policyURLs == null || policyURLs.isEmpty())</span>
+		{
+<span class="nc" id="L540">			throw ILLEGAL_POLICY_URLS_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L543" title="All 2 branches missed.">		if (xacmlParserFactory == null)</span>
+		{
+<span class="nc" id="L545">			throw ILLEGAL_XACML_PARSER_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L548" title="All 2 branches missed.">		if (expressionFactory == null)</span>
+		{
+<span class="nc" id="L550">			throw ILLEGAL_EXPRESSION_FACTORY_ARGUMENT_EXCEPTION;</span>
+		}
+
+<span class="nc bnc" id="L553" title="All 2 branches missed.">		if (combiningAlgRegistry == null)</span>
+		{
+<span class="nc" id="L555">			throw ILLEGAL_COMBINING_ALG_REGISTRY_ARGUMENT_EXCEPTION;</span>
+		}
+
+		final XmlnsFilteringParser xacmlParser;
+		try
+		{
+<span class="nc" id="L561">			xacmlParser = xacmlParserFactory.getInstance();</span>
+		}
+<span class="nc" id="L563">		catch (final JAXBException e)</span>
+		{
+<span class="nc" id="L565">			throw new IllegalArgumentException(&quot;Failed to create JAXB unmarshaller for XML Policy(Set)&quot;, e);</span>
+<span class="nc" id="L566">		}</span>
+
+<span class="nc" id="L568">		final Table&lt;String, PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; updatablePolicyTable = HashBasedTable.create();</span>
+<span class="nc" id="L569">		final Table&lt;String, PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt; updatablePolicySetTable = HashBasedTable.create();</span>
+<span class="nc" id="L570">		int policyUrlIndex = 0;</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">		for (final URL policyURL : policyURLs)</span>
+		{
+<span class="nc bnc" id="L573" title="All 2 branches missed.">			if (policyURL == null)</span>
+			{
+<span class="nc" id="L575">				throw new IllegalArgumentException(&quot;policyURL #&quot; + policyUrlIndex + &quot; undefined&quot;);</span>
+			}
+
+			final Object jaxbPolicyOrPolicySetObj;
+			try
+			{
+<span class="nc" id="L581">				jaxbPolicyOrPolicySetObj = xacmlParser.parse(policyURL);</span>
+			}
+<span class="nc" id="L583">			catch (final JAXBException e)</span>
+			{
+<span class="nc" id="L585">				throw new IllegalArgumentException(&quot;Failed to unmarshall Policy(Set) XML document from policy location: &quot; + policyURL, e);</span>
+<span class="nc" id="L586">			}</span>
+
+<span class="nc" id="L588">			final Map&lt;String, String&gt; nsPrefixUriMap = xacmlParser.getNamespacePrefixUriMap();</span>
+<span class="nc bnc" id="L589" title="All 2 branches missed.">			if (jaxbPolicyOrPolicySetObj instanceof Policy)</span>
+			{
+<span class="nc" id="L591">				final Policy jaxbPolicy = (Policy) jaxbPolicyOrPolicySetObj;</span>
+<span class="nc" id="L592">				final String policyId = jaxbPolicy.getPolicyId();</span>
+<span class="nc" id="L593">				final String policyVersionStr = jaxbPolicy.getVersion();</span>
+<span class="nc" id="L594">				final PolicyVersion policyVersion = new PolicyVersion(policyVersionStr);</span>
+
+<span class="nc bnc" id="L596" title="All 2 branches missed.">				if (ignoreOldPolicyVersions)</span>
+				{
+<span class="nc" id="L598">					final Map&lt;PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; policyVersions = updatablePolicyTable.row(policyId);</span>
+<span class="nc bnc" id="L599" title="All 2 branches missed.">					if (policyVersions != null)</span>
+					{
+<span class="nc bnc" id="L601" title="All 2 branches missed.">						final boolean isOld = policyVersions.keySet().parallelStream().anyMatch(v -&gt; policyVersion.compareTo(v) &lt;= 0);</span>
+<span class="nc bnc" id="L602" title="All 2 branches missed.">						if (isOld)</span>
+						{
+							// skip
+<span class="nc" id="L605">							continue;</span>
+						}
+
+						/*
+						 * Else replace/overwrite with this new version (make sure it is the only one), so empty the row first
+						 */
+<span class="nc" id="L611">						policyVersions.clear();</span>
+					}
+				}
+
+				final StaticTopLevelPolicyElementEvaluator policyEvaluator;
+				try
+				{
+<span class="nc" id="L618">					policyEvaluator = PolicyEvaluators.getInstance(jaxbPolicy, null, nsPrefixUriMap, expressionFactory, combiningAlgRegistry);</span>
+				}
+<span class="nc" id="L620">				catch (final IllegalArgumentException e)</span>
+				{
+<span class="nc" id="L622">					throw new IllegalArgumentException(&quot;Invalid Policy with PolicyId=&quot; + policyId + &quot;, Version=&quot; + policyVersionStr, e);</span>
+<span class="nc" id="L623">				}</span>
+
+<span class="nc" id="L625">				final StaticTopLevelPolicyElementEvaluator previousValue = updatablePolicyTable.put(policyId, policyVersion, policyEvaluator);</span>
+<span class="nc bnc" id="L626" title="All 2 branches missed.">				if (previousValue != null)</span>
+				{
+<span class="nc" id="L628">					throw new IllegalArgumentException(&quot;Policy conflict: two policies with same PolicyId=&quot; + policyId + &quot;, Version=&quot; + policyVersionStr);</span>
+				}
+
+<span class="nc" id="L631">			}</span>
+<span class="nc bnc" id="L632" title="All 2 branches missed.">			else if (jaxbPolicyOrPolicySetObj instanceof PolicySet)</span>
+			{
+<span class="nc" id="L634">				final PolicySet jaxbPolicySet = (PolicySet) jaxbPolicyOrPolicySetObj;</span>
+<span class="nc" id="L635">				final String policyId = jaxbPolicySet.getPolicySetId();</span>
+<span class="nc" id="L636">				final String policyVersionStr = jaxbPolicySet.getVersion();</span>
+<span class="nc" id="L637">				final PolicyVersion policyVersion = new PolicyVersion(policyVersionStr);</span>
+
+<span class="nc bnc" id="L639" title="All 2 branches missed.">				if (ignoreOldPolicyVersions)</span>
+				{
+<span class="nc" id="L641">					final Map&lt;PolicyVersion, PolicyWithNamespaces&lt;PolicySet&gt;&gt; policyVersions = updatablePolicySetTable.row(policyId);</span>
+<span class="nc bnc" id="L642" title="All 2 branches missed.">					if (policyVersions != null)</span>
+					{
+<span class="nc bnc" id="L644" title="All 2 branches missed.">						final boolean isOld = policyVersions.keySet().parallelStream().anyMatch(v -&gt; policyVersion.compareTo(v) &lt;= 0);</span>
+<span class="nc bnc" id="L645" title="All 2 branches missed.">						if (isOld)</span>
+						{
+							// skip
+<span class="nc" id="L648">							continue;</span>
+						}
+
+						/*
+						 * Else replace/overwrite with this new version (make sure it is the only one), so empty the row first
+						 */
+<span class="nc" id="L654">						policyVersions.clear();</span>
+					}
+				}
+
+<span class="nc" id="L658">				final PolicyWithNamespaces&lt;PolicySet&gt; previousValue = updatablePolicySetTable.put(policyId, policyVersion, new PolicyWithNamespaces&lt;&gt;(jaxbPolicySet, nsPrefixUriMap));</span>
+<span class="nc bnc" id="L659" title="All 2 branches missed.">				if (previousValue != null)</span>
+				{
+<span class="nc" id="L661">					throw new IllegalArgumentException(&quot;Policy conflict: two PolicySets with same PolicySetId=&quot; + policyId + &quot;, Version=&quot; + policyVersionStr);</span>
+				}
+
+				/*
+				 * PolicySets cannot be parsed before we have collected them all, because each PolicySet may refer to others via PolicySetIdReferences
+				 */
+<span class="nc" id="L667">			}</span>
+			else
+			{
+<span class="nc" id="L670">				throw new IllegalArgumentException(&quot;Unexpected element found as root of the policy document: &quot; + jaxbPolicyOrPolicySetObj.getClass().getSimpleName());</span>
+			}
+
+<span class="nc" id="L673">			policyUrlIndex++;</span>
+<span class="nc" id="L674">		}</span>
+
+<span class="nc" id="L676">		final PolicyMap&lt;StaticTopLevelPolicyElementEvaluator&gt; policyMap = new PolicyMap&lt;&gt;(updatablePolicyTable.rowMap());</span>
+<span class="nc" id="L677">		final PolicyMap&lt;PolicyWithNamespaces&lt;PolicySet&gt;&gt; policySetMap = new PolicyMap&lt;&gt;(updatablePolicySetTable.rowMap());</span>
+<span class="nc" id="L678">		return new CoreRefPolicyProvider(policyMap, policySetMap, maxPolicySetRefDepth, expressionFactory, combiningAlgRegistry);</span>
+	}
+
+	@Override
+	protected StaticTopLevelPolicyElementEvaluator getPolicy(final String id, final Optional&lt;PolicyVersionPatterns&gt; constraints)
+	{
+<span class="nc" id="L684">		final Entry&lt;PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; policyEntry = policyEvaluatorMap.get(id, constraints);</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">		if (policyEntry == null)</span>
+		{
+<span class="nc" id="L687">			return null;</span>
+		}
+
+<span class="nc" id="L690">		return policyEntry.getValue();</span>
+	}
+
+	@Override
+	protected StaticTopLevelPolicyElementEvaluator getPolicySet(final String id, final Optional&lt;PolicyVersionPatterns&gt; constraints, final Deque&lt;String&gt; policySetRefChainIncludingResult)
+	{
+		/*
+		 * Request for PolicySet (not necessarily from PolicySetIdReference, but also from CoreRefBasedRootPolicyProviderModule#CoreRefBasedRootPolicyProviderModule(...) or else)
+		 */
+<span class="nc" id="L699">		final Entry&lt;PolicyVersion, StaticTopLevelPolicyElementEvaluator&gt; policyEntry = policySetEvaluatorMap.get(id, constraints);</span>
+<span class="nc bnc" id="L700" title="All 2 branches missed.">		if (policyEntry == null)</span>
+		{
+<span class="nc" id="L702">			return null;</span>
+		}
+
+<span class="nc" id="L705">		final StaticTopLevelPolicyElementEvaluator policy = policyEntry.getValue();</span>
+<span class="nc bnc" id="L706" title="All 2 branches missed.">		if (policySetRefChainIncludingResult != null)</span>
+		{
+			/*
+			 * check total policy ref depth if policySetRefChainIncludingResult != null, i.e. length of (newAncestorPolicySetRefChain + parsed policySet's longest (nested) policy ref chain) &lt;=
+			 * maxPolicySetRefDepth
+			 */
+<span class="nc" id="L712">			final Optional&lt;PolicyRefsMetadata&gt; policyRefsMetadata = policy.getPolicyRefsMetadata();</span>
+<span class="nc bnc" id="L713" title="All 2 branches missed.">			if (policyRefsMetadata.isPresent())</span>
+			{
+<span class="nc" id="L715">				joinPolicyRefChains(policySetRefChainIncludingResult, policyRefsMetadata.get().getLongestPolicyRefChain());</span>
+			}
+		}
+
+<span class="nc" id="L719">		return policy;</span>
+	}
+
+	@Override
+	public void close()
+	{
+		// Nothing to close - erase exception from the close() signature
+<span class="nc" id="L726">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

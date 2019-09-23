@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CombiningAlgEvaluators.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl.combining</a> &gt; <span class="el_source">CombiningAlgEvaluators.java</span></div><h1>CombiningAlgEvaluators.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * 
+ */
+package org.ow2.authzforce.core.pdp.impl.combining;
+
+import java.util.Collection;
+
+import org.ow2.authzforce.core.pdp.api.DecisionResult;
+import org.ow2.authzforce.core.pdp.api.EvaluationContext;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecision;
+import org.ow2.authzforce.core.pdp.api.ExtendedDecisions;
+import org.ow2.authzforce.core.pdp.api.PepAction;
+import org.ow2.authzforce.core.pdp.api.UpdatableList;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.policy.PrimaryPolicyMetadata;
+import org.ow2.authzforce.core.pdp.impl.rule.RuleEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
+
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.DecisionType;
+import oasis.names.tc.xacml._3_0.core.schema.wd_17.EffectType;
+
+/**
+ * Common Combining Algorithm evaluators
+ */
+final class CombiningAlgEvaluators
+{
+	private CombiningAlgEvaluators()
+	{
+	}
+
+	private static abstract class ConstantDecisionEvaluator implements CombiningAlg.Evaluator
+	{
+
+<span class="nc" id="L54">		private static final Logger LOGGER = LoggerFactory.getLogger(ConstantDecisionEvaluator.class);</span>
+
+		protected abstract ExtendedDecision getReturnedDecision();
+
+		@Override
+		public final ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; updatablePepActions,
+		        final UpdatableList&lt;PrimaryPolicyMetadata&gt; updatableApplicablePolicyIdList)
+		{
+<span class="nc" id="L62">			LOGGER.debug(</span>
+			        &quot;This evaluator constantly returns the same decision, which results from an optimization of the combining algorithm and combined elements (if any) initially defined in the policy. Check the policy initialization logs for more information on this optimization.&quot;);
+<span class="nc" id="L64">			return getReturnedDecision();</span>
+		}
+	}
+
+<span class="nc" id="L68">	static final CombiningAlg.Evaluator NOT_APPLICABLE_CONSTANT_EVALUATOR = new ConstantDecisionEvaluator()</span>
+<span class="nc" id="L69">	{</span>
+
+		@Override
+		public ExtendedDecision getReturnedDecision()
+		{
+<span class="nc" id="L74">			return ExtendedDecisions.SIMPLE_NOT_APPLICABLE;</span>
+		}
+	};
+
+<span class="nc" id="L78">	static final CombiningAlg.Evaluator DENY_CONSTANT_EVALUATOR = new ConstantDecisionEvaluator()</span>
+<span class="nc" id="L79">	{</span>
+
+		@Override
+		public ExtendedDecision getReturnedDecision()
+		{
+<span class="nc" id="L84">			return ExtendedDecisions.SIMPLE_DENY;</span>
+		}
+	};
+
+<span class="nc" id="L88">	static final CombiningAlg.Evaluator PERMIT_CONSTANT_EVALUATOR = new ConstantDecisionEvaluator()</span>
+<span class="nc" id="L89">	{</span>
+
+		@Override
+		public ExtendedDecision getReturnedDecision()
+		{
+<span class="nc" id="L94">			return ExtendedDecisions.SIMPLE_PERMIT;</span>
+		}
+	};
+
+	/*
+	 * Rule combining algorithm evaluator where all rules must have the same Effect, and that returns NotApplicable if no rule applies, else Indeterminate if all rules result in Indeterminate or
+	 * NotApplicable, else the Permit/Deny decision (corresponding to the common Effect) of the first rule that applies and successfully evaluates.
+	 */
+<span class="nc bnc" id="L102" title="All 2 branches missed.">	static class RulesWithSameEffectEvaluator implements CombiningAlg.Evaluator</span>
+	{
+		protected static boolean haveSameEffect(final EffectType expectedEffect, final Collection&lt;? extends RuleEvaluator&gt; rules)
+		{
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			for (final RuleEvaluator rule : rules)</span>
+			{
+<span class="nc bnc" id="L108" title="All 2 branches missed.">				if (rule.getEffect() != expectedEffect)</span>
+				{
+<span class="nc" id="L110">					return false;</span>
+				}
+<span class="nc" id="L112">			}</span>
+
+<span class="nc" id="L114">			return true;</span>
+		}
+
+		private final ImmutableList&lt;RuleEvaluator&gt; rulesWithSameEffect;
+		private final DecisionType commonDecision;
+
+		RulesWithSameEffectEvaluator(final Collection&lt;? extends RuleEvaluator&gt; rulesWithSameEffect)
+<span class="nc" id="L121">		{</span>
+<span class="nc bnc" id="L122" title="All 6 branches missed.">			assert rulesWithSameEffect != null &amp;&amp; !rulesWithSameEffect.isEmpty();</span>
+			// first rule's effect assumed the same for all
+<span class="nc" id="L124">			final EffectType commonEffect = rulesWithSameEffect.iterator().next().getEffect();</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">			assert haveSameEffect(commonEffect, rulesWithSameEffect);</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			this.commonDecision = commonEffect == EffectType.DENY ? DecisionType.DENY : DecisionType.PERMIT;</span>
+<span class="nc" id="L127">			this.rulesWithSameEffect = ImmutableList.copyOf(rulesWithSameEffect);</span>
+<span class="nc" id="L128">		}</span>
+
+		@Override
+		public ExtendedDecision evaluate(final EvaluationContext context, final UpdatableList&lt;PepAction&gt; updatablePepActions,
+		        final UpdatableList&lt;PrimaryPolicyMetadata&gt; updatableApplicablePolicyIdList)
+		{
+<span class="nc" id="L134">			ExtendedDecision firstIndeterminate = null;</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			for (final RuleEvaluator rule : rulesWithSameEffect)</span>
+			{
+<span class="nc" id="L137">				final DecisionResult evalResult = rule.evaluate(context);</span>
+<span class="nc" id="L138">				final DecisionType decision = evalResult.getDecision();</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">				if (decision == commonDecision)</span>
+				{
+<span class="nc" id="L141">					updatablePepActions.addAll(evalResult.getPepActions());</span>
+<span class="nc" id="L142">					return evalResult;</span>
+				}
+
+				// Decision is NotApplicable or Indeterminate
+				// If decision Indeterminate, evalResult is Indeterminate(P)
+<span class="nc bnc" id="L147" title="All 4 branches missed.">				if (decision == DecisionType.INDETERMINATE &amp;&amp; firstIndeterminate == null)</span>
+				{
+					// this is the first Indeterminate
+<span class="nc" id="L150">					firstIndeterminate = evalResult;</span>
+				}
+<span class="nc" id="L152">			}</span>
+
+			// No commonDecision (Permit/Deny) returned
+			// If no Indeterminate -&gt; all NotApplicable
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			return firstIndeterminate == null ? ExtendedDecisions.SIMPLE_NOT_APPLICABLE : firstIndeterminate;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>

@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="no"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PdpExtensions.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">org.ow2.authzforce:authzforce-ce-core-pdp-engine</a> &gt; <a href="index.source.html" class="el_package">org.ow2.authzforce.core.pdp.impl</a> &gt; <span class="el_source">PdpExtensions.java</span></div><h1>PdpExtensions.java</h1><pre class="source lang-java linenums">/**
+ * Copyright 2012-2019 THALES.
+ *
+ * This file is part of AuthzForce CE.
+ *
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.ow2.authzforce.core.pdp.impl;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
+
+import org.ow2.authzforce.core.pdp.api.CloseableNamedAttributeProvider;
+import org.ow2.authzforce.core.pdp.api.DecisionCache;
+import org.ow2.authzforce.core.pdp.api.DecisionRequestPreprocessor;
+import org.ow2.authzforce.core.pdp.api.DecisionResultPostprocessor;
+import org.ow2.authzforce.core.pdp.api.HashCollections;
+import org.ow2.authzforce.core.pdp.api.JaxbBoundPdpExtension;
+import org.ow2.authzforce.core.pdp.api.PdpExtension;
+import org.ow2.authzforce.core.pdp.api.combining.CombiningAlg;
+import org.ow2.authzforce.core.pdp.api.func.Function;
+import org.ow2.authzforce.core.pdp.api.policy.CloseableRefPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.policy.RootPolicyProvider;
+import org.ow2.authzforce.core.pdp.api.value.AttributeValueFactory;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractAttributeProvider;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractDecisionCache;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractPdpExtension;
+import org.ow2.authzforce.xmlns.pdp.ext.AbstractPolicyProvider;
+
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+
+/**
+ * Loads PDP extensions (implementing {@link PdpExtension}) from classpath using {@link ServiceLoader}.
+ *
+ * @version $Id: $
+ */
+<span class="nc" id="L51">public final class PdpExtensions</span>
+{
+	// private static final Logger LOGGER = LoggerFactory.getLogger(PdpExtensionLoader.class);
+
+	/*
+	 * For each type of extension, we build the maps allowing to get the compatible/supporting extension class, using {@link ServiceLoader} API, to discover these classes from files
+	 * 'META-INF/services/org.ow2.authzforce.core.pdp.api.PdpExtension' on the classpath, in the format described by {@link ServiceLoader} API documentation.
+	 */
+
+	/**
+	 * Types of zero-conf (non-JAXB-bound) extension
+	 */
+<span class="nc" id="L63">	private static final Set&lt;Class&lt;? extends PdpExtension&gt;&gt; NON_JAXB_BOUND_EXTENSION_CLASSES = HashCollections</span>
+<span class="nc" id="L64">	        .newImmutableSet(Arrays.asList(AttributeValueFactory.class, Function.class, CombiningAlg.class, DecisionRequestPreprocessor.Factory.class, DecisionResultPostprocessor.Factory.class));</span>
+
+	/*
+	 * For each type of zero-conf (non-JAXB-bound) extension, have a map (extension ID -&gt; extension instance), so that the extension ID is scoped to the extension type among the ones listed in
+	 * NON_JAXB_BOUND_EXTENSION_CLASSES (you can have same ID but for different types of extensions).
+	 */
+	private final static Map&lt;Class&lt;? extends PdpExtension&gt;, Map&lt;String, PdpExtension&gt;&gt; NON_JAXB_BOUND_EXTENSIONS_BY_CLASS_AND_ID;
+
+	/*
+	 * For each type of XML/JAXB-bound extension, map XML/JAXB configuration class to corresponding extension (we assume a one-to-one relationship between the XML/JAXB type and the extension class)
+	 */
+	private final static Map&lt;Class&lt;? extends AbstractPdpExtension&gt;, JaxbBoundPdpExtension&lt;? extends AbstractPdpExtension&gt;&gt; JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS;
+
+	static
+	{
+<span class="nc" id="L79">		final Table&lt;Class&lt;? extends PdpExtension&gt;, String, PdpExtension&gt; mutableNonJaxbBoundExtMapByClassAndId = HashBasedTable.create();</span>
+<span class="nc" id="L80">		final Map&lt;Class&lt;? extends AbstractPdpExtension&gt;, JaxbBoundPdpExtension&lt;? extends AbstractPdpExtension&gt;&gt; mutableJaxbBoundExtMapByClass = HashCollections.newUpdatableMap();</span>
+
+		/*
+		 * REMINDER: every service provider (implementation class) loaded by ServiceLoader MUST HAVE a ZERO-ARGUMENT CONSTRUCTOR.
+		 */
+<span class="nc" id="L85">		final ServiceLoader&lt;PdpExtension&gt; extensionLoader = ServiceLoader.load(PdpExtension.class);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		for (final PdpExtension extension : extensionLoader)</span>
+		{
+<span class="nc" id="L88">			boolean isValidExt = false;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">			if (extension instanceof JaxbBoundPdpExtension&lt;?&gt;)</span>
+			{
+<span class="nc" id="L91">				final JaxbBoundPdpExtension&lt;?&gt; jaxbBoundExt = (JaxbBoundPdpExtension&lt;?&gt;) extension;</span>
+<span class="nc" id="L92">				final JaxbBoundPdpExtension&lt;?&gt; duplicate = mutableJaxbBoundExtMapByClass.putIfAbsent(jaxbBoundExt.getJaxbClass(), jaxbBoundExt);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">				if (duplicate != null)</span>
+				{
+<span class="nc" id="L95">					throw new IllegalArgumentException(&quot;Extension &quot; + jaxbBoundExt + &quot; (&quot; + jaxbBoundExt.getClass() + &quot;) is conflicting with &quot; + duplicate + &quot;(&quot; + duplicate.getClass()</span>
+<span class="nc" id="L96">					        + &quot;) for the same XML/JAXB configuration class: &quot; + jaxbBoundExt.getJaxbClass());</span>
+				}
+
+<span class="nc" id="L99">				isValidExt = true;</span>
+<span class="nc" id="L100">			} else</span>
+			{
+<span class="nc bnc" id="L102" title="All 2 branches missed.">				for (final Class&lt;? extends PdpExtension&gt; extClass : NON_JAXB_BOUND_EXTENSION_CLASSES)</span>
+				{
+<span class="nc bnc" id="L104" title="All 2 branches missed.">					if (extClass.isInstance(extension))</span>
+					{
+<span class="nc" id="L106">						final PdpExtension duplicate = mutableNonJaxbBoundExtMapByClassAndId.put(extClass, extension.getId(), extension);</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">						if (duplicate != null)</span>
+						{
+<span class="nc" id="L109">							throw new IllegalArgumentException(&quot;Extension &quot; + extension + &quot; is conflicting with &quot; + duplicate + &quot; registered with same ID: &quot; + extension.getId());</span>
+						}
+
+<span class="nc" id="L112">						isValidExt = true;</span>
+<span class="nc" id="L113">						break;</span>
+					}
+<span class="nc" id="L115">				}</span>
+			}
+
+<span class="nc bnc" id="L118" title="All 2 branches missed.">			if (!isValidExt)</span>
+			{
+<span class="nc" id="L120">				throw new UnsupportedOperationException(&quot;Unsupported/invalid type of PDP extension: &quot; + extension.getClass() + &quot; (extension ID = &quot; + extension.getId() + &quot;)&quot;);</span>
+			}
+<span class="nc" id="L122">		}</span>
+
+<span class="nc" id="L124">		NON_JAXB_BOUND_EXTENSIONS_BY_CLASS_AND_ID = HashCollections.newImmutableMap(mutableNonJaxbBoundExtMapByClassAndId.rowMap());</span>
+<span class="nc" id="L125">		JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS = HashCollections.newImmutableMap(mutableJaxbBoundExtMapByClass);</span>
+<span class="nc" id="L126">	}</span>
+
+	/**
+	 * Get PDP extension configuration classes (JAXB-generated from XML schema)
+	 *
+	 * @return classes representing datamodels of configurations of all PDP extensions
+	 */
+	public static Set&lt;Class&lt;? extends AbstractPdpExtension&gt;&gt; getExtensionJaxbClasses()
+	{
+<span class="nc" id="L135">		return HashCollections.newImmutableSet(JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.keySet());</span>
+	}
+
+	/**
+	 * Get non-JAXB-bound (aka zero-configuration) extension identifiers. Used by PAPs for instance, to get the list of extensions supported by the PDP before modifying PDP's configuration
+	 *
+	 * @param extensionType
+	 *            type of extension: {@link AttributeValueFactory }, {@link Function}, {@link CombiningAlg}, etc.
+	 * @return unmodifiable set of supported non-JAXB bound extension IDs; may be empty (not null) if no extension available for this type
+	 * @throws java.lang.IllegalArgumentException
+	 *             if {@code extensionType} is not a valid extension type
+	 */
+	public static &lt;T extends PdpExtension&gt; Set&lt;String&gt; getNonJaxbBoundExtensionIDs(final Class&lt;T&gt; extensionType) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L149" title="All 2 branches missed.">		if (!NON_JAXB_BOUND_EXTENSION_CLASSES.contains(extensionType))</span>
+		{
+<span class="nc" id="L151">			throw new IllegalArgumentException(&quot;Invalid (non-JAXB-bound) PDP extension type: &quot; + extensionType + &quot;. Expected types: &quot; + NON_JAXB_BOUND_EXTENSION_CLASSES);</span>
+		}
+
+<span class="nc" id="L154">		final Map&lt;String, PdpExtension&gt; typeSpecificExtsById = NON_JAXB_BOUND_EXTENSIONS_BY_CLASS_AND_ID.get(extensionType);</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">		if (typeSpecificExtsById == null)</span>
+		{
+<span class="nc" id="L157">			return Collections.emptySet();</span>
+		}
+
+<span class="nc" id="L160">		return HashCollections.newImmutableSet(typeSpecificExtsById.keySet());</span>
+	}
+
+	/**
+	 * Get non-JAXB-bound (aka zero-configuration) extension
+	 *
+	 * @param extensionType
+	 *            type of extension: {@link AttributeValueFactory}, {@link Function}, etc.
+	 * @param id
+	 *            extension ID
+	 * @return PDP extension instance of class {@code extensionType} and such that its method {@link PdpExtension#getId()} returns {@code id}
+	 * @throws java.lang.IllegalArgumentException
+	 *             if there is not any extension found for type {@code extensionType} with ID {@code id}
+	 */
+	public static &lt;T extends PdpExtension&gt; T getExtension(final Class&lt;T&gt; extensionType, final String id) throws IllegalArgumentException
+	{
+<span class="nc bnc" id="L176" title="All 2 branches missed.">		if (!NON_JAXB_BOUND_EXTENSION_CLASSES.contains(extensionType))</span>
+		{
+<span class="nc" id="L178">			throw new IllegalArgumentException(&quot;Invalid (non-JAXB-bound) PDP extension type: &quot; + extensionType + &quot;. Expected types: &quot; + NON_JAXB_BOUND_EXTENSION_CLASSES);</span>
+		}
+
+<span class="nc" id="L181">		final Map&lt;String, PdpExtension&gt; typeSpecificExtsById = NON_JAXB_BOUND_EXTENSIONS_BY_CLASS_AND_ID.get(extensionType);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">		if (typeSpecificExtsById == null)</span>
+		{
+<span class="nc" id="L184">			throw new IllegalArgumentException(&quot;No PDP extension of type '&quot; + extensionType + &quot;' found&quot;);</span>
+		}
+
+<span class="nc" id="L187">		final PdpExtension ext = typeSpecificExtsById.get(id);</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		if (ext == null)</span>
+		{
+<span class="nc" id="L190">			throw new IllegalArgumentException(&quot;No PDP extension of type '&quot; + extensionType + &quot;' found with ID: &quot; + id + &quot;. Expected IDs: &quot; + typeSpecificExtsById.keySet());</span>
+		}
+
+<span class="nc" id="L193">		return extensionType.cast(ext);</span>
+	}
+
+	/**
+	 * Get Attribute Provider factory builder
+	 * 
+	 * @param jaxbConfClass
+	 *            XML-schema-derived type of attribute provider configuration
+	 * @return Attribute Provider factory builder
+	 * @throws java.lang.IllegalArgumentException
+	 *             if there is no extension of type {@link org.ow2.authzforce.core.pdp.api.CloseableDesignatedAttributeProvider.FactoryBuilder} supporting {@code jaxbPdpExtensionClass}
+	 */
+	public static &lt;ATTRIBUTE_PROVIDER_CONF extends AbstractAttributeProvider&gt; CloseableNamedAttributeProvider.FactoryBuilder&lt;ATTRIBUTE_PROVIDER_CONF&gt; getAttributeProviderFactoryBuilder(
+	        final Class&lt;ATTRIBUTE_PROVIDER_CONF&gt; jaxbConfClass)
+	{
+<span class="nc" id="L208">		final JaxbBoundPdpExtension&lt;ATTRIBUTE_PROVIDER_CONF&gt; ext = (JaxbBoundPdpExtension&lt;ATTRIBUTE_PROVIDER_CONF&gt;) JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.get(jaxbConfClass);</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		if (ext == null)</span>
+		{
+<span class="nc" id="L211">			throw new IllegalArgumentException(&quot;No PDP extension found supporting JAXB (configuration) type: &quot; + jaxbConfClass + &quot;. Expected types: &quot; + JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.keySet());</span>
+		}
+
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		if (!(ext instanceof CloseableNamedAttributeProvider.FactoryBuilder))</span>
+		{
+<span class="nc" id="L216">			throw new IllegalArgumentException(&quot;No PDP extension of type &quot; + CloseableNamedAttributeProvider.FactoryBuilder.class</span>
+			        + &quot; (Attribute Provider factory builder) supporting JAXB/XML (configuration) type: &quot; + jaxbConfClass);
+		}
+
+<span class="nc" id="L220">		return (CloseableNamedAttributeProvider.FactoryBuilder&lt;ATTRIBUTE_PROVIDER_CONF&gt;) ext;</span>
+	}
+
+	/**
+	 * Get Policy-by-reference Provider factory
+	 * 
+	 * @param jaxbConfClass
+	 *            XML-schema-derived type of policy provider configuration
+	 * @return Policy-by-reference Provider
+	 * @throws java.lang.IllegalArgumentException
+	 *             if there is no extension of type {@link org.ow2.authzforce.core.pdp.api.policy.CloseableRefPolicyProvider.Factory} supporting {@code jaxbPdpExtensionClass}
+	 */
+	public static &lt;REF_POLICY_PROVIDER_CONF extends AbstractPolicyProvider&gt; CloseableRefPolicyProvider.Factory&lt;REF_POLICY_PROVIDER_CONF&gt; getRefPolicyProviderFactory(
+	        final Class&lt;REF_POLICY_PROVIDER_CONF&gt; jaxbConfClass) throws IllegalArgumentException
+	{
+<span class="nc" id="L235">		final JaxbBoundPdpExtension&lt;REF_POLICY_PROVIDER_CONF&gt; ext = (JaxbBoundPdpExtension&lt;REF_POLICY_PROVIDER_CONF&gt;) JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.get(jaxbConfClass);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (ext == null)</span>
+		{
+<span class="nc" id="L238">			throw new IllegalArgumentException(&quot;No PDP extension found supporting JAXB (configuration) type: &quot; + jaxbConfClass + &quot;. Expected types: &quot; + JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.keySet());</span>
+		}
+
+<span class="nc bnc" id="L241" title="All 2 branches missed.">		if (!(ext instanceof CloseableRefPolicyProvider.Factory))</span>
+		{
+<span class="nc" id="L243">			throw new IllegalArgumentException(</span>
+			        &quot;No PDP extension of type &quot; + CloseableRefPolicyProvider.Factory.class + &quot; (Reference-based Policy Provider factory) supporting JAXB/XML (configuration) type: &quot; + jaxbConfClass);
+		}
+
+<span class="nc" id="L247">		return (CloseableRefPolicyProvider.Factory&lt;REF_POLICY_PROVIDER_CONF&gt;) ext;</span>
+	}
+
+	/**
+	 * Create RootPolicyProvider
+	 * 
+	 * @param jaxbConfClass
+	 *            XML-schema-derived type of policy provider configuration
+	 * 
+	 * @return Root Policy Provider
+	 * @throws java.lang.IllegalArgumentException
+	 *             if there is no extension of type {@link org.ow2.authzforce.core.pdp.api.policy.RootPolicyProvider.Factory} supporting {@code jaxbPdpExtensionClass} or invalid
+	 *             {@code jaxbRootPolicyProviderConf}
+	 */
+
+	public static &lt;ROOT_POLICY_PROVIDER_CONF extends AbstractPolicyProvider&gt; RootPolicyProvider.Factory&lt;ROOT_POLICY_PROVIDER_CONF&gt; getRootPolicyProviderFactory(
+	        final Class&lt;ROOT_POLICY_PROVIDER_CONF&gt; jaxbConfClass) throws IllegalArgumentException
+	{
+<span class="nc" id="L265">		final JaxbBoundPdpExtension&lt;ROOT_POLICY_PROVIDER_CONF&gt; ext = (JaxbBoundPdpExtension&lt;ROOT_POLICY_PROVIDER_CONF&gt;) JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.get(jaxbConfClass);</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		if (ext == null)</span>
+		{
+<span class="nc" id="L268">			throw new IllegalArgumentException(&quot;No PDP extension found supporting JAXB (configuration) type: &quot; + jaxbConfClass + &quot;. Expected types: &quot; + JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.keySet());</span>
+		}
+
+<span class="nc bnc" id="L271" title="All 2 branches missed.">		if (!(ext instanceof RootPolicyProvider.Factory))</span>
+		{
+<span class="nc" id="L273">			throw new IllegalArgumentException(</span>
+			        &quot;No PDP extension of type &quot; + RootPolicyProvider.Factory.class + &quot; (Root Policy Provider factory) supporting JAXB/XML (configuration) type: &quot; + jaxbConfClass);
+		}
+
+<span class="nc" id="L277">		return (RootPolicyProvider.Factory&lt;ROOT_POLICY_PROVIDER_CONF&gt;) ext;</span>
+	}
+
+	/**
+	 * Get Decision Cache factory
+	 * 
+	 * @param jaxbConfClass
+	 *            XML-schema-derived type of decision cache provider configuration
+	 * @return Decision Cache factory
+	 * @throws java.lang.IllegalArgumentException
+	 *             if there is no extension of type {@link org.ow2.authzforce.core.pdp.api.DecisionCache.Factory} supporting {@code jaxbPdpExtensionClass}
+	 */
+	public static &lt;DECISION_CACHE_CONF extends AbstractDecisionCache&gt; DecisionCache.Factory&lt;DECISION_CACHE_CONF&gt; getDecisionCacheFactory(final Class&lt;DECISION_CACHE_CONF&gt; jaxbConfClass)
+	{
+<span class="nc" id="L291">		final JaxbBoundPdpExtension&lt;DECISION_CACHE_CONF&gt; ext = (JaxbBoundPdpExtension&lt;DECISION_CACHE_CONF&gt;) JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.get(jaxbConfClass);</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">		if (ext == null)</span>
+		{
+<span class="nc" id="L294">			throw new IllegalArgumentException(&quot;No PDP extension found supporting JAXB (configuration) type: &quot; + jaxbConfClass + &quot;. Expected types: &quot; + JAXB_BOUND_EXTENSIONS_BY_JAXB_CLASS.keySet());</span>
+		}
+
+<span class="nc bnc" id="L297" title="All 2 branches missed.">		if (!(ext instanceof DecisionCache.Factory))</span>
+		{
+<span class="nc" id="L299">			throw new IllegalArgumentException(&quot;No PDP extension of type &quot; + DecisionCache.Factory.class + &quot; (Decision Cache factory) supporting JAXB/XML (configuration) type: &quot; + jaxbConfClass);</span>
+		}
+
+<span class="nc" id="L302">		return (DecisionCache.Factory&lt;DECISION_CACHE_CONF&gt;) ext;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.4.201905082037</span></div></body></html>
