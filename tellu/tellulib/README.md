@@ -1,4 +1,4 @@
-#TelluLib 
+# TelluLib 
 EvoSuite Behavioral Models Seeding experiments
 
 Running in Git Bash on Windows 10.
@@ -6,7 +6,7 @@ Running in tellulib project folder, with a copy of botsing-model-generation and 
 Coverage computed with OpenClover 4.3.1 Eclipse plugin.
 Mutation score computed with PIT 1.4.7, Descartes 1.2.5 mutation engine (from Maven, with stamp profile).
 
-##Procedure
+## Procedure
 Based on tutorial. Commands in tellulib project folder.
 
 ```bash
@@ -78,7 +78,7 @@ A test dependency to evosuite-master 1.0.6 was added to the pom file.
 
 We run Clover and PIT/Descartes again, for scores with the new tests included.
 
-##Results
+## Results
 A total of 115 model files were generated.
 
 Models were only generated for some of the classes in the util package, and no tests could be generated for this package. Same type of error for every class:
