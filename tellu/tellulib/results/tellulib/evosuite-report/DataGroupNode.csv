@@ -1,0 +1,2 @@
+TARGET_CLASS,search_budget,Total_Time,Length,Size,LineCoverage,BranchCoverage,OutputCoverage,WeakMutationScore,Implicit_MethodExceptions,MutationScore
+no.tellu.lib.data.DataGroupNode,120,266426,1446,121,0.8622448979591837,0.7675675675675676,0.5833333333333334,0.86,15,0.12885662431941924
