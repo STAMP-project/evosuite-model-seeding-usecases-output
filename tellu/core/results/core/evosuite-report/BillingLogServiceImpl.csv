@@ -1,0 +1,2 @@
+TARGET_CLASS,search_budget,Total_Time,Length,Size,LineCoverage,BranchCoverage,OutputCoverage,WeakMutationScore,Implicit_MethodExceptions,MutationScore
+no.tellu.findit.services.BillingLogServiceImpl,120,126735,143,39,0.7570093457943925,0.5357142857142857,1.0,0.6571428571428571,13,0.014285714285714285

@@ -1,0 +1,2 @@
+TARGET_CLASS,search_budget,Total_Time,Length,Size,LineCoverage,BranchCoverage,OutputCoverage,WeakMutationScore,Implicit_MethodExceptions,MutationScore
+no.tellu.findit.services.cassandra.EventHistoryServiceImpl,120,127064,37,11,0.16463414634146342,0.1728395061728395,0.47058823529411764,0.13440860215053763,0,0.043010752688172046
