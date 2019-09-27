@@ -156,3 +156,23 @@ Improvement: 18,37%
 Issues: 52 (13 paritally-tested, 39 pseudo-tested)
 
 We have an increase in methods which are pseudo-/partially tested. Looking at the issues in the Descartes log, we see most importantly that these methods are typically each covered by a number of generated test methods. We suspect that many of the generated tests are redundant. Indeed, going from 77 to 832 tests is a much larger increase than is necessary for the improvements in coverage and mutation score. But these tests take hardly any time to run, and running the complete test suit still takes less than 4 seconds, so we are happy with the result.
+
+We also wanted to compare existing manually written tests with generated tests. We have both an existing and a generated set of tests for the classes DataModel and DataTemplate, and compute coverage for these. Both classes are top-level classes in their respective packages, and should be able to execute much of the code in these packages.
+
+DataModel_ESTest (generated):
+148 tests
+49,2% coverage in package no.tellu.lib.data.model, 21,9% for whole project.
+
+ModelTest (manual):
+12 tests
+47,4% coverage in package no.tellu.lib.data.model, 33,1% for whole project.
+
+DataTemplate_ESTest (generated):
+23 tests
+56,9% coverage in package no.tellu.lib.data.template, 4,7% for whole project.
+
+TemplateTest (manual):
+5 tests
+73,5% coverage in package no.tellu.lib.data.template, 7,8% for whole project.
+
+While there are a lot more test methods in the generated suites, they tend to be much simpler than the manually written ones. The test coverage is comparable, although the manually written ones provide a bit more coverage, at least for the project as a whole.
