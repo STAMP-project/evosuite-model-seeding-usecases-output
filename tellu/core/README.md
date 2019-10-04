@@ -70,7 +70,7 @@ A test dependency to evosuite-master 1.0.6 was added to the pom file.
 We run Clover and PIT/Descartes again, for scores with the new tests included.
 
 ## Results
-A total of 220 model files were generated.
+A total of 220 model files were generated. 133 of these are for classes in the project, while the rest are from dependencies.
 
 As in the tellulib experiment, test generation for a whole package did not work (evosuite-master with prefix argument). Test generation for specific classes always worked well. We know from the tellulib experiment that some tests fail when run, and these are removed from the test suite.
 
@@ -113,7 +113,7 @@ Generated 225 tests. 220 working.
 no.tellu.findit.domain.ServiceProviderImpl:
 Generated 134 tests. 134 working.
 
-Total tests after adding all generated tests which pass: 375
+Total tests after adding all generated tests which pass: 735
 
 Coverage by Clover - before
 Unit tests: 83
@@ -124,7 +124,7 @@ Mutation score: 14%
 Issues: 105 (0 paritally-tested, 105 pseudo-tested)
 
 Coverage by Clover - after
-Unit tests: 375
+Unit tests: 735
 Coverage: 34,9%
 Improvement: 33,2%
 

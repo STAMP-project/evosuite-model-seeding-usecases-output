@@ -79,7 +79,7 @@ A test dependency to evosuite-master 1.0.6 was added to the pom file.
 We run Clover and PIT/Descartes again, for scores with the new tests included.
 
 ## Results
-A total of 115 model files were generated.
+A total of 115 model files were generated. 59 of these are for classes in the project, while the rest are from dependencies.
 
 Models were only generated for some of the classes in the util package, and no tests could be generated for this package. Same type of error for every class:
 ```
