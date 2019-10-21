@@ -1,0 +1,10 @@
+var clover = new Object();
+
+// JSON: {classes : [{name, id, sl, el,  methods : [{sl, el}, ...]}, ...]}
+clover.pageData = {"classes":[{"el":38,"id":4680,"methods":[{"el":20,"sc":2,"sl":16},{"el":23,"sc":2,"sl":21},{"el":27,"sc":5,"sl":25},{"el":30,"sc":5,"sl":28},{"el":34,"sc":5,"sl":32},{"el":37,"sc":5,"sl":35}],"name":"AwaitingConfirmation","sl":10}]}
+
+// JSON: {test_ID : {"methods": [ID1, ID2, ID3...], "name" : "testXXX() void"}, ...};
+clover.testTargets = {"test_144":{"methods":[{"sl":16}],"name":"testStar","pass":true,"statements":[{"sl":19}]},"test_2":{"methods":[{"sl":16}],"name":"testGetSessionFactory","pass":true,"statements":[{"sl":19}]},"test_286":{"methods":[{"sl":16}],"name":"testDeleteUserAccount","pass":true,"statements":[{"sl":19}]},"test_290":{"methods":[{"sl":16}],"name":"testSingleTransactionsMultipleJunitsOfWork","pass":true,"statements":[{"sl":19}]},"test_301":{"methods":[{"sl":16}],"name":"testDeleteUserAccountThatDoesNot","pass":true,"statements":[{"sl":19}]},"test_335":{"methods":[{"sl":16}],"name":"testMultipleTransactionsMultipleJunitsOfWork","pass":true,"statements":[{"sl":19}]},"test_360":{"methods":[{"sl":16}],"name":"testFindUserByUsername","pass":true,"statements":[{"sl":19}]},"test_550":{"methods":[{"sl":16}],"name":"testTransactionIsActive","pass":true,"statements":[{"sl":19}]},"test_571":{"methods":[{"sl":16}],"name":"testTransactionTwiceSameThread","pass":true,"statements":[{"sl":19}]},"test_588":{"methods":[{"sl":16}],"name":"testCatchExceptionAndRollback","pass":true,"statements":[{"sl":19}]},"test_607":{"methods":[{"sl":16}],"name":"testCreateUserAccountEmptyProfile","pass":true,"statements":[{"sl":19}]},"test_9":{"methods":[{"sl":16}],"name":"testCatchRuntimeExceptionAndRollback","pass":true,"statements":[{"sl":19}]}}
+
+// JSON: { lines : [{tests : [testid1, testid2, testid3, ...]}, ...]};
+clover.srcFileLines = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [286, 588, 2, 9, 290, 360, 335, 571, 301, 550, 607, 144], [], [], [286, 588, 2, 9, 290, 360, 335, 571, 301, 550, 607, 144], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]
